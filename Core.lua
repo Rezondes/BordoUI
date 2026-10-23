@@ -42,7 +42,9 @@ local defaults = {
     encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
     bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 },
     chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
-    coopPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -320 },
+    coopPos = { point = "TOPRIGHT", relativePoint = "TOPRIGHT", x = -12, y = -160 },
+    partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 },
+    showParty = true,
     showCoop = true,
     chestArrow = true,
     chestChat  = true,
@@ -132,10 +134,13 @@ function BordoUI:SetLocked(locked)
     if ( BordoUI.UpdateLockState ) then
         BordoUI:UpdateLockState();
     end
+    if ( BordoUI.UpdatePartyFrames ) then
+        BordoUI:UpdatePartyFrames();
+    end
     if ( BordoUIDB.locked ) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cffff3333[LOCKED]|r. Dragging is disabled.");
     else
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cff55ff55[UNLOCKED]|r. You can freely drag and reposition Chat, Multipliers, Combat HUD, Boss Bars & Bottom Bar.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cff55ff55[UNLOCKED]|r. You can freely drag and reposition Chat, Multipliers, Combat HUD, Boss Bars, Party & Co-op Meter.");
     end
 end
 
@@ -233,6 +238,14 @@ SlashCmdList["BORDOU"] = function(msg)
         local yards = tonumber(val) or 35;
         pcall(CameraZoomOut, yards);
         DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Max camera zoom unlocked (factor 4 / 50 yards). Zoomed out by %d yards. You can now zoom out further using your mouse wheel!", yards));
+    elseif ( cmd == "coop" ) then
+        if ( BordoUI.ToggleCoopMeter ) then
+            BordoUI:ToggleCoopMeter(val);
+        end
+    elseif ( cmd == "party" or cmd == "group" ) then
+        if ( BordoUI.TogglePartyFrames ) then
+            BordoUI:TogglePartyFrames(val);
+        end
     elseif ( cmd == "lock" ) then
         BordoUI:SetLocked(true);
     elseif ( cmd == "unlock" ) then
@@ -242,6 +255,7 @@ SlashCmdList["BORDOU"] = function(msg)
     elseif ( cmd == "help" ) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo coop|r - Toggle Co-op Team Damage Meter (/bordo coop test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
@@ -259,7 +273,8 @@ SlashCmdList["BORDOU"] = function(msg)
         BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
         BordoUIDB.bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 };
         BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 };
-        BordoUIDB.coopPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -320 };
+        BordoUIDB.coopPos = { point = "TOPRIGHT", relativePoint = "TOPRIGHT", x = -12, y = -160 };
+        BordoUIDB.partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 };
         if ( ChatFrame1 ) then
             ChatFrame1:ClearAllPoints();
             ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
@@ -289,6 +304,10 @@ SlashCmdList["BORDOU"] = function(msg)
         end
         if ( BordoUI_CoopMeterFrame ) then
             BordoUI:RestorePosition(BordoUI_CoopMeterFrame, BordoUIDB.coopPos);
+        end
+        if ( BordoUI_PartyContainer ) then
+            BordoUI:RestorePosition(BordoUI_PartyContainer, BordoUIDB.partyPos);
+            if ( BordoUI.UpdatePartyFrames ) then BordoUI:UpdatePartyFrames(); end
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI window positions reset to defaults.");
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then

@@ -4,6 +4,32 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.4.0] - 2026-10-23
+
+### Added
+- **Modern Bordo UI Party Frames (`PartyFrames.lua`):** Complete redesign of the group/party window matching Bordo UI's sleek dark glass aesthetic, replacing the default Blizzard party frames.
+- **Square 3D Portrait Cards:** Clean square portraits with cropped textures (`0.12, 0.88`), Leader gold crown badges, and master looter indicators.
+- **Class-Colored Health & Dynamic Power Bars:**
+  - Full class-colored health status bars (Warrior, Paladin, Hunter, Rogue, Priest, Shaman, Mage, Warlock, Druid) across English, German, and Russian client locales.
+  - Live health percentage and current HP display (`1,250 (83%)`).
+  - Dynamic power bars (Mana [Blue], Rage [Red], Energy [Yellow]).
+- **Combat Status & Range Fade:**
+  - Displays instant `|cffff2222DEAD|r` and `|cff888888OFFLINE|r` status overlays.
+  - Smooth range-based opacity dimming when teammates are out of interact range.
+- **Universal Frame Movement & Global Lock Integration:**
+  - Freely draggable anywhere on screen by clicking and dragging the header or any party frame.
+  - Position is automatically saved to `BordoUIDB.partyPos` and restored on login/reload.
+  - Full integration with `/bordo lock`, `/bordo unlock`, and the `[L]` / `[U]` header button.
+- **Interactive Unit Interaction:**
+  - Left-Click on any teammate to instantly target them (`TargetUnit`).
+  - Right-Click to open the native Blizzard party dropdown menu (Inspect, Whisper, Promote, etc.).
+  - Mouse hover cyan border highlight and native unit tooltip.
+- **Auto-Suppression of Blizzard Default Frames:** Safely hides and disables the legacy `PartyMemberFrame1-4` frames to eliminate overlapping with the Multipliers panel.
+- **Live Preview / Test Mode (`/bparty test` or `/partyframes test`):** Instant preview mode simulating 4 teammates (`Byoo`, `Wunderling`, `Doprecious`, `Wildsomon`) with full bars, levels, and leader status.
+- **New Slash Commands:** Added `/bparty`, `/partyframes`, and `/bordo party` (with `/bparty test` and `/bparty reset`).
+
+---
+
 ## [2.3.1] - 2026-10-23
 
 ### Fixed & Improved

@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.3.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.4.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -32,7 +32,16 @@
 - **In-Depth Metrics:** Total Damage, DPS, Breakdown %, Hits, Crits, Real Crit Rate vs Sheet Crit, and Highest Critical Hit.
 - **Fully Scalable & Movable:** Resize with mouse wheel or [-] / [+] buttons. Quick-launch button for the Co-op Team Meter in the header.
 
-### 5. 👥 Co-op Team Damage Meter (`/bordo coop` or `/coop`)
+### 5. 👥 Modern Party Frames (`/bparty` or `/bordo party`)
+- **Sleek Bordo Glass Style:** Replaces the legacy Blizzard party frames with modern, compact dark glass unit cards.
+- **Square 3D Portraits:** Cropped square unit portraits (`0.12, 0.88`) with gold Leader Crown icons and master looter markers.
+- **Class-Colored Health & Power Bars:** Full class-colored health status bars (Warrior, Mage, Rogue, Hunter, Priest, Shaman, Druid, Warlock, Paladin) across English, German, and Russian client languages, with slim power bars (Mana/Rage/Energy).
+- **Status Alerts & Range Fade:** Instant `DEAD` and `OFFLINE` indicators and smooth range-based alpha dimming.
+- **Interactive Targeting:** Click any card to target, right-click to open the native WoW party menu.
+- **Freely Movable & Lockable:** Drag the header or any card to reposition anywhere on screen. Position is saved to `BordoUIDB.partyPos` and respects `/bordo lock`.
+- **Live Test Mode:** Type `/bparty test` to immediately preview with 4 simulated party members!
+
+### 6. ⚔️ Co-op Team Damage Meter (`/bordo coop` or `/coop`)
 - **Real-Time Multiplayer DPS Race:** Real-time damage and DPS rankings for Co-op multiplayer runs.
 - **Dual Tracking Engine:** 
   - **High-Precision Addon Sync:** Automatically syncs exact damage via silent addon messages (`SendAddonMessage("BORDO_COOP", ..., "PARTY")`) for players with Bordo UI.
@@ -71,6 +80,7 @@
 | Command | Description |
 |---|---|
 | `/bordo` or `/azs` | Toggle the detailed Damage Stats table |
+| `/bparty` or `/bordo party` | Toggle Modern Party Frames (`/bparty test` for preview) |
 | `/bordo coop` or `/coop` | Toggle the Co-op Team Damage Meter (`/coop test` for preview) |
 | `/bordo lock` | Lock all UI windows in place (disables dragging) |
 | `/bordo unlock` | Unlock all UI windows (freely drag & reposition on screen) |
