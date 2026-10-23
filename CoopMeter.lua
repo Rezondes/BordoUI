@@ -2,10 +2,10 @@
     Bordo UI - Co-op Team Damage Meter (CoopMeter.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
     - Real-time multiplayer DPS & damage leaderboard for Co-op mode
-    - Dual tracking: High-precision Addon Sync ("BORDO_COOP") + Combat Log Fallback
+    - Dual tracking: High-precision Addon Sync ("BORDO_COOP") + Multi-language Combat Log Fallback
     - Class-colored status bars, contribution share %, and detailed tooltips
     - Freely movable, clamped to screen, lock-supported, and saved across sessions
-    - Toggle with /bordo coop or /coop
+    - Auto-shows in Co-op mode; toggle anytime with /coop or /bordo coop
 ]]--
 
 BordoUI.CoopData = {};
@@ -14,6 +14,7 @@ local syncElapsed = 0;
 local updateElapsed = 0;
 local lastRunPhase = nil;
 local testModeActive = false;
+local userClosedThisSession = false;
 
 -- Class Colors Table
 local CLASS_COLORS = {
@@ -44,9 +45,9 @@ end
 -- 1. CO-OP DAMAGE METER WINDOW
 -- =========================================================================
 local meterFrame = CreateFrame("Frame", "BordoUI_CoopMeterFrame", UIParent);
-meterFrame:SetWidth(260);
+meterFrame:SetWidth(250);
 meterFrame:SetHeight(150);
-meterFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -320);
+meterFrame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -160); -- Placed neatly below Minimap
 meterFrame:SetFrameStrata("LOW");
 meterFrame:SetFrameLevel(10);
 meterFrame:SetClampedToScreen(true);
@@ -106,6 +107,7 @@ closeText:SetPoint("CENTER", closeBtn, "CENTER", 0, 0);
 closeText:SetText("|cffff5555X|r");
 
 closeBtn:SetScript("OnClick", function()
+    userClosedThisSession = true;
     meterFrame:Hide();
     if ( BordoUIDB ) then BordoUIDB.showCoop = false; end
 end);
@@ -214,6 +216,73 @@ local function BroadcastMyStats()
     pcall(SendAddonMessage, "BORDO_COOP", msg, channel);
 end
 
+-- Multi-language Combat Log Parser for party members without Bordo UI
+local function ProcessCombatLogPartyHit(msg)
+    if ( not msg ) then return; end
+    
+    local numParty = GetNumPartyMembers() or 0;
+    if ( numParty <= 0 ) then return; end
+    
+    -- Check which party member name appears in the combat log message
+    local matchedName = nil;
+    local matchedClass = "WARRIOR";
+    for i = 1, numParty do
+        local pName = UnitName("party" .. i);
+        if ( pName and pName ~= UNKNOWN and string.find(msg, pName) ) then
+            matchedName = pName;
+            local _, cl = UnitClass("party" .. i);
+            matchedClass = cl or "WARRIOR";
+            break;
+        end
+    end
+    
+    if ( not matchedName ) then return; end
+    
+    -- Extract damage number
+    local amount = nil;
+    local _, _, n1 = string.find(msg, "for (%d+)");
+    if ( n1 ) then amount = tonumber(n1); end
+    if ( not amount ) then
+        local _, _, n2 = string.find(msg, "f%A+r (%d+)");
+        if ( n2 ) then amount = tonumber(n2); end
+    end
+    if ( not amount ) then
+        local _, _, n3 = string.find(msg, "(%d+) ед%.");
+        if ( n3 ) then amount = tonumber(n3); end
+    end
+    if ( not amount ) then
+        local _, _, n4 = string.find(msg, "(%d+) урона");
+        if ( n4 ) then amount = tonumber(n4); end
+    end
+    if ( not amount ) then
+        local _, _, n5 = string.find(msg, "suffers (%d+)");
+        if ( n5 ) then amount = tonumber(n5); end
+    end
+    if ( not amount ) then
+        local gFunc = string.gfind or string.gmatch;
+        if ( gFunc ) then
+            for w in gFunc(msg, "(%d+)") do amount = tonumber(w); end
+        end
+    end
+    
+    if ( amount and amount > 0 ) then
+        local existing = BordoUI.CoopData[matchedName];
+        -- Only attribute combat log hits if player is not sending addon syncs
+        if ( not existing or existing.source ~= "addon" or (GetTime() - (existing.lastUpdate or 0) > 3.0) ) then
+            if ( not existing ) then
+                existing = { name = matchedName, dmg = 0, dps = 0, class = matchedClass, kills = 0, source = "combatlog" };
+                BordoUI.CoopData[matchedName] = existing;
+            end
+            existing.dmg = existing.dmg + amount;
+            local runT = (AZS_GetRunTime and AZS_GetRunTime()) or (AZS_RUN and AZS_RUN.t) or 1;
+            existing.dps = existing.dmg / math.max(1, runT);
+            existing.lastUpdate = GetTime();
+            existing.source = "combatlog";
+        end
+    end
+end
+
+-- Event Listener Frame
 local coopListener = CreateFrame("Frame", "BordoUI_CoopListener");
 coopListener:RegisterEvent("CHAT_MSG_ADDON");
 coopListener:RegisterEvent("CHAT_MSG_COMBAT_PARTY_HITS");
@@ -251,60 +320,14 @@ coopListener:SetScript("OnEvent", function()
         return;
     end
     
-    -- Combat Log Fallback for players without Bordo UI
+    if ( event == "PARTY_MEMBERS_CHANGED" ) then
+        userClosedThisSession = false; -- re-enable auto-show on new party formed
+        return;
+    end
+    
+    -- Combat Log Fallback
     if ( string.find(event or "", "PARTY") or string.find(event or "", "FRIENDLYPLAYER") ) then
-        local msg = arg1;
-        if ( not msg ) then return; end
-        
-        local pName = nil;
-        local amount = nil;
-        
-        -- "Player's Spell hits/crits Target for 123"
-        local _, _, p1, n1 = string.find(msg, "^(.+)'s .+ for (%d+)");
-        if ( p1 and n1 ) then pName = p1; amount = tonumber(n1); end
-        
-        -- "Player hits/crits Target for 123"
-        if ( not pName ) then
-            local _, _, p2, n2 = string.find(msg, "^(.+) .+ for (%d+)");
-            if ( p2 and n2 and p2 ~= "You" and p2 ~= "Ihr" ) then pName = p2; amount = tonumber(n2); end
-        end
-        
-        -- DoT: "Target suffers 45 Fire damage from Player's Spell"
-        if ( not pName ) then
-            local _, _, n3, p3 = string.find(msg, "suffers (%d+).+from (.+)'s");
-            if ( n3 and p3 ) then pName = p3; amount = tonumber(n3); end
-        end
-        
-        -- German DoT: "Target erleidet 45 Feuerschaden von Players Zauber"
-        if ( not pName ) then
-            local _, _, n4, p4 = string.find(msg, "erleidet (%d+).+von (.+)s");
-            if ( n4 and p4 ) then pName = p4; amount = tonumber(n4); end
-        end
-        
-        if ( pName and amount and amount > 0 and pName ~= UnitName("player") ) then
-            local existing = BordoUI.CoopData[pName];
-            -- Only track combat log if player is not already sending exact addon syncs
-            if ( not existing or existing.source ~= "addon" or (GetTime() - (existing.lastUpdate or 0) > 3.5) ) then
-                if ( not existing ) then
-                    -- Look up party member class if available
-                    local c = "WARRIOR";
-                    for i = 1, (GetNumPartyMembers() or 0) do
-                        if ( UnitName("party" .. i) == pName ) then
-                            local _, cl = UnitClass("party" .. i);
-                            c = cl or "WARRIOR";
-                            break;
-                        end
-                    end
-                    existing = { name = pName, dmg = 0, dps = 0, class = c, kills = 0, source = "combatlog" };
-                    BordoUI.CoopData[pName] = existing;
-                end
-                existing.dmg = existing.dmg + amount;
-                local runT = (AZS_GetRunTime and AZS_GetRunTime()) or 1;
-                existing.dps = existing.dmg / math.max(1, runT);
-                existing.lastUpdate = GetTime();
-                existing.source = "combatlog";
-            end
-        end
+        ProcessCombatLogPartyHit(arg1);
     end
 end);
 
@@ -312,8 +335,6 @@ end);
 -- 3. LEADERBOARD SORTING & UPDATE DISPLAY
 -- =========================================================================
 function BordoUI:UpdateCoopMeter()
-    if ( not meterFrame:IsShown() ) then return; end
-    
     local players = {};
     local myName = UnitName("player") or "You";
     local _, myClass = UnitClass("player");
@@ -326,9 +347,8 @@ function BordoUI:UpdateCoopMeter()
         -- Mock preview data for testing
         players = {
             { name = myName, dmg = 1420000, dps = 5240, class = myClass or "WARRIOR", kills = 1850, isPlayer = true, source = "addon" },
-            { name = "Thrall", dmg = 860000, dps = 3120, class = "SHAMAN", kills = 940, isPlayer = false, source = "addon" },
-            { name = "Jaina", dmg = 520000, dps = 1890, class = "MAGE", kills = 610, isPlayer = false, source = "addon" },
-            { name = "Valeera", dmg = 380000, dps = 1380, class = "ROGUE", kills = 420, isPlayer = false, source = "combatlog" },
+            { name = "Gofover", dmg = 940000, dps = 3450, class = "PALADIN", kills = 1120, isPlayer = false, source = "addon" },
+            { name = "Dimasik", dmg = 610000, dps = 2210, class = "PRIEST", kills = 740, isPlayer = false, source = "combatlog" },
         };
     else
         -- Add local player
@@ -366,7 +386,7 @@ function BordoUI:UpdateCoopMeter()
             end
         end
         
-        -- Add any additional players found in CoopData not currently in party token list (e.g. raid or recent peers)
+        -- Add any additional players found in CoopData not currently in party token list (e.g. raid)
         for name, data in pairs(BordoUI.CoopData) do
             local alreadyAdded = false;
             for _, p in ipairs(players) do
@@ -429,14 +449,17 @@ function BordoUI:UpdateCoopMeter()
 end
 
 -- =========================================================================
--- 4. ONUPDATE LOOP (Broadcast & Refresh)
+-- 4. ALWAYS-ACTIVE BACKGROUND WORKER FRAME
+--    Ensures sync & auto-show run even when meterFrame is initially hidden!
 -- =========================================================================
-meterFrame:SetScript("OnUpdate", function()
+local coopWorker = CreateFrame("Frame", "BordoUI_CoopWorkerFrame");
+
+coopWorker:SetScript("OnUpdate", function()
     local dt = arg1 or 0.1;
     syncElapsed = syncElapsed + dt;
     updateElapsed = updateElapsed + dt;
     
-    -- Broadcast my stats every 1.0 second during active run
+    -- 1. Broadcast stats every 1.0 second during active run
     if ( syncElapsed >= 1.0 ) then
         syncElapsed = 0;
         local ph = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph);
@@ -445,7 +468,7 @@ meterFrame:SetScript("OnUpdate", function()
         end
     end
     
-    -- Refresh UI display every 0.25 seconds
+    -- 2. State & Auto-show check every 0.25 seconds
     if ( updateElapsed >= 0.25 ) then
         updateElapsed = 0;
         
@@ -453,16 +476,23 @@ meterFrame:SetScript("OnUpdate", function()
         local ph = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph);
         if ( ph == "ready" and lastRunPhase and lastRunPhase ~= "ready" ) then
             BordoUI.CoopData = {};
+            userClosedThisSession = false;
         end
         lastRunPhase = ph;
         
-        -- Auto-show if in group and playing
         local numParty = GetNumPartyMembers() or 0;
-        if ( numParty > 0 and ph == "playing" and BordoUIDB and BordoUIDB.showCoop and not meterFrame:IsShown() ) then
-            meterFrame:Show();
+        local numRaid = GetNumRaidMembers() or 0;
+        
+        -- Auto-show if in group and playing
+        if ( (numParty > 0 or numRaid > 0) and ph == "playing" ) then
+            if ( not userClosedThisSession and not meterFrame:IsShown() ) then
+                meterFrame:Show();
+            end
         end
         
-        BordoUI:UpdateCoopMeter();
+        if ( meterFrame:IsShown() ) then
+            BordoUI:UpdateCoopMeter();
+        end
     end
 end);
 
@@ -473,6 +503,7 @@ function BordoUI:ToggleCoopMeter(param)
     param = string.lower(param or "");
     if ( param == "test" or param == "preview" ) then
         testModeActive = not testModeActive;
+        userClosedThisSession = false;
         meterFrame:Show();
         BordoUI:UpdateCoopMeter();
         local st = testModeActive and "|cff55ff55ENABLED|r" or "|cffff4444DISABLED|r";
@@ -482,16 +513,19 @@ function BordoUI:ToggleCoopMeter(param)
     if ( param == "reset" ) then
         BordoUI.CoopData = {};
         testModeActive = false;
+        userClosedThisSession = false;
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Co-op damage meter reset.");
         BordoUI:UpdateCoopMeter();
         return;
     end
     
     if ( meterFrame:IsShown() ) then
+        userClosedThisSession = true;
         meterFrame:Hide();
         if ( BordoUIDB ) then BordoUIDB.showCoop = false; end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Co-op Damage Meter hidden. Type |cffffd100/bordo coop|r to show.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Co-op Damage Meter hidden. Type |cffffd100/coop|r to show.");
     else
+        userClosedThisSession = false;
         meterFrame:Show();
         if ( BordoUIDB ) then BordoUIDB.showCoop = true; end
         BordoUI:UpdateCoopMeter();

@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.3.1] - 2026-10-23
+
+### Fixed & Improved
+- **Dedicated Background Worker Frame (`BordoUI_CoopWorkerFrame`):** In WoW 1.12.1, hidden frames do not receive `OnUpdate` ticks. Separated the auto-show, party detection, and addon broadcast logic into an always-active background worker frame, guaranteeing that the Co-op meter automatically displays when in a party without requiring manual commands.
+- **Conflict-Free Default Position:** Positioned under the Minimap (`TOPRIGHT, -12, -160`) to avoid overlapping the Azeroth Survivors Co-op Boss schedule / event list on the left side of the screen.
+- **Multi-Language Combat Log Fallback:** Enhanced combat log parser to match party members and damage numbers across Russian, German, and English game clients.
+- **Session Memory:** Respects manual closing (`[X]` button) during an active run while auto-opening for new games or when toggled with `/coop`.
+
+---
+
 ## [2.3.0] - 2026-10-23
 
 ### Added

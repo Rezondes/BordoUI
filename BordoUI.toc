@@ -2,7 +2,7 @@
 ## Title: |cff00ccffBordo UI|r |cffffd100[Azeroth Survivors]|r
 ## Notes: Modern UI Suite for Azeroth Survivors (Centered Unit Frame, Datatext Bar, Boss Timeline, Multipliers, Stationary Chest Radar & Damage Stats).
 ## Author: Bordo
-## Version: 2.3.0
+## Version: 2.3.1
 ## SavedVariables: BordoUIDB, AZSHelperDB
 Core.lua
 DamageFont.lua
