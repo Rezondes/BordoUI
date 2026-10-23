@@ -4,6 +4,20 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.3.0] - 2026-10-23
+
+### Added
+- **Co-op Team Damage Meter (`/bordo coop` or `/coop`):** Real-time multiplayer damage and DPS leaderboard designed specifically for Azeroth Survivors Co-op mode.
+- **Dual Tracking Engine:**
+  - **High-Precision Addon Sync:** Automatically syncs exact damage and DPS with party members via background addon messages (`SendAddonMessage("BORDO_COOP", ..., "PARTY")`).
+  - **Combat Log Fallback:** Tracks and attributes damage for teammates who do not have Bordo UI installed yet via combat log events.
+- **Class-Colored Progress Bars:** Proportional fill bars with official WoW class colors (Warrior, Mage, Rogue, Hunter, Priest, Warlock, Druid, Paladin, Shaman).
+- **Interactive Tooltips & Stats:** Hover over any player to view their total damage, exact DPS, team contribution share %, kills, and sync status.
+- **Test / Preview Mode:** Type `/coop test` or `/bordo coop test` to immediately preview the meter on screen even when playing solo.
+- **Quick-Launch Header Button:** Added a `[👥 Co-op]` button directly into the Damage Stats table header for one-click access.
+
+---
+
 ## [2.2.0] - 2026-10-23
 
 ### Added

@@ -491,6 +491,45 @@ local titleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 titleText:SetPoint("LEFT", header, "LEFT", 4, 0);
 titleText:SetText("|cff00ccffBordo UI|r |cffffd100Damage Stats|r");
 
+-- Co-op Meter Quick Toggle Button
+local btnCoop = CreateFrame("Button", nil, header);
+btnCoop:SetWidth(54);
+btnCoop:SetHeight(16);
+btnCoop:SetPoint("LEFT", titleText, "RIGHT", 8, 0);
+btnCoop:SetBackdrop({
+    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile     = true,
+    tileSize = 8,
+    edgeSize = 6,
+    insets   = { left = 1, right = 1, top = 1, bottom = 1 }
+});
+btnCoop:SetBackdropColor(0.04, 0.12, 0.20, 0.90);
+btnCoop:SetBackdropBorderColor(0.0, 0.70, 0.95, 0.85);
+
+local btnCoopText = btnCoop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+btnCoopText:SetPoint("CENTER", btnCoop, "CENTER", 0, 0);
+btnCoopText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
+btnCoopText:SetText("👥 Co-op");
+
+btnCoop:SetScript("OnClick", function()
+    if ( BordoUI.ToggleCoopMeter ) then
+        BordoUI:ToggleCoopMeter();
+    end
+end);
+
+btnCoop:SetScript("OnEnter", function()
+    GameTooltip:SetOwner(this, "ANCHOR_TOP");
+    GameTooltip:AddLine("|cff00ccffCo-op Team Damage Meter|r");
+    GameTooltip:AddLine("Click to toggle the multiplayer damage & DPS leaderboard.", 1, 1, 1);
+    GameTooltip:AddLine("Slash commands: |cffffd100/coop|r or |cffffd100/bordo coop|r", 0.7, 0.7, 0.7);
+    GameTooltip:Show();
+end);
+
+btnCoop:SetScript("OnLeave", function()
+    GameTooltip:Hide();
+end);
+
 -- Close Button [X]
 local btnClose = CreateFrame("Button", nil, header);
 btnClose:SetWidth(18);

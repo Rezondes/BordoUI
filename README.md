@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.2.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.3.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -30,12 +30,20 @@
 ### 4. ⚔️ Detailed Damage & DPS Statistics Table (`/bordo` or `/azs`)
 - **Ability Spell Icons:** Automated spellbook scanner and dictionary displays 16x16 spell icons next to each ability.
 - **In-Depth Metrics:** Total Damage, DPS, Breakdown %, Hits, Crits, Real Crit Rate vs Sheet Crit, and Highest Critical Hit.
-- **Fully Scalable & Movable:** Resize with mouse wheel or [-] / [+] buttons.
+- **Fully Scalable & Movable:** Resize with mouse wheel or [-] / [+] buttons. Quick-launch button for the Co-op Team Meter in the header.
 
-### 5. 💀 Death Recap (`/bordo recap`)
+### 5. 👥 Co-op Team Damage Meter (`/bordo coop` or `/coop`)
+- **Real-Time Multiplayer DPS Race:** Real-time damage and DPS rankings for Co-op multiplayer runs.
+- **Dual Tracking Engine:** 
+  - **High-Precision Addon Sync:** Automatically syncs exact damage via silent addon messages (`SendAddonMessage("BORDO_COOP", ..., "PARTY")`) for players with Bordo UI.
+  - **Combat Log Fallback:** Automatically calculates damage and DPS for teammates without the addon via combat log parsing.
+- **Class-Colored Bars:** Proportional progress bars rendered with authentic WoW class colors (Warrior, Mage, Rogue, Hunter, Priest, etc.).
+- **Detailed Tooltips & Team Totals:** Inspect any teammate's total damage, DPS, team contribution share %, and total kills.
+
+### 6. 💀 Death Recap (`/bordo recap`)
 - Instant post-death breakdown showing the killing blow, overkill, and a chronological history of the last 6 hits received before death with exact timestamps and attacker names.
 
-### 6. ⏱️ Boss Timeline & Encounter Tracker
+### 7. ⏱️ Boss Timeline & Encounter Tracker
 - Real-time tracking of up to 6 Guardians / Minibosses with combat status and respawn timers.
 - Boss schedule timeline showing active encounters, upcoming spawns, and endless boss timers.
 
@@ -63,6 +71,7 @@
 | Command | Description |
 |---|---|
 | `/bordo` or `/azs` | Toggle the detailed Damage Stats table |
+| `/bordo coop` or `/coop` | Toggle the Co-op Team Damage Meter (`/coop test` for preview) |
 | `/bordo lock` | Lock all UI windows in place (disables dragging) |
 | `/bordo unlock` | Unlock all UI windows (freely drag & reposition on screen) |
 | `/bordo move` | Toggle between locked and unlocked state |

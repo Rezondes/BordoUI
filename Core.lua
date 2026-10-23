@@ -6,7 +6,7 @@
 
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.2.0";
+BordoUI.version = "2.3.0";
 
 -- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
 -- (Keeps bottom-right corner clear for damage meters / DPS addons)
@@ -42,6 +42,8 @@ local defaults = {
     encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
     bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 },
     chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
+    coopPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -320 },
+    showCoop = true,
     chestArrow = true,
     chestChat  = true,
 };
@@ -166,6 +168,9 @@ eventFrame:SetScript("OnEvent", function()
             if ( ChatFrame1 and BordoUIDB and BordoUIDB.chatPos ) then
                 BordoUI:RestorePosition(ChatFrame1, BordoUIDB.chatPos);
             end
+            if ( BordoUI_CoopMeterFrame and BordoUIDB and BordoUIDB.coopPos ) then
+                BordoUI:RestorePosition(BordoUI_CoopMeterFrame, BordoUIDB.coopPos);
+            end
         end
     end
 end);
@@ -205,6 +210,10 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( BordoUI.ShowDeathRecap ) then
             BordoUI:ShowDeathRecap();
         end
+    elseif ( cmd == "coop" ) then
+        if ( BordoUI.ToggleCoopMeter ) then
+            BordoUI:ToggleCoopMeter(val);
+        end
     elseif ( cmd == "boss" or cmd == "timer" ) then
         if ( AZSHelper_BossSchedulePanel ) then
             if ( AZSHelper_BossSchedulePanel:IsShown() ) then
@@ -233,6 +242,7 @@ SlashCmdList["BORDOU"] = function(msg)
     elseif ( cmd == "help" ) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo coop|r - Toggle Co-op Team Damage Meter (/bordo coop test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
@@ -249,6 +259,7 @@ SlashCmdList["BORDOU"] = function(msg)
         BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
         BordoUIDB.bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 };
         BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 };
+        BordoUIDB.coopPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -320 };
         if ( ChatFrame1 ) then
             ChatFrame1:ClearAllPoints();
             ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
@@ -275,6 +286,9 @@ SlashCmdList["BORDOU"] = function(msg)
         end
         if ( AZSHelper_BossEncounterContainer ) then
             BordoUI:RestorePosition(AZSHelper_BossEncounterContainer, BordoUIDB.encounterBarsPos);
+        end
+        if ( BordoUI_CoopMeterFrame ) then
+            BordoUI:RestorePosition(BordoUI_CoopMeterFrame, BordoUIDB.coopPos);
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI window positions reset to defaults.");
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
