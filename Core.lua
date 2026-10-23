@@ -6,7 +6,7 @@
 
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.1.0";
+BordoUI.version = "2.1.1";
 
 -- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
 -- (Keeps bottom-right corner clear for damage meters / DPS addons)

@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.1.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.1.1-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -70,6 +70,11 @@
 | `/bordo zoom` | Unlock maximum camera distance (50 yards / 4x zoom) |
 | `/bordo reset` | Reset all UI frame positions to default |
 | `/cl` or `/chestlight` | Control chest radar (`/cl arrow` for direction arrow, `/cl chat` for spawn alerts) |
+
+---
+
+## 📜 Changelog
+Full version history and updates are tracked in [CHANGELOG.md](CHANGELOG.md).
 
 ---
 
