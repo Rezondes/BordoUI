@@ -1,19 +1,57 @@
 --[[
-    AZS Helper - Death Recap / Todesursache (DeathRecap.lua)
+    Bordo UI - Death Recap & Recent Hits Taken (DeathRecap.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
-    - Zeigt genau an, warum der Spieler gestorben ist (Todesstoß + chronologischer Schadensverlauf)
-    - Gesamtdurchlauf-Schadensquellen (AZS_TAKEN) komplett entfernt -> 100% Fokus auf Todesursache
-    - Jeder Treffer zeigt: HP vorher, eingesteckter Schlag/Zauber, und HP nachher
-    - Bleibt nach dem Tod im Vordergrund stehen (TOOLTIP-Strata, Level 500)
-    - Vollständig verschiebbar & wieder zu öffnen mit /azs death oder /azs recap
+    - Displays exact cause of death (Killing Blow + chronological damage history)
+    - 100% focused on lethal cause of death & recent incoming damage
+    - Each hit displays: HP before, attacker, ability, damage dealt, and HP after
+    - Shows accurate lethal damage on the killing blow that wiped out remaining HP
+    - Fully translated to English (replaces all legacy German terms like Nahkampf)
+    - Draggable & persists across reloads; re-open with /bordo recap or /bordo death
 ]]--
 
-AZSHelper.RecentHitsTaken = {}; -- Chronologischer Puffer der letzten Schläge
+AZSHelper.RecentHitsTaken = {}; -- Chronological buffer of recent incoming hits
 local MAX_LOGGED_HITS = 7;
 local trackedHp = nil;
 local trackedMaxHp = 100;
+AZSHelper.DeathRecapFinalized = nil;
 
--- 1. Helper: Spieler-Lebenspunkte abfragen
+-- 1. Helper: Translate any German/legacy combat strings to clean English
+local function CleanCombatString(str)
+    if ( not str ) then return ""; end
+    if ( str == "Nahkampf" or str == "Angriff" or str == "Schlag" or str == "Nahkampf / Melee" ) then
+        return "Melee";
+    end
+    if ( str == "Gegner" or str == "Unbekannter Angreifer" ) then
+        return "Enemy";
+    end
+    if ( str == "Umgebung" or str == "Umgebungsschaden" ) then
+        return "Environment";
+    end
+    if ( str == "Sturz" or str == "Sturzschaden" or str == "Fallen" ) then
+        return "Fall Damage";
+    end
+    if ( str == "Ertrinken" ) then
+        return "Drowning";
+    end
+    if ( str == "Feuer" or str == "Feuersbrunst" ) then
+        return "Fire";
+    end
+    if ( str == "Lava" ) then
+        return "Lava";
+    end
+    if ( str == "Schleim" ) then
+        return "Slime";
+    end
+    if ( str == "Erschöpfung" or str == "Erschoepfung" ) then
+        return "Fatigue";
+    end
+    if ( str == "Unbekannter Schaden" or str == "Unbekannt" ) then
+        return "Unknown Damage";
+    end
+    return str;
+end
+
+-- Helper: Query player health
 local function GetPlayerHealth()
     local hp = (AZS_RUN and AZS_RUN.hp) or UnitHealth("player") or 0;
     local maxHp = (AZS_RUN and AZS_RUN.hpm) or UnitHealthMax("player") or 100;
@@ -21,17 +59,17 @@ local function GetPlayerHealth()
     return hp, maxHp;
 end
 
--- Helper: HP farbig mit Prozent formatieren
+-- Helper: Format HP with color and percentage
 local function FormatHpWithColor(hp, maxHp)
     if ( not hp or hp <= 0 ) then
         return "|cffff20200 HP|r";
     end
     local pct = (maxHp and maxHp > 0) and (hp / maxHp) or 1;
-    local color = "55ff55"; -- Grün (> 50%)
+    local color = "55ff55"; -- Green (> 50%)
     if ( pct <= 0.25 ) then
-        color = "ff3333"; -- Rot (<= 25%)
+        color = "ff3333"; -- Red (<= 25%)
     elseif ( pct <= 0.50 ) then
-        color = "ffaa00"; -- Orange/Gelb (25-50%)
+        color = "ffaa00"; -- Orange/Yellow (25-50%)
     end
     return string.format("|cff%s%s HP|r |cff888888(%d%%)|r",
         color, AZSHelper:FormatNumber(hp), math.floor(pct * 100));
@@ -40,6 +78,9 @@ end
 -- 2. Incoming Damage Logger
 local function LogHitTaken(attacker, spell, amount, isCrit)
     if ( not amount or amount <= 0 ) then return; end
+    
+    attacker = CleanCombatString(attacker or "Enemy");
+    spell = CleanCombatString(spell or "Melee");
     
     local liveHp, liveMax = GetPlayerHealth();
     if ( not trackedHp or trackedHp <= 0 ) then
@@ -50,7 +91,7 @@ local function LogHitTaken(attacker, spell, amount, isCrit)
     local hpBefore = trackedHp;
     local hpAfter = math.max(0, hpBefore - amount);
     
-    -- Falls liveHp positiv und geringer als hpAfter, synchronisieren
+    -- If liveHp is lower than hpAfter, synchronize
     if ( liveHp > 0 and liveHp < hpAfter ) then
         hpAfter = liveHp;
     end
@@ -58,8 +99,8 @@ local function LogHitTaken(attacker, spell, amount, isCrit)
     
     local hit = {
         time     = GetTime(),
-        attacker = attacker or "Gegner",
-        spell    = spell or "Nahkampf",
+        attacker = attacker,
+        spell    = spell,
         amount   = amount,
         isCrit   = isCrit or false,
         hpBefore = hpBefore,
@@ -80,6 +121,10 @@ hitWatcher:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");
 hitWatcher:RegisterEvent("CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");
 hitWatcher:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE");
 hitWatcher:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
+hitWatcher:RegisterEvent("CHAT_MSG_COMBAT_ENVIRONMENTAL_DAMAGE");
+hitWatcher:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE");
+hitWatcher:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS");
+hitWatcher:RegisterEvent("CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");
 hitWatcher:RegisterEvent("UNIT_HEALTH");
 hitWatcher:RegisterEvent("PLAYER_DEAD");
 
@@ -95,7 +140,7 @@ hitWatcher:SetScript("OnEvent", function()
         if ( arg1 == "player" ) then
             local liveHp = UnitHealth("player") or 0;
             if ( liveHp > 0 ) then
-                -- Bei Heilung oder Spielstart aktualisieren
+                -- Update on healing or game start
                 if ( not trackedHp or liveHp > trackedHp ) then
                     trackedHp = liveHp;
                 end
@@ -110,76 +155,116 @@ hitWatcher:SetScript("OnEvent", function()
     local lower = string.lower(msg);
     local isCrit = (string.find(lower, "crit") ~= nil) or (string.find(lower, "krit") ~= nil);
     
-    -- 1. Schadensmenge extrahieren
-    local numStr = nil;
+    -- 1. Extract Damage Amount
+    local amount = nil;
     local _, _, n1 = string.find(msg, "for (%d+)");
-    if ( n1 ) then numStr = n1; end
-    if ( not numStr ) then
+    if ( n1 ) then amount = tonumber(n1); end
+    
+    if ( not amount ) then
         local _, _, n2 = string.find(msg, "f%A+r (%d+)");
-        if ( n2 ) then numStr = n2; end
+        if ( n2 ) then amount = tonumber(n2); end
     end
-    if ( not numStr ) then
-        local _, _, n3 = string.find(msg, "erleidet (%d+)");
-        if ( n3 ) then numStr = n3; end
+    if ( not amount ) then
+        local _, _, n3 = string.find(msg, "lose (%d+) health");
+        if ( n3 ) then amount = tonumber(n3); end
     end
-    if ( not numStr ) then
-        local _, _, n4 = string.find(msg, "suffer (%d+)");
-        if ( n4 ) then numStr = n4; end
+    if ( not amount ) then
+        local _, _, n4 = string.find(msg, "verliert (%d+) Gesundheit");
+        if ( n4 ) then amount = tonumber(n4); end
     end
-    if ( not numStr ) then
+    if ( not amount ) then
+        local _, _, n5 = string.find(msg, "erleidet (%d+)");
+        if ( n5 ) then amount = tonumber(n5); end
+    end
+    if ( not amount ) then
+        local _, _, n6 = string.find(msg, "suffer (%d+)");
+        if ( n6 ) then amount = tonumber(n6); end
+    end
+    if ( not amount ) then
+        local _, _, n7 = string.find(msg, "(%d+) damage");
+        if ( n7 ) then amount = tonumber(n7); end
+    end
+    if ( not amount ) then
+        local _, _, n8 = string.find(msg, "(%d+) Schaden");
+        if ( n8 ) then amount = tonumber(n8); end
+    end
+    if ( not amount ) then
         local gFunc = string.gfind or string.gmatch;
         if ( gFunc ) then
-            for w in gFunc(msg, "(%d+)") do numStr = w; end
+            for w in gFunc(msg, "(%d+)") do amount = tonumber(w); end
         end
     end
-    local amount = tonumber(numStr or 0);
     if ( not amount or amount <= 0 ) then return; end
     
-    -- 2. Angreifer & Fähigkeit extrahieren
-    local attacker = "Gegner";
-    local spell = "Nahkampf";
+    -- 2. Extract Attacker & Spell
+    local attacker = "Enemy";
+    local spell = "Melee";
     
-    -- Deutsch Zauber: "Edwin VanCleefs Schattenblitz trifft Euch..."
-    local _, _, a1, s1 = string.find(msg, "^(.+)s (.+) trifft Euch");
-    if ( a1 and s1 ) then
-        attacker = a1; spell = s1;
-    else
-        -- Deutsch DoT: "Ihr erleidet 45 Feuerschaden von Ragnaros' Feuersbrunst."
-        local _, _, a2, s2 = string.find(msg, "von (.+)s (.+)%.");
-        if ( a2 and s2 ) then
-            attacker = a2; spell = s2;
+    -- Environmental damage check
+    if ( event == "CHAT_MSG_COMBAT_ENVIRONMENTAL_DAMAGE" or
+         string.find(lower, "fall") or string.find(lower, "sturz") or
+         string.find(lower, "lava") or string.find(lower, "fire") or string.find(lower, "feuer") or
+         string.find(lower, "drown") or string.find(lower, "ertrink") or
+         string.find(lower, "slime") or string.find(lower, "schleim") ) then
+        attacker = "Environment";
+        if ( string.find(lower, "fall") or string.find(lower, "sturz") ) then
+            spell = "Fall Damage";
+        elseif ( string.find(lower, "lava") ) then
+            spell = "Lava";
+        elseif ( string.find(lower, "fire") or string.find(lower, "feuer") ) then
+            spell = "Fire";
+        elseif ( string.find(lower, "drown") or string.find(lower, "ertrink") ) then
+            spell = "Drowning";
+        elseif ( string.find(lower, "slime") or string.find(lower, "schleim") ) then
+            spell = "Slime";
         else
-            -- Deutsch Nahkampf: "Edwin VanCleef trifft Euch..."
-            local _, _, a3 = string.find(msg, "^(.+) trifft Euch");
-            if ( a3 ) then
-                attacker = a3; spell = "Nahkampf";
+            spell = "Environment";
+        end
+    else
+        -- German spell: "Edwin VanCleefs Schattenblitz trifft Euch..."
+        local _, _, a1, s1 = string.find(msg, "^(.+)s (.+) trifft Euch");
+        if ( a1 and s1 ) then
+            attacker = a1; spell = s1;
+        else
+            -- German DoT: "Ihr erleidet 45 Feuerschaden von Ragnaros' Feuersbrunst."
+            local _, _, a2, s2 = string.find(msg, "von (.+)s (.+)%.");
+            if ( a2 and s2 ) then
+                attacker = a2; spell = s2;
             else
-                -- Englisch Zauber: "Edwin VanCleef's Shadow Bolt hits/crits you..."
-                local _, _, a4, s4 = string.find(msg, "^(.+)'s (.+) hits you");
-                if ( not a4 ) then
-                    _, _, a4, s4 = string.find(msg, "^(.+)'s (.+) crits you");
-                end
-                if ( a4 and s4 ) then
-                    attacker = a4; spell = s4;
+                -- German Melee: "Edwin VanCleef trifft Euch..."
+                local _, _, a3 = string.find(msg, "^(.+) trifft Euch");
+                if ( a3 ) then
+                    attacker = a3; spell = "Melee";
                 else
-                    -- Englisch DoT: "You suffer 45 Fire damage from Ragnaros's Immolate."
-                    local _, _, a5, s5 = string.find(msg, "from (.+)'s (.+)%.");
-                    if ( a5 and s5 ) then
-                        attacker = a5; spell = s5;
+                    -- English spell: "Edwin VanCleef's Shadow Bolt hits/crits/causes you..."
+                    local _, _, a4, s4 = string.find(msg, "^(.+)'s (.+) hits you");
+                    if ( not a4 ) then _, _, a4, s4 = string.find(msg, "^(.+)'s (.+) crits you"); end
+                    if ( not a4 ) then _, _, a4, s4 = string.find(msg, "^(.+)'s (.+) causes you"); end
+                    if ( not a4 ) then _, _, a4, s4 = string.find(msg, "^(.+)'s (.+) damages you"); end
+                    if ( a4 and s4 ) then
+                        attacker = a4; spell = s4;
                     else
-                        -- Englisch Melee: "Edwin VanCleef hits/crits you..."
-                        local _, _, a6 = string.find(msg, "^(.+) hits you");
-                        if ( not a6 ) then
-                            _, _, a6 = string.find(msg, "^(.+) crits you");
-                        end
-                        if ( a6 ) then
-                            attacker = a6; spell = "Nahkampf";
+                        -- English DoT: "You suffer 45 Fire damage from Ragnaros's Immolate."
+                        local _, _, a5, s5 = string.find(msg, "from (.+)'s (.+)");
+                        if ( a5 and s5 ) then
+                            s5 = string.gsub(s5, "%.$", "");
+                            attacker = a5; spell = s5;
+                        else
+                            -- English Melee: "Edwin VanCleef hits/crits you..."
+                            local _, _, a6 = string.find(msg, "^(.+) hits you");
+                            if ( not a6 ) then _, _, a6 = string.find(msg, "^(.+) crits you"); end
+                            if ( a6 ) then
+                                attacker = a6; spell = "Melee";
+                            end
                         end
                     end
                 end
             end
         end
     end
+    
+    attacker = CleanCombatString(attacker);
+    spell = CleanCombatString(spell);
     
     LogHitTaken(attacker, spell, amount, isCrit);
 end);
@@ -191,14 +276,14 @@ local recapFrame = CreateFrame("Frame", "AZSHelper_DeathRecapFrame", UIParent);
 recapFrame:SetWidth(420);
 recapFrame:SetHeight(460);
 recapFrame:SetPoint("RIGHT", UIParent, "CENTER", -260, 20);
-recapFrame:SetFrameStrata("TOOLTIP"); -- Höchste Strata: Niemals von Defeat-Fenster überdeckt
+recapFrame:SetFrameStrata("TOOLTIP"); -- Highest strata: Never covered by defeat screen
 recapFrame:SetFrameLevel(500);
 recapFrame:SetClampedToScreen(true);
 AZSHelper:MakeMovable(recapFrame, "deathRecapPos");
-tinsert(UISpecialFrames, "AZSHelper_DeathRecapFrame"); -- Mit ESC schließbar
+tinsert(UISpecialFrames, "AZSHelper_DeathRecapFrame"); -- ESC closeable
 recapFrame:Hide();
 
--- Modernes dunkles Design mit roter Umrandung
+-- Dark modern theme with blood red border
 recapFrame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -208,9 +293,9 @@ recapFrame:SetBackdrop({
     insets   = { left = 3, right = 3, top = 3, bottom = 3 }
 });
 recapFrame:SetBackdropColor(0.05, 0.04, 0.07, 0.96);
-recapFrame:SetBackdropBorderColor(0.90, 0.15, 0.15, 0.95); -- Blutrot
+recapFrame:SetBackdropBorderColor(0.90, 0.15, 0.15, 0.95); -- Blood red
 
--- Header Bar (Verschiebbar)
+-- Header Bar (Draggable)
 local header = CreateFrame("Frame", nil, recapFrame);
 header:SetPoint("TOPLEFT", recapFrame, "TOPLEFT", 4, -4);
 header:SetPoint("BOTTOMRIGHT", recapFrame, "TOPRIGHT", -4, -28);
@@ -287,13 +372,13 @@ for i = 1, MAX_DISPLAY_ROWS do
     rowFrame:SetBackdropColor(0.06, 0.07, 0.10, 0.85);
     rowFrame:SetBackdropBorderColor(0.25, 0.28, 0.35, 0.60);
     
-    -- Zeile 1: Zeit, Angreifer, Fähigkeit, Krit-Info
+    -- Row 1: Time, Attacker, Ability, Crit info
     local titleLine = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
     titleLine:SetPoint("TOPLEFT", rowFrame, "TOPLEFT", 8, -4);
     titleLine:SetPoint("RIGHT", rowFrame, "RIGHT", -8, 0);
     titleLine:SetJustifyH("LEFT");
     
-    -- Zeile 2: HP Vorher ──[ -Schaden ]──> HP Nachher
+    -- Row 2: HP Before ──[ -Damage ]──> HP After
     local hpLine = rowFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
     hpLine:SetPoint("TOPLEFT", titleLine, "BOTTOMLEFT", 0, -2);
     hpLine:SetPoint("RIGHT", rowFrame, "RIGHT", -8, 0);
@@ -338,20 +423,81 @@ function AZSHelper:ShowDeathRecap()
     local deathTime = GetTime();
     local maxHp = trackedMaxHp or 100;
     
-    -- Mark last hit as lethal (hpAfter = 0)
+    -- Check if player is dead or defeated
+    local isDead = (UnitIsDeadOrGhost and UnitIsDeadOrGhost("player")) or
+                   (AZS_GetPhase and (AZS_GetPhase() == "dead" or AZS_GetPhase() == "defeat")) or
+                   (AZS_RUN and (AZS_RUN.ph == "dead" or AZS_RUN.ph == "defeat"));
+    
+    -- Finalize death recap if dead and not yet finalized
+    if ( isDead and not AZSHelper.DeathRecapFinalized ) then
+        if ( numHits == 0 ) then
+            local fatalAmount = (trackedHp and trackedHp > 0) and trackedHp or maxHp;
+            local fatalHit = {
+                time     = deathTime,
+                attacker = "Fatal Damage",
+                spell    = "Lethal Strike",
+                amount   = fatalAmount,
+                isCrit   = false,
+                hpBefore = fatalAmount,
+                hpAfter  = 0,
+                maxHp    = maxHp,
+                isFatal  = true,
+            };
+            table.insert(AZSHelper.RecentHitsTaken, fatalHit);
+            numHits = 1;
+        else
+            local lastHit = AZSHelper.RecentHitsTaken[numHits];
+            local dt = math.max(0, deathTime - lastHit.time);
+            
+            if ( lastHit.hpAfter <= 0 or lastHit.amount >= lastHit.hpBefore ) then
+                lastHit.hpAfter = 0;
+                lastHit.isFatal = true;
+            else
+                -- The previous hit did not deal lethal damage on its own.
+                -- Remaining HP prior to the fatal drop:
+                local remainingHp = lastHit.hpAfter;
+                
+                if ( dt > 0.8 ) then
+                    -- The previous hit occurred earlier (e.g. 1.5s ago). Keep it intact as a normal hit!
+                    -- Insert the actual KILLING BLOW that wiped out the remaining HP:
+                    local killerAttacker = (lastHit.attacker and lastHit.attacker ~= "Enemy") and lastHit.attacker or "Fatal Damage";
+                    local killerSpell = (lastHit.spell and lastHit.spell ~= "Melee") and lastHit.spell or "Lethal Strike";
+                    local fatalHit = {
+                        time     = deathTime,
+                        attacker = killerAttacker,
+                        spell    = killerSpell,
+                        amount   = remainingHp,
+                        isCrit   = false,
+                        hpBefore = remainingHp,
+                        hpAfter  = 0,
+                        maxHp    = lastHit.maxHp or maxHp,
+                        isFatal  = true,
+                    };
+                    table.insert(AZSHelper.RecentHitsTaken, fatalHit);
+                    numHits = table.getn(AZSHelper.RecentHitsTaken);
+                else
+                    -- The hit happened right at death (< 0.8s). Update its damage so it accounts for the true lethal loss!
+                    lastHit.amount = math.max(lastHit.amount, lastHit.hpBefore);
+                    lastHit.hpAfter = 0;
+                    lastHit.isFatal = true;
+                end
+            end
+        end
+        AZSHelper.DeathRecapFinalized = true;
+    end
+    
+    -- Populate Killing Blow card
     if ( numHits > 0 ) then
-        local lastHit = AZSHelper.RecentHitsTaken[numHits];
-        lastHit.hpAfter = 0;
-        
-        local critTag = lastHit.isCrit and " |cffff0000(Critical)|r" or "";
-        local overkill = math.max(0, lastHit.amount - lastHit.hpBefore);
+        local fatalHit = AZSHelper.RecentHitsTaken[numHits];
+        local critTag = fatalHit.isCrit and " |cffff0000(Critical)|r" or "";
+        local overkill = math.max(0, fatalHit.amount - fatalHit.hpBefore);
         local overStr = (overkill > 0) and string.format(" |cff888888(%s Overkill)|r", AZSHelper:FormatNumber(overkill)) or "";
         
-        recapFrame.kbAttacker:SetText(lastHit.attacker);
+        recapFrame.kbAttacker:SetText(fatalHit.attacker or "Unknown Damage");
         recapFrame.kbDetails:SetText(string.format("Ability: |cffffffff%s%s|r   •   Damage: |cffff2222%s|r",
-            lastHit.spell, critTag, AZSHelper:FormatNumber(lastHit.amount)));
+            fatalHit.spell or "Melee", critTag, AZSHelper:FormatNumber(fatalHit.amount)));
         recapFrame.kbHpStep:SetText(string.format("HP Loss: %s  |cffff2222──>|r  |cffff2020 0 HP [KILLING BLOW]%s|r",
-            FormatHpWithColor(lastHit.hpBefore, lastHit.maxHp or maxHp), overStr));
+            FormatHpWithColor(fatalHit.hpBefore, fatalHit.maxHp or maxHp), overStr));
     else
         recapFrame.kbAttacker:SetText("Unknown Damage");
         recapFrame.kbDetails:SetText("Ability: Lethal Hit");
@@ -369,7 +515,7 @@ function AZSHelper:ShowDeathRecap()
             local h = AZSHelper.RecentHitsTaken[hitIdx];
             local dt = math.max(0, deathTime - h.time);
             local cTag = h.isCrit and " |cffff3333[CRIT]|r" or "";
-            local isFatal = (hitIdx == numHits);
+            local isFatal = (hitIdx == numHits) and (h.isFatal or h.hpAfter <= 0);
             local fatalTag = isFatal and " |cffff2020☠ KILLING BLOW ☠|r" or "";
             
             -- Row 1: [-0.4s] Attacker • Spell [CRIT]
@@ -433,10 +579,14 @@ function AZSHelper:ShowDeathRecap()
 end
 
 -- Slash Commands
-SLASH_AZSDEATH1 = "/azs death";
-SLASH_AZSDEATH2 = "/azs recap";
-SLASH_AZSDEATH3 = "/azs tod";
-SlashCmdList["AZSDEATH"] = function(msg)
+SLASH_BORDO_DEATH1 = "/bordo death";
+SLASH_BORDO_DEATH2 = "/bordo recap";
+SLASH_BORDO_DEATH3 = "/bordoui death";
+SLASH_BORDO_DEATH4 = "/bordoui recap";
+SLASH_BORDO_DEATH5 = "/azs death";
+SLASH_BORDO_DEATH6 = "/azs recap";
+SLASH_BORDO_DEATH7 = "/azs tod";
+SlashCmdList["BORDO_DEATH"] = function(msg)
     msg = string.lower(msg or "");
     if ( msg == "reset" ) then
         if ( AZSHelperDB ) then
@@ -448,6 +598,7 @@ SlashCmdList["AZSDEATH"] = function(msg)
     end
     AZSHelper:ShowDeathRecap();
 end;
+SlashCmdList["AZSDEATH"] = SlashCmdList["BORDO_DEATH"];
 
 -- 6. Monitor Phase Changes to Trigger or Hide
 local deathMonitor = CreateFrame("Frame", "AZSHelper_DeathMonitor");
@@ -461,17 +612,18 @@ deathMonitor:SetScript("OnUpdate", function()
     
     local phase = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph);
     
-    -- Bei Phasenwechsel zu Tod automatisch öffnen
+    -- Automatically open on phase transition to death/defeat
     if ( (phase == "dead" or phase == "defeat") and lastDeathPhase ~= "dead" and lastDeathPhase ~= "defeat" ) then
         AZSHelper:ShowDeathRecap();
     end
     
-    -- Automatisch ausblenden, sobald ein neuer Run beginnt
+    -- Automatically hide and reset buffer once a new run starts
     if ( phase == "ready" or phase == "playing" ) then
         if ( lastDeathPhase == "dead" or lastDeathPhase == "defeat" ) then
             recapFrame:Hide();
             AZSHelper.RecentHitsTaken = {};
             trackedHp = nil;
+            AZSHelper.DeathRecapFinalized = nil;
         end
     end
     

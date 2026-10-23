@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.1.3] - 2026-10-23
+
+### Fixed & Improved
+- **100% English Death Recap & Log:** Replaced all remaining legacy German strings (e.g. `Nahkampf` -> `Melee`, `Gegner` -> `Enemy`, `Umgebung` -> `Environment`, `Sturz` -> `Fall Damage`).
+- **Accurate Fatal Blow Damage:** Fixed the killing blow calculation. Previously, a non-lethal hit (such as a 4-damage strike 1.5s prior to death) could incorrectly be shown as `216 HP [ -4 Damage ]> 0 HP`. The recap now calculates the true lethal damage that brought the player's HP to 0 (`216 HP [ -216 Damage ]> 0 HP [DEFEATED]`).
+- **Missing Combat Log Events Registered:** Added listeners for Environmental Damage (falling, lava, slime, fire, drowning, fatigue), self damage, and damage shields.
+- **New Slash Commands:** Added `/bordo recap` and `/bordo death` (in addition to legacy `/azs recap` and `/azs death`).
+
+---
+
 ## [2.1.2] - 2026-10-23
 
 ### Added

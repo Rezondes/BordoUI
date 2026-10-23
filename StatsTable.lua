@@ -105,7 +105,7 @@ combatFrame:SetScript("OnEvent", function()
         if ( s3 ) then spell = s3; end
     end
     if ( not spell ) then
-        spell = "Nahkampf / Melee";
+        spell = "Melee";
     end
     
     ProcessCombatHit(spell, amount, isCrit);
