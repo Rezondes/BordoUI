@@ -875,7 +875,7 @@ UI.bossPanel:SetScript("OnLeave", function() GameTooltip:Hide(); end);
 -- =========================================================================
 UI.multPanel = CreateFrame("Frame", "AZSHelper_MultipliersPanel", UIParent);
 UI.multPanel:SetWidth(125);
-UI.multPanel:SetHeight(190);
+UI.multPanel:SetHeight(192);
 UI.multPanel:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -120);
 UI.multPanel:SetFrameStrata("BACKGROUND");
 
@@ -934,15 +934,15 @@ end
 
 -- Highest Crit highlight row at the bottom of the Multipliers panel
 local sep = UI.multPanel:CreateTexture(nil, "ARTWORK");
-sep:SetPoint("TOPLEFT", UI.multPanel, "TOPLEFT", 4, -132);
-sep:SetPoint("BOTTOMRIGHT", UI.multPanel, "TOPRIGHT", -4, -133);
+sep:SetPoint("TOPLEFT", UI.multPanel, "TOPLEFT", 4, -125);
+sep:SetPoint("BOTTOMRIGHT", UI.multPanel, "TOPRIGHT", -4, -126);
 sep:SetTexture("Interface\\Tooltips\\UI-Tooltip-Background");
 sep:SetVertexColor(0.2, 0.2, 0.25, 0.8);
 
 UI.maxCritLabel = UI.multPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 UI.maxCritLabel:SetPoint("TOPLEFT", sep, "BOTTOMLEFT", 0, -2);
 UI.maxCritLabel:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
-UI.maxCritLabel:SetText("|cffffd100MAX KRIT:|r");
+UI.maxCritLabel:SetText("|cffffd100MAX CRIT:|r");
 
 UI.maxCritVal = UI.multPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 UI.maxCritVal:SetPoint("TOPRIGHT", sep, "BOTTOMRIGHT", 0, -2);
@@ -969,26 +969,95 @@ UI.critQuoteText = UI.multPanel:CreateFontString(nil, "OVERLAY", "GameFontHighli
 UI.critQuoteText:SetPoint("TOPLEFT", UI.maxCritSpellText, "BOTTOMLEFT", 0, -1);
 UI.critQuoteText:SetFont("Fonts\\ARIALN.TTF", 7, "");
 UI.critQuoteText:SetTextColor(0.4, 0.9, 0.4);
-UI.critQuoteText:SetText("Quote: 0% (0/0)");
+UI.critQuoteText:SetText("Crit Rate: 0% (0/0)");
 
--- Click Multipliers panel to toggle detailed table
-UI.multPanel:EnableMouse(true);
-UI.multPanel:SetScript("OnMouseDown", function()
+-- Dedicated clickable button at the bottom of the panel
+local btnDetails = CreateFrame("Button", "AZSHelper_ViewStatsButton", UI.multPanel);
+btnDetails:SetPoint("BOTTOMLEFT", UI.multPanel, "BOTTOMLEFT", 4, 4);
+btnDetails:SetPoint("BOTTOMRIGHT", UI.multPanel, "BOTTOMRIGHT", -4, 4);
+btnDetails:SetHeight(17);
+btnDetails:SetBackdrop({
+    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile     = true,
+    tileSize = 8,
+    edgeSize = 8,
+    insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+});
+btnDetails:SetBackdropColor(0.08, 0.10, 0.15, 0.95);
+btnDetails:SetBackdropBorderColor(0.0, 0.70, 0.85, 0.85); -- Cyan accent border
+
+local btnIcon = btnDetails:CreateTexture(nil, "ARTWORK");
+btnIcon:SetWidth(11);
+btnIcon:SetHeight(11);
+btnIcon:SetPoint("LEFT", btnDetails, "LEFT", 3, 0);
+btnIcon:SetTexture("Interface\\Icons\\INV_Misc_Book_09");
+btnIcon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+
+local btnText = btnDetails:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+btnText:SetPoint("LEFT", btnIcon, "RIGHT", 3, 0);
+btnText:SetPoint("RIGHT", btnDetails, "RIGHT", -2, 0);
+btnText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
+btnText:SetTextColor(0.2, 0.85, 1.0);
+btnText:SetJustifyH("CENTER");
+btnText:SetText("Attack Stats >>");
+btnDetails.text = btnText;
+
+local function ToggleStatsTable()
     if ( AZSHelper_StatsTableFrame ) then
         if ( AZSHelper_StatsTableFrame:IsShown() ) then
             AZSHelper_StatsTableFrame:Hide();
+            btnText:SetText("Attack Stats >>");
         else
             AZSHelper_StatsTableFrame:Show();
+            btnText:SetText("Attack Stats <<");
         end
     end
+end
+
+btnDetails:SetScript("OnClick", function()
+    ToggleStatsTable();
 end);
-UI.multPanel:SetScript("OnEnter", function()
+
+btnDetails:SetScript("OnEnter", function()
+    this:SetBackdropBorderColor(1.0, 0.85, 0.20, 1.0); -- Glow gold
+    this:SetBackdropColor(0.12, 0.15, 0.22, 1.0);
+    btnText:SetTextColor(1.0, 0.90, 0.30);
     GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
-    GameTooltip:AddLine("|cff00ccffMultipliers & Crit Statistics|r");
-    GameTooltip:AddLine("Click to toggle detailed damage stats table.", 1, 1, 1);
+    GameTooltip:AddLine("|cff00ccffDetailed Attack & Crit Stats|r");
+    GameTooltip:AddLine("Click to open the breakdown table showing damage, DPS, hits & crits for every attack.", 1, 1, 1, 1);
     GameTooltip:Show();
 end);
-UI.multPanel:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+btnDetails:SetScript("OnLeave", function()
+    this:SetBackdropBorderColor(0.0, 0.70, 0.85, 0.85);
+    this:SetBackdropColor(0.08, 0.10, 0.15, 0.95);
+    btnText:SetTextColor(0.2, 0.85, 1.0);
+    GameTooltip:Hide();
+end);
+
+-- Click anywhere on the Multipliers panel to also toggle detailed table
+UI.multPanel:EnableMouse(true);
+UI.multPanel:SetScript("OnMouseDown", function()
+    ToggleStatsTable();
+end);
+
+UI.multPanel:SetScript("OnEnter", function()
+    UI.multPanel:SetBackdropBorderColor(0.0, 0.65, 0.90, 0.95); -- Panel border lights up
+    btnDetails:SetBackdropBorderColor(1.0, 0.85, 0.20, 1.0);
+    btnText:SetTextColor(1.0, 0.90, 0.30);
+    GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+    GameTooltip:AddLine("|cff00ccffMultipliers & Crit Statistics|r");
+    GameTooltip:AddLine("Click anywhere or click [Attack Stats >>] to open the detailed attack breakdown table.", 1, 1, 1, 1);
+    GameTooltip:Show();
+end);
+
+UI.multPanel:SetScript("OnLeave", function()
+    UI.multPanel:SetBackdropBorderColor(0.12, 0.12, 0.15, 0.95);
+    btnDetails:SetBackdropBorderColor(0.0, 0.70, 0.85, 0.85);
+    btnText:SetTextColor(0.2, 0.85, 1.0);
+    GameTooltip:Hide();
+end);
 
 -- =========================================================================
 -- 5. SQUARE MINIMAP WITH ZONE PILL
@@ -1680,7 +1749,7 @@ local function UpdateMultipliers()
     local totalH = AZSHelper.TotalHits or 0;
     local totalC = AZSHelper.TotalCrits or 0;
     local q = (totalH > 0) and math.floor((totalC / totalH) * 100) or 0;
-    UI.critQuoteText:SetText(string.format("Quote: %d%% (%d/%d)", q, totalC, totalH));
+    UI.critQuoteText:SetText(string.format("Crit Rate: %d%% (%d/%d)", q, totalC, totalH));
 end
 
 -- =========================================================================
