@@ -58,6 +58,30 @@ local function GetUnitClassification(mobName)
     return "normal";
 end
 
+-- Identify if a nameplate belongs to a party or raid teammate
+local function IsTeammate(unitName)
+    if ( not unitName or unitName == "" ) then return false, nil, nil; end
+    local lowName = string.lower(unitName);
+    
+    local numParty = GetNumPartyMembers() or 0;
+    for i = 1, numParty do
+        local pName = UnitName("party" .. i);
+        if ( pName and string.lower(pName) == lowName ) then
+            return true, "party" .. i, pName;
+        end
+    end
+    
+    local numRaid = GetNumRaidMembers() or 0;
+    for i = 1, numRaid do
+        local rName = UnitName("raid" .. i);
+        if ( rName and string.lower(rName) == lowName ) then
+            return true, "raid" .. i, rName;
+        end
+    end
+    
+    return false, nil, nil;
+end
+
 -- Identify if a frame is a WoW 1.12.1 Blizzard Nameplate
 local function IsNameplate(frame)
     if ( not frame ) then return false; end
@@ -220,6 +244,51 @@ local function StyleNameplate(frame)
     end
     
     -- ---------------------------------------------------------------------
+    -- CLASSIFICATION 0: TEAMMATES & PARTY MEMBERS (Vibrant Green Health Bar!)
+    -- ---------------------------------------------------------------------
+    local isAlly, allyToken, allyRealName = IsTeammate(cleanName);
+    if ( isAlly ) then
+        healthBar:SetWidth(130);
+        healthBar:SetHeight(15);
+        frame:SetFrameLevel(75);
+        
+        -- Vibrant Bright Lime-Green Health Bar for Teammates!
+        healthBar:SetStatusBarColor(0.12, 0.95, 0.22, 1.0);
+        if ( healthBar.azsBg ) then
+            healthBar.azsBg:SetTexture(0.02, 0.15, 0.04, 0.92);
+        end
+        
+        if ( borderFrame ) then
+            if ( isTarget ) then
+                borderFrame:SetBackdropBorderColor(0.50, 1.0, 0.65, 1.0);
+            else
+                borderFrame:SetBackdropBorderColor(0.15, 0.85, 0.30, 0.95);
+            end
+        end
+        
+        nameText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
+        local isLeader = allyToken and UnitIsPartyLeader(allyToken);
+        if ( isLeader ) then
+            nameText:SetText("|cffffd100👑 |cff55ff55" .. (allyRealName or cleanName) .. "|r");
+        else
+            nameText:SetText("|cff55ff55🛡️ " .. (allyRealName or cleanName) .. "|r");
+        end
+        
+        if ( levelText ) then
+            levelText:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
+            levelText:SetTextColor(0.40, 1.0, 0.40);
+        end
+        
+        if ( pct <= 0 ) then
+            healthBar.azsHpText:SetText("|cffff2222DEAD|r");
+        else
+            healthBar.azsHpText:SetText(string.format("%d%%", pct));
+        end
+        healthBar.azsHpText:Show();
+        return;
+    end
+
+    -- ---------------------------------------------------------------------
     -- CLASSIFICATION 1: FINAL BOSS (Huge, Glowing Magenta, Top Strata)
     -- ---------------------------------------------------------------------
     if ( kind == "final" ) then
@@ -373,4 +442,15 @@ scanFrame:SetScript("OnUpdate", function()
             StyleNameplate(f);
         end
     end
+end);
+
+-- Auto-enable friendly player nameplates so teammates are immediately visible
+local npAutoFrame = CreateFrame("Frame", "BordoUI_NameplateAutoFrame");
+npAutoFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+npAutoFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
+npAutoFrame:RegisterEvent("RAID_ROSTER_UPDATE");
+
+npAutoFrame:SetScript("OnEvent", function()
+    pcall(SetCVar, "nameplateShowFriends", "1");
+    pcall(SetCVar, "ShowFriendlyPlayerNames", "1");
 end);

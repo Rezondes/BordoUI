@@ -395,13 +395,13 @@ function BordoUI:UpdatePartyMember(id)
         f.nameText:SetTextColor(cCol.r, cCol.g, cCol.b, 1.0);
         f.levelText:SetText(tostring(data.level));
         
-        -- Health Bar
+        -- Health Bar (Vibrant Teammate Green)
         f.hpBar:SetMinMaxValues(0, data.maxHp);
         f.hpBar:SetValue(data.hp);
-        f.hpBar:SetStatusBarColor(cCol.r, cCol.g, cCol.b, 1.0);
+        f.hpBar:SetStatusBarColor(0.15, 0.88, 0.25, 1.0);
         local pct = math.floor((data.hp / data.maxHp) * 100);
         f.hpText:SetText(string.format("%d (%d%%)", data.hp, pct));
-        f.hpBg:SetVertexColor(cCol.r * 0.25, cCol.g * 0.25, cCol.b * 0.25, 0.85);
+        f.hpBg:SetVertexColor(0.04, 0.20, 0.06, 0.85);
 
         -- Power Bar
         local pCol = POWER_COLORS[data.powerType] or POWER_COLORS[0];
@@ -454,8 +454,8 @@ function BordoUI:UpdatePartyMember(id)
     if ( maxHp <= 0 ) then maxHp = 1; end
     f.hpBar:SetMinMaxValues(0, maxHp);
     f.hpBar:SetValue(hp);
-    f.hpBar:SetStatusBarColor(cCol.r, cCol.g, cCol.b, 1.0);
-    f.hpBg:SetVertexColor(cCol.r * 0.25, cCol.g * 0.25, cCol.b * 0.25, 0.85);
+    f.hpBar:SetStatusBarColor(0.15, 0.88, 0.25, 1.0); -- Vibrant Teammate Green
+    f.hpBg:SetVertexColor(0.04, 0.20, 0.06, 0.85);
 
     -- Status & Health Text
     if ( not isConnected ) then

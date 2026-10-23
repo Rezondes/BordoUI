@@ -4,6 +4,24 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.5.0] - 2026-10-23
+
+### Added
+- **High-Visibility Teammate Green Health Bars (Nameplates.lua):**
+  - Added dedicated friendly nameplate styling for party and raid members.
+  - Teammates now feature an unmistakable, vibrant lime-green health bar (`130x15px`, color `0.12, 0.95, 0.22`) floating over their heads in the 3D world, making them instantly recognizable in crowds of 50+ red-barred enemies.
+  - Emerald green borders (`0.15, 0.85, 0.30`) with special shield (`🛡️ Name`) and gold crown (`👑 Name` for Party Leader) title tags.
+  - Displays live health percentage in the center of the teammate nameplate and red `DEAD` warning when fallen.
+  - Automatic friendly nameplate activation (`nameplateShowFriends = 1`) on login and party join.
+- **Teammate Green Health Bars in Party Frames (PartyFrames.lua):**
+  - Updated party member unit cards with vibrant green health bars (`0.15, 0.88, 0.25`) for visual consistency with overhead nameplates, preserving class-colored player names.
+- **Quick Party Frames Toggle Button:** Added a `[👥 Party]` button in the Damage Stats table header for instant one-click access.
+
+### Removed
+- **Co-op Damage Meter:** Completely removed `CoopMeter.lua` and all associated background sync workers, slash commands (`/coop`), and saved variables at user request.
+
+---
+
 ## [2.4.2] - 2026-10-23
 
 ### Fixed & Improved

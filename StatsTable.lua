@@ -491,12 +491,12 @@ local titleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 titleText:SetPoint("LEFT", header, "LEFT", 4, 0);
 titleText:SetText("|cff00ccffBordo UI|r |cffffd100Damage Stats|r");
 
--- Co-op Meter Quick Toggle Button
-local btnCoop = CreateFrame("Button", nil, header);
-btnCoop:SetWidth(54);
-btnCoop:SetHeight(16);
-btnCoop:SetPoint("LEFT", titleText, "RIGHT", 8, 0);
-btnCoop:SetBackdrop({
+-- Party Frames Quick Toggle Button
+local btnParty = CreateFrame("Button", nil, header);
+btnParty:SetWidth(50);
+btnParty:SetHeight(16);
+btnParty:SetPoint("LEFT", titleText, "RIGHT", 8, 0);
+btnParty:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile     = true,
@@ -504,29 +504,29 @@ btnCoop:SetBackdrop({
     edgeSize = 6,
     insets   = { left = 1, right = 1, top = 1, bottom = 1 }
 });
-btnCoop:SetBackdropColor(0.04, 0.12, 0.20, 0.90);
-btnCoop:SetBackdropBorderColor(0.0, 0.70, 0.95, 0.85);
+btnParty:SetBackdropColor(0.04, 0.12, 0.20, 0.90);
+btnParty:SetBackdropBorderColor(0.0, 0.70, 0.95, 0.85);
 
-local btnCoopText = btnCoop:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
-btnCoopText:SetPoint("CENTER", btnCoop, "CENTER", 0, 0);
-btnCoopText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
-btnCoopText:SetText("👥 Co-op");
+local btnPartyText = btnParty:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+btnPartyText:SetPoint("CENTER", btnParty, "CENTER", 0, 0);
+btnPartyText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
+btnPartyText:SetText("👥 Party");
 
-btnCoop:SetScript("OnClick", function()
-    if ( BordoUI.ToggleCoopMeter ) then
-        BordoUI:ToggleCoopMeter();
+btnParty:SetScript("OnClick", function()
+    if ( BordoUI.TogglePartyFrames ) then
+        BordoUI:TogglePartyFrames();
     end
 end);
 
-btnCoop:SetScript("OnEnter", function()
+btnParty:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_TOP");
-    GameTooltip:AddLine("|cff00ccffCo-op Team Damage Meter|r");
-    GameTooltip:AddLine("Click to toggle the multiplayer damage & DPS leaderboard.", 1, 1, 1);
-    GameTooltip:AddLine("Slash commands: |cffffd100/coop|r or |cffffd100/bordo coop|r", 0.7, 0.7, 0.7);
+    GameTooltip:AddLine("|cff00ccffBordo UI Party Frames|r");
+    GameTooltip:AddLine("Click to toggle modern group unit frames.", 1, 1, 1);
+    GameTooltip:AddLine("Slash commands: |cffffd100/bparty|r or |cffffd100/bordo party|r", 0.7, 0.7, 0.7);
     GameTooltip:Show();
 end);
 
-btnCoop:SetScript("OnLeave", function()
+btnParty:SetScript("OnLeave", function()
     GameTooltip:Hide();
 end);
 
