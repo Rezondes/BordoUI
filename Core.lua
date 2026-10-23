@@ -34,7 +34,7 @@ local defaults = {
     dmgScale   = 0.75,
     tableScale = 0.80,
     collapsed  = false,
-    statsPos   = { point = "LEFT", relativePoint = "LEFT", x = 20, y = 0 },
+    statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
     centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
     deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 },
     encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
@@ -191,12 +191,17 @@ SlashCmdList["BORDOU"] = function(msg)
         pcall(CameraZoomOut, yards);
         DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Max camera zoom unlocked (factor 4 / 50 yards). Zoomed out by %d yards. You can now zoom out further using your mouse wheel!", yards));
     elseif ( cmd == "reset" ) then
-        BordoUIDB.statsPos = { point = "LEFT", relativePoint = "LEFT", x = 20, y = 0 };
+        BordoUIDB.statsPos = nil;
         BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
         BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
         if ( AZSHelper_StatsTableFrame ) then
-            BordoUI:RestorePosition(AZSHelper_StatsTableFrame, BordoUIDB.statsPos);
+            if ( AZSHelper.AnchorStatsTableToMultipliers ) then
+                AZSHelper:AnchorStatsTableToMultipliers();
+            else
+                AZSHelper_StatsTableFrame:ClearAllPoints();
+                AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
+            end
         end
         if ( AZSHelper_SkillsContainer ) then
             BordoUI:RestorePosition(AZSHelper_SkillsContainer, BordoUIDB.centerHudPos);
@@ -219,6 +224,9 @@ SlashCmdList["BORDOU"] = function(msg)
                 AZSHelper_StatsTableFrame:Hide();
                 DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table hidden.");
             else
+                if ( AZSHelper.AnchorStatsTableToMultipliers ) then
+                    AZSHelper:AnchorStatsTableToMultipliers();
+                end
                 AZSHelper_StatsTableFrame:Show();
                 DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table shown.");
             end

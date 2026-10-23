@@ -1009,10 +1009,22 @@ local function ToggleStatsTable()
             AZSHelper_StatsTableFrame:Hide();
             btnText:SetText("Attack Stats >>");
         else
+            -- Always dock cleanly to the right of Multipliers panel without overlapping
+            AZSHelper_StatsTableFrame:ClearAllPoints();
+            AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UI.multPanel, "TOPRIGHT", 6, 0);
             AZSHelper_StatsTableFrame:Show();
             btnText:SetText("Attack Stats <<");
+            if ( AZSHelper.UpdateStatsTable ) then
+                AZSHelper:UpdateStatsTable();
+            end
         end
     end
+end
+
+-- Dock Stats Table to the right of Multipliers panel initially
+if ( AZSHelper_StatsTableFrame ) then
+    AZSHelper_StatsTableFrame:ClearAllPoints();
+    AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UI.multPanel, "TOPRIGHT", 6, 0);
 end
 
 btnDetails:SetScript("OnClick", function()

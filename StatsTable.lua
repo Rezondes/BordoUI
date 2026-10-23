@@ -438,14 +438,14 @@ local mainFrame = CreateFrame("Frame", "AZSHelper_StatsTableFrame", UIParent);
 mainFrame:SetWidth(320);
 mainFrame:SetHeight(360);
 mainFrame:SetClampedToScreen(true);
-mainFrame:SetFrameStrata("BACKGROUND");
+mainFrame:SetFrameStrata("MEDIUM"); -- Above background panels so nothing bleeds through
+tinsert(UISpecialFrames, "AZSHelper_StatsTableFrame"); -- Close with ESC
 
--- Position on left side of screen
-AZSHelper:MakeMovable(mainFrame, "statsPos");
-mainFrame:SetPoint("LEFT", UIParent, "LEFT", 18, 0);
-mainFrame:Hide(); -- Hidden by default so it doesn't overlap Multipliers panel
+-- Positioned directly to the right of Multipliers panel
+mainFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
+mainFrame:Hide(); -- Hidden by default so it doesn't clutter screen
 
--- Sleek Dark Backdrop
+-- Solid Dark Backdrop (Opaque so background frames don't bleed through)
 mainFrame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -454,8 +454,20 @@ mainFrame:SetBackdrop({
     edgeSize = 12,
     insets   = { left = 2, right = 2, top = 2, bottom = 2 }
 });
-mainFrame:SetBackdropColor(0.04, 0.05, 0.07, 0.88);
-mainFrame:SetBackdropBorderColor(0.20, 0.65, 0.95, 0.85); -- Sleek cyan/blue border
+mainFrame:SetBackdropColor(0.04, 0.04, 0.06, 0.98);
+mainFrame:SetBackdropBorderColor(0.20, 0.65, 0.95, 0.90); -- Sleek cyan/blue border
+
+-- Function to dock directly to the right of the Multipliers panel
+function AZSHelper:AnchorStatsTableToMultipliers()
+    local anchor = AZSHelper_MultipliersPanel;
+    if ( mainFrame and anchor ) then
+        mainFrame:ClearAllPoints();
+        mainFrame:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0);
+    elseif ( mainFrame ) then
+        mainFrame:ClearAllPoints();
+        mainFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
+    end
+end
 
 -- 1. Header Drag Bar
 local header = CreateFrame("Frame", nil, mainFrame);
@@ -467,18 +479,34 @@ header:SetScript("OnDragStart", function() mainFrame:StartMoving(); end);
 header:SetScript("OnDragStop", function()
     mainFrame:StopMovingOrSizing();
     local p, _, rp, x, y = mainFrame:GetPoint();
-    AZSHelperDB.statsPos = { point = p, relativePoint = rp, x = x, y = y };
+    if ( AZSHelperDB ) then
+        AZSHelperDB.statsPos = { point = p, relativePoint = rp, x = x, y = y, custom = true };
+    end
 end);
 
 local titleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 titleText:SetPoint("LEFT", header, "LEFT", 4, 0);
-titleText:SetText("|cff00ccffAZS|r |cffffd100Krit-Statistik|r");
+titleText:SetText("|cff00ccffBordo UI|r |cffffd100Damage Stats|r");
+
+-- Close Button [X]
+local btnClose = CreateFrame("Button", nil, header);
+btnClose:SetWidth(18);
+btnClose:SetHeight(18);
+btnClose:SetPoint("RIGHT", header, "RIGHT", -2, 0);
+
+local btnCloseText = btnClose:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+btnCloseText:SetPoint("CENTER", btnClose, "CENTER", 0, 0);
+btnCloseText:SetText("|cffff5555X|r");
+
+btnClose:SetScript("OnClick", function()
+    mainFrame:Hide();
+end);
 
 -- Collapse / Expand Button [-] / [+]
 local btnCollapse = CreateFrame("Button", nil, header);
 btnCollapse:SetWidth(18);
 btnCollapse:SetHeight(18);
-btnCollapse:SetPoint("RIGHT", header, "RIGHT", -2, 0);
+btnCollapse:SetPoint("RIGHT", btnClose, "LEFT", -2, 0);
 
 local btnCollapseText = btnCollapse:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 btnCollapseText:SetPoint("CENTER", btnCollapse, "CENTER", 0, 0);
@@ -864,6 +892,18 @@ mainFrame:SetScript("OnUpdate", function()
     AZSHelper:UpdateStatsTable();
 end);
 
+mainFrame:SetScript("OnShow", function()
+    if ( AZSHelper_ViewStatsButton and AZSHelper_ViewStatsButton.text ) then
+        AZSHelper_ViewStatsButton.text:SetText("Attack Stats <<");
+    end
+end);
+
+mainFrame:SetScript("OnHide", function()
+    if ( AZSHelper_ViewStatsButton and AZSHelper_ViewStatsButton.text ) then
+        AZSHelper_ViewStatsButton.text:SetText("Attack Stats >>");
+    end
+end);
+
 -- Restore saved position and scale on load
 local initFrame = CreateFrame("Frame");
 initFrame:RegisterEvent("VARIABLES_LOADED");
@@ -877,8 +917,10 @@ initFrame:SetScript("OnEvent", function()
     local sc = (AZSHelperDB and AZSHelperDB.tableScale) or 0.80;
     AZSHelper:SetTableScale(sc);
     if ( AZSHelperDB ) then
-        if ( AZSHelperDB.statsPos ) then
+        if ( AZSHelperDB.statsPos and AZSHelperDB.statsPos.custom ) then
             AZSHelper:RestorePosition(mainFrame, AZSHelperDB.statsPos);
+        else
+            AZSHelper:AnchorStatsTableToMultipliers();
         end
         if ( AZSHelperDB.collapsed ) then
             SetCollapsed(true);
