@@ -545,9 +545,9 @@ end);
 
 header:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT");
-    GameTooltip:AddLine("|cff00ccffAZS Statistik-Tabelle|r");
-    GameTooltip:AddLine("Mausrad drehen oder [-] / [+] klicken, um die Größe zu ändern.", 1, 1, 1);
-    GameTooltip:AddLine("Gedrückt halten & Ziehen zum Verschieben.", 0.7, 0.7, 0.7);
+    GameTooltip:AddLine("|cff00ccffBordo UI Damage Stats|r");
+    GameTooltip:AddLine("Scroll mouse wheel or click [-] / [+] to change size.", 1, 1, 1);
+    GameTooltip:AddLine("Hold & drag to move window.", 0.7, 0.7, 0.7);
     GameTooltip:Show();
 end);
 header:SetScript("OnLeave", function() GameTooltip:Hide(); end);
@@ -568,7 +568,7 @@ overviewCard:SetBackdropBorderColor(0.9, 0.7, 0.15, 0.7);
 -- Highest Crit Display
 local hcLabel = overviewCard:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 hcLabel:SetPoint("TOPLEFT", overviewCard, "TOPLEFT", 6, -6);
-hcLabel:SetText("HÖCHSTER KRIT:");
+hcLabel:SetText("HIGHEST CRIT:");
 
 local hcValue = overviewCard:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 hcValue:SetPoint("LEFT", hcLabel, "RIGHT", 6, 0);
@@ -586,18 +586,18 @@ mainFrame.hcIcon = hcIcon;
 
 local hcSpell = overviewCard:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 hcSpell:SetPoint("TOPLEFT", hcLabel, "BOTTOMLEFT", 0, -3);
-hcSpell:SetText("Fähigkeit: -");
+hcSpell:SetText("Ability: -");
 mainFrame.hcSpell = hcSpell;
 
 -- Character Sheet Crit & Real Crit Rate
 local charCritText = overviewCard:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 charCritText:SetPoint("TOPLEFT", hcLabel, "BOTTOMLEFT", 0, -19);
-charCritText:SetText("Char-Krit: 0.0%  |  Quote: 0.0%");
+charCritText:SetText("Char Crit: 0.0%  |  Actual: 0.0%");
 mainFrame.charCritText = charCritText;
 
 local runSummaryText = overviewCard:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
 runSummaryText:SetPoint("TOPLEFT", charCritText, "BOTTOMLEFT", 0, -2);
-runSummaryText:SetText("DPS: 0  |  Schaden: 0");
+runSummaryText:SetText("DPS: 0  |  Damage: 0");
 mainFrame.runSummaryText = runSummaryText;
 
 -- 3. Table Column Headers
@@ -607,15 +607,15 @@ tableHeader:SetPoint("BOTTOMRIGHT", overviewCard, "BOTTOMRIGHT", 0, -22);
 
 local col1 = tableHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 col1:SetPoint("LEFT", tableHeader, "LEFT", 4, 0);
-col1:SetText("Attacke");
+col1:SetText("Ability");
 
 local col2 = tableHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 col2:SetPoint("LEFT", tableHeader, "LEFT", 130, 0);
-col2:SetText("Höchst-Krit");
+col2:SetText("Max Crit");
 
 local col3 = tableHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 col3:SetPoint("LEFT", tableHeader, "LEFT", 202, 0);
-col3:SetText("Krit-Quote");
+col3:SetText("Crit Rate");
 
 local col4 = tableHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 col4:SetPoint("RIGHT", tableHeader, "RIGHT", -4, 0);
@@ -697,12 +697,12 @@ btnReset:SetPoint("BOTTOMLEFT", mainFrame, "BOTTOMLEFT", 6, 6);
 btnReset:SetText("Reset");
 btnReset:SetScript("OnClick", function()
     AZSHelper:ResetSpellStats();
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffAZS Helper|r: Statistik zurückgesetzt.");
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Statistics reset.");
 end);
 
 local helpText = mainFrame:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall");
 helpText:SetPoint("BOTTOMRIGHT", mainFrame, "BOTTOMRIGHT", -6, 8);
-helpText:SetText("/azs size 0.7");
+helpText:SetText("/bordo size 0.7");
 
 -- Collapse Logic
 local isCollapsed = false;
@@ -746,12 +746,12 @@ function AZSHelper:UpdateStatsTable()
         mainFrame.hcIcon:Show();
         mainFrame.hcSpell:ClearAllPoints();
         mainFrame.hcSpell:SetPoint("LEFT", mainFrame.hcIcon, "RIGHT", 4, 0);
-        mainFrame.hcSpell:SetText("Fähigkeit: |cffffffff" .. maxCSpell .. "|r");
+        mainFrame.hcSpell:SetText("Ability: |cffffffff" .. maxCSpell .. "|r");
     else
         mainFrame.hcIcon:Hide();
         mainFrame.hcSpell:ClearAllPoints();
         mainFrame.hcSpell:SetPoint("TOPLEFT", overviewCard, "TOPLEFT", 6, -22);
-        mainFrame.hcSpell:SetText("Fähigkeit: -");
+        mainFrame.hcSpell:SetText("Ability: -");
     end
     
     local sheetCrit = (AZS_STATS and AZS_STATS.crit) or 0;
@@ -763,7 +763,7 @@ function AZSHelper:UpdateStatsTable()
     local totalC = AZSHelper.TotalCrits or 0;
     local measuredRate = (totalH > 0) and ((totalC / totalH) * 100) or 0;
     
-    mainFrame.charCritText:SetText(string.format("Char-Krit: |cff00ff00%.1f%%|r (x%.1f)  |  Quote: |cffffd100%.1f%%|r (%d/%d)",
+    mainFrame.charCritText:SetText(string.format("Char Crit: |cff00ff00%.1f%%|r (x%.1f)  |  Actual: |cffffd100%.1f%%|r (%d/%d)",
         sheetCrit, sheetCM, measuredRate, totalC, totalH));
         
     local totalDmg = (AZS_RUN and AZS_RUN.dealt) or 0;
@@ -772,7 +772,7 @@ function AZSHelper:UpdateStatsTable()
         local _, _, d = AZS_GetMeter();
         currentDPS = d or 0;
     end
-    mainFrame.runSummaryText:SetText(string.format("DPS: |cffffffff%s|r  |  Gesamtschaden: |cffffffff%s|r",
+    mainFrame.runSummaryText:SetText(string.format("DPS: |cffffffff%s|r  |  Total Damage: |cffffffff%s|r",
         AZSHelper:FormatNumber(currentDPS), AZSHelper:FormatNumber(totalDmg)));
         
     -- Aggregate Attacks from Meter & Combat Log

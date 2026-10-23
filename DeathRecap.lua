@@ -227,13 +227,13 @@ end);
 
 local titleText = header:CreateFontString(nil, "OVERLAY", "GameFontNormal");
 titleText:SetPoint("LEFT", header, "LEFT", 8, 0);
-titleText:SetText("|cffff2525☠ TODESURSACHE & LETZTE SCHLÄGE ☠|r");
+titleText:SetText("|cffff2525☠ DEATH RECAP & RECENT HITS ☠|r");
 
 local closeBtn = CreateFrame("Button", nil, recapFrame, "UIPanelCloseButton");
 closeBtn:SetPoint("TOPRIGHT", recapFrame, "TOPRIGHT", -2, -2);
 closeBtn:SetScript("OnClick", function() recapFrame:Hide(); end);
 
--- Card 1: Highlight Todesstoß (Killing Blow)
+-- Card 1: Highlight Killing Blow
 local kbCard = CreateFrame("Frame", nil, recapFrame);
 kbCard:SetPoint("TOPLEFT", recapFrame, "TOPLEFT", 10, -32);
 kbCard:SetPoint("RIGHT", recapFrame, "RIGHT", -10, 0);
@@ -249,7 +249,7 @@ kbCard:SetBackdropBorderColor(1.0, 0.20, 0.20, 0.90);
 
 local kbTitle = kbCard:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 kbTitle:SetPoint("TOPLEFT", kbCard, "TOPLEFT", 8, -6);
-kbTitle:SetText("|cffff4444☠ TÖDLICHER SCHLAG (KILLING BLOW) ☠|r");
+kbTitle:SetText("|cffff4444☠ KILLING BLOW ☠|r");
 
 local kbAttacker = kbCard:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge");
 kbAttacker:SetPoint("TOPLEFT", kbTitle, "BOTTOMLEFT", 0, -2);
@@ -264,10 +264,10 @@ local kbHpStep = kbCard:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall
 kbHpStep:SetPoint("TOPLEFT", kbDetails, "BOTTOMLEFT", 0, -2);
 recapFrame.kbHpStep = kbHpStep;
 
--- Section 2: Chronologischer HP-Verlauf vor dem Tod
+-- Section 2: Chronological HP Loss Before Death
 local hitsSectionTitle = recapFrame:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 hitsSectionTitle:SetPoint("TOPLEFT", kbCard, "BOTTOMLEFT", 4, -8);
-hitsSectionTitle:SetText("|cffddbb66LETZTE SCHLÄGE VOR DEM TOD (HP-VERLAUF):|r");
+hitsSectionTitle:SetText("|cffddbb66RECENT DAMAGE TAKEN (HP HISTORY):|r");
 
 recapFrame.hitRowFrames = {};
 local MAX_DISPLAY_ROWS = 6;
@@ -327,7 +327,7 @@ local btnClose = CreateFrame("Button", nil, recapFrame, "UIPanelButtonTemplate")
 btnClose:SetWidth(140);
 btnClose:SetHeight(22);
 btnClose:SetPoint("BOTTOM", recapFrame, "BOTTOM", 0, 8);
-btnClose:SetText("Schließen (ESC)");
+btnClose:SetText("Close (ESC)");
 btnClose:SetScript("OnClick", function() recapFrame:Hide(); end);
 
 -- =========================================================================
@@ -338,27 +338,27 @@ function AZSHelper:ShowDeathRecap()
     local deathTime = GetTime();
     local maxHp = trackedMaxHp or 100;
     
-    -- Letzten Treffer als tödlichen Treffer markieren (hpAfter = 0)
+    -- Mark last hit as lethal (hpAfter = 0)
     if ( numHits > 0 ) then
         local lastHit = AZSHelper.RecentHitsTaken[numHits];
         lastHit.hpAfter = 0;
         
-        local critTag = lastHit.isCrit and " |cffff0000(Kritisch)|r" or "";
+        local critTag = lastHit.isCrit and " |cffff0000(Critical)|r" or "";
         local overkill = math.max(0, lastHit.amount - lastHit.hpBefore);
-        local overStr = (overkill > 0) and string.format(" |cff888888(%s Überhang)|r", AZSHelper:FormatNumber(overkill)) or "";
+        local overStr = (overkill > 0) and string.format(" |cff888888(%s Overkill)|r", AZSHelper:FormatNumber(overkill)) or "";
         
         recapFrame.kbAttacker:SetText(lastHit.attacker);
-        recapFrame.kbDetails:SetText(string.format("Fähigkeit: |cffffffff%s%s|r   •   Schaden: |cffff2222%s|r",
+        recapFrame.kbDetails:SetText(string.format("Ability: |cffffffff%s%s|r   •   Damage: |cffff2222%s|r",
             lastHit.spell, critTag, AZSHelper:FormatNumber(lastHit.amount)));
-        recapFrame.kbHpStep:SetText(string.format("HP-Verlust: %s  |cffff2222──>|r  |cffff2020 0 HP [TODESSTOSS]%s|r",
+        recapFrame.kbHpStep:SetText(string.format("HP Loss: %s  |cffff2222──>|r  |cffff2020 0 HP [KILLING BLOW]%s|r",
             FormatHpWithColor(lastHit.hpBefore, lastHit.maxHp or maxHp), overStr));
     else
-        recapFrame.kbAttacker:SetText("Unbekannter Schaden");
-        recapFrame.kbDetails:SetText("Fähigkeit: Tödlicher Treffer");
-        recapFrame.kbHpStep:SetText("Keine Kampflog-Details vor dem Tod vorhanden.");
+        recapFrame.kbAttacker:SetText("Unknown Damage");
+        recapFrame.kbDetails:SetText("Ability: Lethal Hit");
+        recapFrame.kbHpStep:SetText("No combat log details available before death.");
     end
     
-    -- Chronologischen HP-Verlauf darstellen (bis zu 6 Treffer vor dem Tod)
+    -- Display up to 6 hits prior to death
     local startIdx = math.max(1, numHits - MAX_DISPLAY_ROWS + 1);
     local displayCount = (numHits >= startIdx) and (numHits - startIdx + 1) or 0;
     
@@ -368,31 +368,31 @@ function AZSHelper:ShowDeathRecap()
             local hitIdx = startIdx + (i - 1);
             local h = AZSHelper.RecentHitsTaken[hitIdx];
             local dt = math.max(0, deathTime - h.time);
-            local cTag = h.isCrit and " |cffff3333[KRIT]|r" or "";
+            local cTag = h.isCrit and " |cffff3333[CRIT]|r" or "";
             local isFatal = (hitIdx == numHits);
-            local fatalTag = isFatal and " |cffff2020☠ TODESSTOSS ☠|r" or "";
+            local fatalTag = isFatal and " |cffff2020☠ KILLING BLOW ☠|r" or "";
             
-            -- Zeile 1: [-0.4s] Angreifer • Zauber [KRIT]
+            -- Row 1: [-0.4s] Attacker • Spell [CRIT]
             rowFrame.titleLine:SetText(string.format("|cff888888[-%.1fs]|r  |cffffd100%s|r  •  |cffffffff%s|r%s%s",
                 dt, h.attacker, h.spell, cTag, fatalTag));
             
-            -- Zeile 2: HP Vorher ──[ -Schaden ]──> HP Nachher
+            -- Row 2: HP Before ──[ -Damage ]──> HP After
             local hMax = h.maxHp or maxHp;
             local hpBeforeStr = FormatHpWithColor(h.hpBefore, hMax);
             
             if ( isFatal or h.hpAfter <= 0 ) then
                 local ok = math.max(0, h.amount - h.hpBefore);
-                local okStr = (ok > 0) and string.format(" |cff888888(%s Überhang)|r", AZSHelper:FormatNumber(ok)) or "";
-                rowFrame.hpLine:SetText(string.format("%s   |cffff2222──[ -%s Schaden ]──>|r   |cffff2020 0 HP [GEFALLEN]%s|r",
+                local okStr = (ok > 0) and string.format(" |cff888888(%s Overkill)|r", AZSHelper:FormatNumber(ok)) or "";
+                rowFrame.hpLine:SetText(string.format("%s   |cffff2222──[ -%s Damage ]──>|r   |cffff2020 0 HP [DEFEATED]%s|r",
                     hpBeforeStr, AZSHelper:FormatNumber(h.amount), okStr));
-                -- Rot akzentuierte Umrandung für den finalen Schlag
+                -- Red tinted border for the final fatal hit
                 rowFrame:SetBackdropColor(0.14, 0.04, 0.04, 0.90);
                 rowFrame:SetBackdropBorderColor(0.90, 0.20, 0.20, 0.85);
             else
                 local hpAfterStr = FormatHpWithColor(h.hpAfter, hMax);
-                rowFrame.hpLine:SetText(string.format("%s   |cffff4444──[ -%s Schaden ]──>|r   %s",
+                rowFrame.hpLine:SetText(string.format("%s   |cffff4444──[ -%s Damage ]──>|r   %s",
                     hpBeforeStr, AZSHelper:FormatNumber(h.amount), hpAfterStr));
-                -- Standard dunkle Umrandung
+                -- Dark border
                 rowFrame:SetBackdropColor(0.06, 0.07, 0.10, 0.85);
                 rowFrame:SetBackdropBorderColor(0.25, 0.28, 0.35, 0.60);
             end
@@ -410,10 +410,10 @@ function AZSHelper:ShowDeathRecap()
     local gold = (AZS_RUN and AZS_RUN.gold) or 0;
     local bosses = (AZS_RUN and AZS_RUN.bk) or 0;
     
-    recapFrame.sumText:SetText(string.format("Überlebt: |cffffffff%s|r   |   Stufe: |cffffffff%d|r   |   Kills: |cffffffff%s|r   |   Bosse: |cffffffff%d|r   |   Gold: |cffffd100%s|r",
+    recapFrame.sumText:SetText(string.format("Survived: |cffffffff%s|r   |   Level: |cffffffff%d|r   |   Kills: |cffffffff%s|r   |   Bosses: |cffffffff%d|r   |   Gold: |cffffd100%s|r",
         AZSHelper:FormatTime(t), lvl, AZSHelper:FormatNumber(kills), bosses, AZSHelper:FormatNumber(gold)));
         
-    -- Gespeicherte Position wiederherstellen oder sauber links neben Defeat-Fenster platzieren
+    -- Restore position or anchor cleanly to center
     if ( AZSHelperDB and AZSHelperDB.deathRecapPos and AZSHelperDB.deathRecapPos.point ) then
         AZSHelper:RestorePosition(recapFrame, AZSHelperDB.deathRecapPos);
     else
@@ -421,7 +421,7 @@ function AZSHelper:ShowDeathRecap()
         recapFrame:SetPoint("RIGHT", UIParent, "CENTER", -260, 20);
     end
     
-    -- Sicherstellen, dass Death Recap IMMER im Vordergrund liegt (TOOLTIP Strata, Level 500)
+    -- Ensure Death Recap is on top
     recapFrame:SetFrameStrata("TOOLTIP");
     recapFrame:SetFrameLevel(500);
     recapFrame:Show();
@@ -429,8 +429,7 @@ function AZSHelper:ShowDeathRecap()
         recapFrame:Raise();
     end
     
-    -- Chat-Hinweis zum erneuten Öffnen
-    DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[AZS Helper]|r Du bist gefallen! Todesursache geöffnet. Tippe |cffffd100/azs death|r zum erneuten Anzeigen.");
+    DEFAULT_CHAT_FRAME:AddMessage("|cffff2020[Bordo UI]|r You have fallen! Death Recap opened. Type |cffffd100/bordo recap|r to view again.");
 end
 
 -- Slash Commands
@@ -445,7 +444,7 @@ SlashCmdList["AZSDEATH"] = function(msg)
         end
         recapFrame:ClearAllPoints();
         recapFrame:SetPoint("RIGHT", UIParent, "CENTER", -260, 20);
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffAZS Helper|r: Todesursache-Position zurückgesetzt.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Death Recap position reset.");
     end
     AZSHelper:ShowDeathRecap();
 end;

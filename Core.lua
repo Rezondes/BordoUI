@@ -5,8 +5,29 @@
 ]]--
 
 BordoUI = {};
-AZSHelper = BordoUI; -- Vollständiger Rückwärtskompatibilitäts-Alias
+AZSHelper = BordoUI; -- Backwards compatibility alias
 BordoUI.version = "2.0.0";
+
+-- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
+-- (Keeps bottom-right corner clear for damage meters / DPS addons)
+local orig_GameTooltip_SetDefaultAnchor = GameTooltip_SetDefaultAnchor;
+function GameTooltip_SetDefaultAnchor(tooltip, parent)
+    tooltip:SetOwner(parent, "ANCHOR_NONE");
+    tooltip:ClearAllPoints();
+    tooltip:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0);
+    tooltip.default = 1;
+end
+
+if ( updateContainerFrameAnchors ) then
+    local orig_updateContainerFrameAnchors = updateContainerFrameAnchors;
+    updateContainerFrameAnchors = function()
+        orig_updateContainerFrameAnchors();
+        if ( GameTooltip:IsShown() and GameTooltip.default ) then
+            GameTooltip:ClearAllPoints();
+            GameTooltip:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0);
+        end
+    end
+end
 
 -- Default Settings
 local defaults = {
@@ -103,7 +124,7 @@ eventFrame:SetScript("OnEvent", function()
     if ( event == "VARIABLES_LOADED" or event == "PLAYER_ENTERING_WORLD" ) then
         InitDB();
         if ( event == "PLAYER_ENTERING_WORLD" ) then
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r geladen (Moderne UI Suite, Miniboss-Timer, Kisten-Radar & Boss-Highlight). Tippe |cffffd100/bordo|r oder |cffffd100/azs|r.");
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r loaded (Modern UI Suite, Miniboss Timer, Chest Radar & Boss Highlight). Type |cffffd100/bordo|r or |cffffd100/azs|r.");
             BordoUI:ApplyMaxCameraDistance();
             if ( BordoUI.ApplyModernDamageText ) then
                 BordoUI:ApplyModernDamageText();
@@ -132,9 +153,9 @@ SlashCmdList["BORDOU"] = function(msg)
             if ( BordoUI.ApplyModernDamageText ) then
                 BordoUI:ApplyModernDamageText();
             end
-            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Schadenszahlen-Skalierung auf %.0f%% gesetzt.", num * 100));
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Floating combat text scale set to %.0f%%.", num * 100));
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Nutzung: /bordo dmg 0.75 (Wert zwischen 0.4 und 1.5)");
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo dmg 0.75 (value between 0.4 and 1.5)");
         end
     elseif ( cmd == "size" or cmd == "table" ) then
         local num = tonumber(val);
@@ -142,9 +163,9 @@ SlashCmdList["BORDOU"] = function(msg)
             if ( BordoUI.SetTableScale ) then
                 BordoUI:SetTableScale(num);
             end
-            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Statistik-Tabellengröße auf %.0f%% gesetzt.", num * 100));
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Stats table scale set to %.0f%%.", num * 100));
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Nutzung: /bordo size 0.75 (Wert zwischen 0.4 und 1.5)");
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo size 0.75 (value between 0.4 and 1.5)");
         end
     elseif ( cmd == "death" or cmd == "recap" or cmd == "tod" ) then
         if ( BordoUI.ShowDeathRecap ) then
@@ -154,21 +175,21 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( AZSHelper_BossSchedulePanel ) then
             if ( AZSHelper_BossSchedulePanel:IsShown() ) then
                 AZSHelper_BossSchedulePanel:Hide();
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss-Timer Liste ausgeblendet.");
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss timer list hidden.");
             else
                 AZSHelper_BossSchedulePanel:Show();
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss-Timer Liste eingeblendet.");
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss timer list shown.");
             end
         end
     elseif ( cmd == "test" or cmd == "preview" ) then
         BordoUI.TestBossPreview = not BordoUI.TestBossPreview;
-        local st = BordoUI.TestBossPreview and "aktiviert (Hogger Test-Boss)" or "deaktiviert";
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss-HP Vorschau " .. st .. ".");
+        local st = BordoUI.TestBossPreview and "enabled (Hogger test boss)" or "disabled";
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss HP preview " .. st .. ".");
     elseif ( cmd == "zoom" or cmd == "cam" or cmd == "camera" ) then
         BordoUI:ApplyMaxCameraDistance();
         local yards = tonumber(val) or 35;
         pcall(CameraZoomOut, yards);
-        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Maximaler Kamera-Zoom freigeschaltet (Faktor 4 / 50 Yards). Rausgezoomt um %d Yards. Du kannst mit dem Mausrad jetzt viel weiter rauszoomen!", yards));
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Max camera zoom unlocked (factor 4 / 50 yards). Zoomed out by %d yards. You can now zoom out further using your mouse wheel!", yards));
     elseif ( cmd == "reset" ) then
         BordoUIDB.statsPos = { point = "LEFT", relativePoint = "LEFT", x = 20, y = 0 };
         BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
@@ -186,7 +207,7 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( AZSHelper_BossEncounterContainer ) then
             BordoUI:RestorePosition(AZSHelper_BossEncounterContainer, BordoUIDB.encounterBarsPos);
         end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: UI-Positionen auf Standard zurückgesetzt.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: UI positions reset to defaults.");
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
         if ( SlashCmdList["AZSCHESTLIGHT"] ) then
             SlashCmdList["AZSCHESTLIGHT"](val);
@@ -196,10 +217,10 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( AZSHelper_StatsTableFrame ) then
             if ( AZSHelper_StatsTableFrame:IsShown() ) then
                 AZSHelper_StatsTableFrame:Hide();
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Statistik-Tabelle ausgeblendet.");
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table hidden.");
             else
                 AZSHelper_StatsTableFrame:Show();
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Statistik-Tabelle eingeblendet.");
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table shown.");
             end
         end
     end

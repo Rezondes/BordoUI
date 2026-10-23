@@ -276,7 +276,7 @@ local function StyleNameplate(frame)
         healthBar.azsHpText:Show();
         
     -- ---------------------------------------------------------------------
-    -- CLASSIFICATION 3: MINIBOSS / WÄCHTER (Prominent, Radiant Gold / Amber)
+    -- CLASSIFICATION 3: MINIBOSS / GUARDIAN (Prominent, Radiant Gold / Amber)
     -- ---------------------------------------------------------------------
     elseif ( kind == "guardian" ) then
         healthBar:SetWidth(145);
@@ -293,7 +293,7 @@ local function StyleNameplate(frame)
         end
         
         nameText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
-        nameText:SetText("|cffffcc00★ [WÄCHTER] " .. cleanName .. " ★|r");
+        nameText:SetText("|cffffcc00★ [GUARDIAN] " .. cleanName .. " ★|r");
         
         if ( levelText ) then
             levelText:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");

@@ -160,9 +160,9 @@ UI.xpContainer:SetScript("OnEnter", function()
     local remaining = math.max(0, xpn - xp);
     
     GameTooltip:SetOwner(this, "ANCHOR_TOP");
-    GameTooltip:AddLine(string.format("|cff00ccffErfahrung (Stufe %d)|r", lvl));
-    GameTooltip:AddLine(string.format("Fortschritt: |cffffffff%s / %s (%d%%)|r", AZSHelper:FormatNumber(xp), AZSHelper:FormatNumber(xpn), pct));
-    GameTooltip:AddLine(string.format("Verbleibend: |cffffd100%s XP|r", AZSHelper:FormatNumber(remaining)));
+    GameTooltip:AddLine(string.format("|cff00ccffExperience (Level %d)|r", lvl));
+    GameTooltip:AddLine(string.format("Progress: |cffffffff%s / %s (%d%%)|r", AZSHelper:FormatNumber(xp), AZSHelper:FormatNumber(xpn), pct));
+    GameTooltip:AddLine(string.format("Remaining: |cffffd100%s XP|r", AZSHelper:FormatNumber(remaining)));
     GameTooltip:Show();
 end);
 UI.xpContainer:SetScript("OnLeave", function()
@@ -748,7 +748,7 @@ local hGuard = UI.gTableHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalS
 hGuard:SetPoint("LEFT", UI.gTableHeader, "LEFT", 4, 0);
 hGuard:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
 hGuard:SetTextColor(0.95, 0.70, 0.15); -- Gold/Amber
-hGuard:SetText("WÄCHTER / MINIBOSS");
+hGuard:SetText("GUARDIAN / MINIBOSS");
 
 local hGStatus = UI.gTableHeader:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 hGStatus:SetPoint("RIGHT", UI.gTableHeader, "RIGHT", -4, 0);
@@ -794,9 +794,9 @@ end);
 
 UI.bossPanel:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_LEFT");
-    GameTooltip:AddLine("|cffff2020Boss-Spawn Timer & Cooldowns|r");
-    GameTooltip:AddLine("Mausrad drehen zum Verkleinern / Vergrößern.", 1, 1, 1);
-    GameTooltip:AddLine("Gedrückt halten & Ziehen zum Verschieben.", 0.7, 0.7, 0.7);
+    GameTooltip:AddLine("|cffff2020Boss Spawn Timers & Cooldowns|r");
+    GameTooltip:AddLine("Scroll mouse wheel to resize.", 1, 1, 1);
+    GameTooltip:AddLine("Hold & drag to move window.", 0.7, 0.7, 0.7);
     GameTooltip:Show();
 end);
 UI.bossPanel:SetScript("OnLeave", function() GameTooltip:Hide(); end);
@@ -915,8 +915,8 @@ UI.multPanel:SetScript("OnMouseDown", function()
 end);
 UI.multPanel:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
-    GameTooltip:AddLine("|cff00ccffMultipliers & Krit-Statistik|r");
-    GameTooltip:AddLine("Klicken, um die detaillierte Attacken-Tabelle zu öffnen.", 1, 1, 1);
+    GameTooltip:AddLine("|cff00ccffMultipliers & Crit Statistics|r");
+    GameTooltip:AddLine("Click to toggle detailed damage stats table.", 1, 1, 1);
     GameTooltip:Show();
 end);
 UI.multPanel:SetScript("OnLeave", function() GameTooltip:Hide(); end);
@@ -1205,7 +1205,7 @@ local function UpdateBossFrame()
         UI.bossHealthBar:SetMinMaxValues(0, ghpm);
         UI.bossHealthBar:SetValue(ghp);
         UI.bossHealthBar:SetStatusBarColor(0.90, 0.55, 0.10, 1.0);
-        UI.bossBadge:SetText("Wächter+");
+        UI.bossBadge:SetText("Guardian+");
         UI.bossNameText:SetText(activeGuardian.name or "Guardian");
         UI.bossHpPctText:SetText(string.format("%d%%", gPct));
         UI.bossHpValueText:SetText(AZSHelper:FormatNumber(ghp));
@@ -1276,7 +1276,7 @@ local function UpdateEncounterBars()
             if ( not found ) then
                 table.insert(activeEnemies, {
                     id   = g.id,
-                    name = g.name or "Wächter",
+                    name = g.name or "Guardian",
                     hp   = g.hp,
                     hpm  = (g.hpm and g.hpm > 0) and g.hpm or 100,
                     kind = "guardian",
@@ -1293,7 +1293,7 @@ local function UpdateEncounterBars()
                 if ( u.kind == "final" or u.kind == "boss" or (u.kind == "guardian" and u.state == 1) ) then
                     table.insert(activeEnemies, {
                         id      = u.id,
-                        name    = u.name or "Gegner",
+                        name    = u.name or "Enemy",
                         hp      = u.hp,
                         hpm     = (u.hpm and u.hpm > 0) and u.hpm or 100,
                         kind    = u.kind,
@@ -1325,12 +1325,12 @@ local function UpdateEncounterBars()
                 elseif ( e.kind == "boss" ) then
                     bar.statusBar:SetStatusBarColor(0.88, 0.15, 0.15, 1.0); -- Crimson
                     bar:SetBackdropBorderColor(1.00, 0.25, 0.25, 1.0);
-                    tag = e.enraged and "|cffff2020☠ [BOSS - WUT] |r" or "|cffff2020☠ [BOSS] |r";
+                    tag = e.enraged and "|cffff2020☠ [BOSS - ENRAGED] |r" or "|cffff2020☠ [BOSS] |r";
                 else
                     -- Guardian / Miniboss
                     bar.statusBar:SetStatusBarColor(0.95, 0.60, 0.10, 1.0); -- Amber
                     bar:SetBackdropBorderColor(1.00, 0.75, 0.15, 1.0);
-                    tag = "|cffffcc00★ [WÄCHTER] |r";
+                    tag = "|cffffcc00★ [GUARDIAN] |r";
                 end
 
                 bar.nameText:SetText(tag .. "|cffffffff" .. e.name .. "|r");
@@ -1371,13 +1371,13 @@ local function UpdateBossSchedule()
 
     if ( numAlive > 0 ) then
         local bName = bossesAlive[1].name or "Boss";
-        UI.nextBossText:SetText(string.format("|cffff2020BOSS AKTIV: %s!|r", bName));
+        UI.nextBossText:SetText(string.format("|cffff2020BOSS ACTIVE: %s!|r", bName));
     elseif ( nextB ) then
         local left = math.max(0, nextB.left or 0);
         local color = (left <= 15) and "|cffff4444" or "|cff55ff55";
         UI.nextBossText:SetText(string.format("Next: %s %sin %s|r", nextB.name, color, AZSHelper:FormatTime(left)));
     elseif ( AZS_RUN and AZS_RUN.endl == 1 and AZS_RUN.nb and AZS_RUN.nb >= 0 ) then
-        UI.nextBossText:SetText(string.format("Endlos-Boss: |cff55ff55in %s|r", AZSHelper:FormatTime(AZS_RUN.nb)));
+        UI.nextBossText:SetText(string.format("Endless Boss: |cff55ff55in %s|r", AZSHelper:FormatTime(AZS_RUN.nb)));
     else
         UI.nextBossText:SetText("Next: -");
     end
@@ -1407,9 +1407,9 @@ local function UpdateBossSchedule()
 
                 -- Cooldown / Status
                 if ( b.state == "dead" ) then
-                    row.colCd:SetText("|cff666666[TOT ✓]|r");
+                    row.colCd:SetText("|cff666666[DEAD ✓]|r");
                 elseif ( b.state == "up" ) then
-                    row.colCd:SetText("|cffff2020[KAMPF!]|r");
+                    row.colCd:SetText("|cffff2020[ACTIVE!]|r");
                 else
                     local left = math.max(0, (b.at or 0) - t);
                     local inStr = AZSHelper:FormatTime(left);
@@ -1470,7 +1470,7 @@ local function UpdateBossSchedule()
             local row = UI.guardianRows[i];
             if ( i <= numLairs ) then
                 local l = lairs[i];
-                local gName = l.name or ("Wächter #" .. i);
+                local gName = l.name or ("Guardian #" .. i);
                 if ( l.state == "awake" ) then
                     local hpStr = "";
                     for g = 1, table.getn(guardians) do
@@ -1481,17 +1481,17 @@ local function UpdateBossSchedule()
                         end
                     end
                     row.colName:SetText("|cffff9900" .. gName .. "|r" .. hpStr);
-                    row.colStatus:SetText("|cffff2020[IM KAMPF!]|r");
+                    row.colStatus:SetText("|cffff2020[COMBAT!]|r");
                 elseif ( l.state == "asleep" ) then
                     row.colName:SetText("|cffffffff" .. gName .. "|r");
-                    row.colStatus:SetText("|cff55ff55[BEREIT]|r");
+                    row.colStatus:SetText("|cff55ff55[READY]|r");
                 else
                     local left = l.left or 0;
-                    row.colName:SetText("|cff888888" .. gName .. " (leer)|r");
+                    row.colName:SetText("|cff888888" .. gName .. " (empty)|r");
                     if ( left > 0 ) then
-                        row.colStatus:SetText(string.format("|cffffaa00Spawn in %s|r", AZSHelper:FormatTime(left)));
+                        row.colStatus:SetText(string.format("|cffffaa00Spawns in %s|r", AZSHelper:FormatTime(left)));
                     else
-                        row.colStatus:SetText("|cffffff00[SPAWNT...]|r");
+                        row.colStatus:SetText("|cffffff00[SPAWNING...]|r");
                     end
                 end
                 row:Show();
@@ -1513,8 +1513,8 @@ local function UpdateBossSchedule()
                 if ( i <= numGuards ) then
                     local g = guardians[i];
                     local pct = (g.hp and g.hpm and g.hpm > 0) and math.floor((g.hp / g.hpm) * 100) or 100;
-                    row.colName:SetText("|cffff9900" .. (g.name or "Wächter") .. "|r (" .. pct .. "%)");
-                    row.colStatus:SetText(g.awake and "|cffff2020[IM KAMPF!]|r" or "|cff55ff55[BEREIT]|r");
+                    row.colName:SetText("|cffff9900" .. (g.name or "Guardian") .. "|r (" .. pct .. "%)");
+                    row.colStatus:SetText(g.awake and "|cffff2020[COMBAT!]|r" or "|cff55ff55[READY]|r");
                     row:Show();
                     visibleGuards = visibleGuards + 1;
                 else

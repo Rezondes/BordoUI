@@ -116,9 +116,9 @@ M.arrowTex:SetVertexColor(0.78, 0.45, 1); -- Violet
 M.arrow:EnableMouse(true);
 M.arrow:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_LEFT");
-    GameTooltip:AddLine("Nächste Schatztruhe / Cache", 0.78, 0.45, 1);
+    GameTooltip:AddLine("Nearest Battleground Cache", 0.78, 0.45, 1);
     if ( this.dist ) then
-        GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd entfernt", 1, 1, 1);
+        GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd away", 1, 1, 1);
     end
     GameTooltip:Show();
 end);
@@ -168,10 +168,10 @@ local function NewPin(i)
             GameTooltip:AddLine("Battleground Cache", 1, 0.82, 0);
         end
         if ( this.dist ) then
-            GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd entfernt", 1, 1, 1);
+            GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd away", 1, 1, 1);
         end
         if ( AZS_RUN and AZS_RUN.chest and tonumber(AZS_RUN.chest) > 0 ) then
-            GameTooltip:AddLine(string.format("Kosten: %d Gold", tonumber(AZS_RUN.chest)), 0, 0.8, 1);
+            GameTooltip:AddLine(string.format("Cost: %d Gold", tonumber(AZS_RUN.chest)), 0, 0.8, 1);
         end
         GameTooltip:Show();
     end);
@@ -198,7 +198,7 @@ local function NewWorldPin(i)
         GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT");
         GameTooltip:AddLine("Battleground Cache", 1, 0.82, 0);
         if ( AZS_RUN and AZS_RUN.chest and tonumber(AZS_RUN.chest) > 0 ) then
-            GameTooltip:AddLine(string.format("Kosten: %d Gold", tonumber(AZS_RUN.chest)), 0, 0.8, 1);
+            GameTooltip:AddLine(string.format("Cost: %d Gold", tonumber(AZS_RUN.chest)), 0, 0.8, 1);
         end
         GameTooltip:Show();
     end);
@@ -368,7 +368,7 @@ local function Update()
     
     local db = DB();
     if ( fresh > 0 and db.chestChat ) then
-        Print(fresh == 1 and "Eine neue Schatztruhe ist gespawnt." or (fresh .. " neue Schatztruhen sind gespawnt."));
+        Print(fresh == 1 and "A new Battleground Cache has spawned!" or (fresh .. " new Battleground Caches have spawned!"));
     end
     
     -- Determine whether we are in instance / world coordinates mode (Naxxramas, SM, AQ or missing map coordinates)
@@ -542,7 +542,7 @@ f:SetScript("OnEvent", function()
     end
 end);
 
--- Slash commands (Chestlight compatible & AZSHelper integrated)
+-- Slash commands (Chestlight compatible & BordoUI integrated)
 SLASH_AZSCHESTLIGHT1 = "/chestlight";
 SLASH_AZSCHESTLIGHT2 = "/cl";
 SlashCmdList["AZSCHESTLIGHT"] = function(msg)
@@ -550,12 +550,12 @@ SlashCmdList["AZSCHESTLIGHT"] = function(msg)
     msg = string.lower(msg or "");
     if ( msg == "arrow" ) then
         db.chestArrow = not db.chestArrow;
-        Print("Pfeil zu entfernten Kisten: " .. (db.chestArrow and "|cff55ff55an|r" or "|cffff5555aus|r"));
+        Print("Direction indicator arrow to distant chests: " .. (db.chestArrow and "|cff55ff55on|r" or "|cffff5555off|r"));
     elseif ( msg == "chat" ) then
         db.chestChat = not db.chestChat;
-        Print("Chat-Nachricht bei Kisten-Spawn: " .. (db.chestChat and "|cff55ff55an|r" or "|cffff5555aus|r"));
+        Print("Chat notification on chest spawn: " .. (db.chestChat and "|cff55ff55on|r" or "|cffff5555off|r"));
     else
-        Print("/cl chat - Chat-Nachricht bei neuem Kisten-Spawn (" .. (db.chestChat and "an" or "aus") .. ")");
-        Print("/cl arrow - Violette Richtungspfeil-Anzeige (" .. (db.chestArrow and "an" or "aus") .. ")");
+        Print("/cl chat - Chat alert when new chests spawn (" .. (db.chestChat and "on" or "off") .. ")");
+        Print("/cl arrow - Purple direction arrow indicator (" .. (db.chestArrow and "on" or "off") .. ")");
     end
 end;
