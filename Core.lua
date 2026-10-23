@@ -6,7 +6,7 @@
 
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.1.3";
+BordoUI.version = "2.2.0";
 
 -- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
 -- (Keeps bottom-right corner clear for damage meters / DPS addons)
@@ -34,11 +34,14 @@ local defaults = {
     dmgScale   = 0.75,
     tableScale = 0.80,
     collapsed  = false,
+    locked     = false, -- Global UI window lock
     statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
     multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 },
     centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
     deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 },
     encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
+    bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 },
+    chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
     chestArrow = true,
     chestChat  = true,
 };
@@ -92,12 +95,14 @@ function BordoUI:ApplyMaxCameraDistance()
     pcall(SetCVar, "cameraDistanceMaxFactor", "4");
 end
 
--- Frame Movement Utility
-function BordoUI:MakeMovable(frame, saveKey)
+-- Frame Movement & Lock Utility
+function BordoUI:MakeMovable(frame, saveKey, callback)
+    if ( not frame ) then return; end
     frame:SetMovable(true);
     frame:EnableMouse(true);
     frame:RegisterForDrag("LeftButton");
     frame:SetScript("OnDragStart", function()
+        if ( BordoUIDB and BordoUIDB.locked ) then return; end
         this:StartMoving();
     end);
     frame:SetScript("OnDragStop", function()
@@ -105,6 +110,9 @@ function BordoUI:MakeMovable(frame, saveKey)
         if ( saveKey and BordoUIDB ) then
             local point, _, relPoint, x, y = this:GetPoint();
             BordoUIDB[saveKey] = { point = point, relativePoint = relPoint, x = x, y = y };
+        end
+        if ( callback ) then
+            callback(this);
         end
     end);
 end
@@ -114,6 +122,25 @@ function BordoUI:RestorePosition(frame, posData)
         frame:ClearAllPoints();
         frame:SetPoint(posData.point, UIParent, posData.relativePoint or posData.point, posData.x or 0, posData.y or 0);
     end
+end
+
+function BordoUI:SetLocked(locked)
+    if ( not BordoUIDB ) then return; end
+    BordoUIDB.locked = locked and true or false;
+    if ( BordoUI.UpdateLockState ) then
+        BordoUI:UpdateLockState();
+    end
+    if ( BordoUIDB.locked ) then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cffff3333[LOCKED]|r. Dragging is disabled.");
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cff55ff55[UNLOCKED]|r. You can freely drag and reposition Chat, Multipliers, Combat HUD, Boss Bars & Bottom Bar.");
+    end
+end
+
+function BordoUI:ToggleLock()
+    local newState = not (BordoUIDB and BordoUIDB.locked);
+    BordoUI:SetLocked(newState);
+    return newState;
 end
 
 -- Event Listener Frame
@@ -132,6 +159,12 @@ eventFrame:SetScript("OnEvent", function()
             end
             if ( BordoUI.ApplySquareMinimapStyle ) then
                 BordoUI:ApplySquareMinimapStyle();
+            end
+            if ( BordoUI.UpdateLockState ) then
+                BordoUI:UpdateLockState();
+            end
+            if ( ChatFrame1 and BordoUIDB and BordoUIDB.chatPos ) then
+                BordoUI:RestorePosition(ChatFrame1, BordoUIDB.chatPos);
             end
         end
     end
@@ -191,12 +224,38 @@ SlashCmdList["BORDOU"] = function(msg)
         local yards = tonumber(val) or 35;
         pcall(CameraZoomOut, yards);
         DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Max camera zoom unlocked (factor 4 / 50 yards). Zoomed out by %d yards. You can now zoom out further using your mouse wheel!", yards));
+    elseif ( cmd == "lock" ) then
+        BordoUI:SetLocked(true);
+    elseif ( cmd == "unlock" ) then
+        BordoUI:SetLocked(false);
+    elseif ( cmd == "move" or cmd == "togglelock" ) then
+        BordoUI:ToggleLock();
+    elseif ( cmd == "help" ) then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset all window positions to defaults");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo recap|r - View Death Recap & Recent Damage");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo dmg <0.4-1.5>|r - Set floating damage font scale");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo size <0.4-1.5>|r - Set stats table scale");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance");
     elseif ( cmd == "reset" ) then
         BordoUIDB.statsPos = nil;
         BordoUIDB.multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 };
         BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
         BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
+        BordoUIDB.bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 };
+        BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 };
+        if ( ChatFrame1 ) then
+            ChatFrame1:ClearAllPoints();
+            ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
+        end
+        if ( AZSHelper_BottomBar ) then
+            BordoUI:RestorePosition(AZSHelper_BottomBar, BordoUIDB.bottomBarPos);
+        end
         if ( AZSHelper_MultipliersPanel ) then
             BordoUI:RestorePosition(AZSHelper_MultipliersPanel, BordoUIDB.multPanelPos);
         end
@@ -217,7 +276,7 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( AZSHelper_BossEncounterContainer ) then
             BordoUI:RestorePosition(AZSHelper_BossEncounterContainer, BordoUIDB.encounterBarsPos);
         end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: UI positions reset to defaults.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI window positions reset to defaults.");
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
         if ( SlashCmdList["AZSCHESTLIGHT"] ) then
             SlashCmdList["AZSCHESTLIGHT"](val);
@@ -237,4 +296,15 @@ SlashCmdList["BORDOU"] = function(msg)
             end
         end
     end
+end;
+
+-- Standalone Slash Commands for Locking / Unlocking
+SLASH_BORDOLOCK1 = "/lock";
+SlashCmdList["BORDOLOCK"] = function()
+    BordoUI:SetLocked(true);
+end;
+
+SLASH_BORDOUNLOCK1 = "/unlock";
+SlashCmdList["BORDOUNLOCK"] = function()
+    BordoUI:SetLocked(false);
 end;

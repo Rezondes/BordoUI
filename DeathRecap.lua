@@ -301,7 +301,10 @@ header:SetPoint("TOPLEFT", recapFrame, "TOPLEFT", 4, -4);
 header:SetPoint("BOTTOMRIGHT", recapFrame, "TOPRIGHT", -4, -28);
 header:EnableMouse(true);
 header:RegisterForDrag("LeftButton");
-header:SetScript("OnDragStart", function() recapFrame:StartMoving(); end);
+header:SetScript("OnDragStart", function()
+    if ( BordoUIDB and BordoUIDB.locked ) then return; end
+    recapFrame:StartMoving();
+end);
 header:SetScript("OnDragStop", function()
     recapFrame:StopMovingOrSizing();
     local point, _, relPoint, x, y = recapFrame:GetPoint();

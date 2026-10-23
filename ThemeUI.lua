@@ -103,6 +103,8 @@ UI.bottomBar:SetHeight(18);
 UI.bottomBar:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 2);
 UI.bottomBar:SetFrameStrata("LOW");
 UI.bottomBar:SetFrameLevel(5);
+UI.bottomBar:SetClampedToScreen(true);
+AZSHelper:MakeMovable(UI.bottomBar, "bottomBarPos");
 
 UI.bottomBar:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -899,17 +901,75 @@ UI.cyanAccent:SetPoint("BOTTOMRIGHT", UI.multPanel, "TOPRIGHT", -2, -4);
 UI.cyanAccent:SetTexture("Interface\\TargetingFrame\\UI-StatusBar");
 UI.cyanAccent:SetVertexColor(0.0, 0.85, 0.95, 1.0);
 
--- Header Text: MULTIPLIERS  9
+-- Header Text: MULTIPLIERS  9  [Lock/Unlock]
 UI.multTitle = UI.multPanel:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
 UI.multTitle:SetPoint("TOPLEFT", UI.multPanel, "TOPLEFT", 4, -6);
 UI.multTitle:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
 UI.multTitle:SetText("MULTIPLIERS");
 
 UI.multCount = UI.multPanel:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
-UI.multCount:SetPoint("TOPRIGHT", UI.multPanel, "TOPRIGHT", -4, -6);
+UI.multCount:SetPoint("TOPRIGHT", UI.multPanel, "TOPRIGHT", -23, -6);
 UI.multCount:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
 UI.multCount:SetText("9");
 UI.multCount:SetTextColor(0.1, 0.85, 0.95);
+
+-- Interactive Lock / Unlock Button [L] / [U]
+UI.lockBtn = CreateFrame("Button", "BordoUI_LockToggleButton", UI.multPanel);
+UI.lockBtn:SetWidth(18);
+UI.lockBtn:SetHeight(13);
+UI.lockBtn:SetPoint("TOPRIGHT", UI.multPanel, "TOPRIGHT", -3, -5);
+UI.lockBtn:SetBackdrop({
+    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile     = true,
+    tileSize = 8,
+    edgeSize = 6,
+    insets   = { left = 1, right = 1, top = 1, bottom = 1 }
+});
+
+local lockBtnText = UI.lockBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall");
+lockBtnText:SetPoint("CENTER", UI.lockBtn, "CENTER", 0, 0);
+lockBtnText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
+UI.lockBtn.text = lockBtnText;
+
+function BordoUI:UpdateLockState()
+    local isLocked = BordoUIDB and BordoUIDB.locked;
+    if ( UI.lockBtn ) then
+        if ( isLocked ) then
+            UI.lockBtn.text:SetText("|cffff4444[L]|r");
+            UI.lockBtn:SetBackdropColor(0.25, 0.04, 0.04, 0.9);
+            UI.lockBtn:SetBackdropBorderColor(0.8, 0.2, 0.2, 0.85);
+        else
+            UI.lockBtn.text:SetText("|cff55ff55[U]|r");
+            UI.lockBtn:SetBackdropColor(0.04, 0.20, 0.04, 0.9);
+            UI.lockBtn:SetBackdropBorderColor(0.2, 0.8, 0.2, 0.85);
+        end
+    end
+end
+
+UI.lockBtn:SetScript("OnClick", function()
+    BordoUI:ToggleLock();
+end);
+
+UI.lockBtn:SetScript("OnEnter", function()
+    GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+    local isLocked = BordoUIDB and BordoUIDB.locked;
+    if ( isLocked ) then
+        GameTooltip:AddLine("|cffff4444UI Windows: LOCKED|r");
+        GameTooltip:AddLine("Dragging is currently disabled.", 1, 1, 1);
+        GameTooltip:AddLine("Click to |cff55ff55UNLOCK|r all frames (Chat, Multipliers, Combat HUD, Boss Bars, Bottom Bar).", 0.8, 0.8, 0.8);
+    else
+        GameTooltip:AddLine("|cff55ff55UI Windows: UNLOCKED|r");
+        GameTooltip:AddLine("You can freely drag and reposition all UI windows.", 1, 1, 1);
+        GameTooltip:AddLine("Click to |cffff4444LOCK|r all frames in place.", 0.8, 0.8, 0.8);
+    end
+    GameTooltip:AddLine("Slash commands: |cffffd100/bordo lock|r or |cffffd100/bordo unlock|r", 0.5, 0.8, 1);
+    GameTooltip:Show();
+end);
+
+UI.lockBtn:SetScript("OnLeave", function()
+    GameTooltip:Hide();
+end);
 
 -- Multiplier Rows
 UI.statKeys = {
@@ -1056,6 +1116,7 @@ UI.multPanel:EnableMouse(true);
 UI.multPanel:RegisterForDrag("LeftButton");
 
 UI.multPanel:SetScript("OnDragStart", function()
+    if ( BordoUIDB and BordoUIDB.locked ) then return; end
     isDraggingMult = true;
     this:StartMoving();
 end);
@@ -1160,20 +1221,41 @@ function AZSHelper:ApplySquareMinimapStyle()
 end
 
 -- =========================================================================
--- 6. SLEEK DARK CHAT WINDOW
+-- 6. SLEEK DARK CHAT WINDOW (Movable, Clamped & Saves Position)
 -- =========================================================================
 function AZSHelper:SkinChatWindow()
     if ( not ChatFrame1 ) then return; end
-    ChatFrame1:ClearAllPoints();
-    ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
+    ChatFrame1:SetClampedToScreen(true);
+    ChatFrame1:SetMovable(true);
     ChatFrame1:SetWidth(380);
     ChatFrame1:SetHeight(130);
+
+    -- Restore saved chat position or use default
+    if ( BordoUIDB and BordoUIDB.chatPos and BordoUIDB.chatPos.point ) then
+        BordoUI:RestorePosition(ChatFrame1, BordoUIDB.chatPos);
+    else
+        ChatFrame1:ClearAllPoints();
+        ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
+    end
 
     local chatButtons = {
         "ChatFrameMenuButton", "ChatFrame1UpButton", "ChatFrame1DownButton", "ChatFrame1BottomButton"
     };
     for _, btnName in pairs(chatButtons) do
         SafeHide(btnName);
+    end
+
+    local chatDragStart = function()
+        if ( BordoUIDB and BordoUIDB.locked ) then return; end
+        ChatFrame1:StartMoving();
+    end
+
+    local chatDragStop = function()
+        ChatFrame1:StopMovingOrSizing();
+        local point, _, relPoint, x, y = ChatFrame1:GetPoint();
+        if ( BordoUIDB ) then
+            BordoUIDB.chatPos = { point = point, relativePoint = relPoint, x = x, y = y };
+        end
     end
 
     if ( not AZSHelper_ChatDarkBackdrop ) then
@@ -1191,6 +1273,28 @@ function AZSHelper:SkinChatWindow()
         });
         bg:SetBackdropColor(0.03, 0.03, 0.04, 0.88);
         bg:SetBackdropBorderColor(0.10, 0.10, 0.12, 0.95);
+
+        -- Dragging by grabbing the background/border
+        bg:EnableMouse(true);
+        bg:RegisterForDrag("LeftButton");
+        bg:SetScript("OnDragStart", chatDragStart);
+        bg:SetScript("OnDragStop", chatDragStop);
+    end
+
+    -- Dragging ChatFrame1 directly
+    ChatFrame1:EnableMouse(true);
+    ChatFrame1:RegisterForDrag("LeftButton");
+    ChatFrame1:SetScript("OnDragStart", chatDragStart);
+    ChatFrame1:SetScript("OnDragStop", chatDragStop);
+
+    -- Also hook ChatFrame1Tab if present
+    if ( ChatFrame1Tab ) then
+        local orig_TabDragStop = ChatFrame1Tab:GetScript("OnDragStop");
+        ChatFrame1Tab:SetScript("OnDragStart", chatDragStart);
+        ChatFrame1Tab:SetScript("OnDragStop", function()
+            if ( orig_TabDragStop ) then orig_TabDragStop(); end
+            chatDragStop();
+        end);
     end
 
     ChatFrame1:EnableMouseWheel(true);
@@ -1839,6 +1943,12 @@ local function InitTheme()
     end
     if ( AZSHelperDB and AZSHelperDB.encounterBarsPos ) then
         AZSHelper:RestorePosition(UI.encounterContainer, AZSHelperDB.encounterBarsPos);
+    end
+    if ( AZSHelperDB and AZSHelperDB.bottomBarPos ) then
+        AZSHelper:RestorePosition(UI.bottomBar, AZSHelperDB.bottomBarPos);
+    end
+    if ( BordoUI.UpdateLockState ) then
+        BordoUI:UpdateLockState();
     end
     if ( AZSHelperDB and AZSHelperDB.bossScale ) then
         UI.bossPanel:SetScale(AZSHelperDB.bossScale);

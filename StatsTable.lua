@@ -475,7 +475,10 @@ header:SetPoint("TOPLEFT", mainFrame, "TOPLEFT", 4, -4);
 header:SetPoint("BOTTOMRIGHT", mainFrame, "TOPRIGHT", -4, -26);
 header:EnableMouse(true);
 header:RegisterForDrag("LeftButton");
-header:SetScript("OnDragStart", function() mainFrame:StartMoving(); end);
+header:SetScript("OnDragStart", function()
+    if ( BordoUIDB and BordoUIDB.locked ) then return; end
+    mainFrame:StartMoving();
+end);
 header:SetScript("OnDragStop", function()
     mainFrame:StopMovingOrSizing();
     local p, _, rp, x, y = mainFrame:GetPoint();

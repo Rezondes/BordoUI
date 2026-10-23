@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.1.3-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.2.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -63,6 +63,9 @@
 | Command | Description |
 |---|---|
 | `/bordo` or `/azs` | Toggle the detailed Damage Stats table |
+| `/bordo lock` | Lock all UI windows in place (disables dragging) |
+| `/bordo unlock` | Unlock all UI windows (freely drag & reposition on screen) |
+| `/bordo move` | Toggle between locked and unlocked state |
 | `/bordo dmg 0.75` | Adjust floating combat text scale (0.4 – 1.5) |
 | `/bordo size 0.8` | Adjust stats table window scale (0.4 – 1.5) |
 | `/bordo recap` | Open the Death Recap window |

@@ -4,6 +4,26 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.2.0] - 2026-10-23
+
+### Added
+- **Movable Chat Window:** The sleek dark chat box can now be grabbed and moved anywhere on screen (`LeftButton` on chat text, border, or chat tab).
+- **Saved Chat Position:** Its position is automatically saved to `BordoUIDB.chatPos` and restored on login/reload.
+- **Universal Frame Movement:** All major UI windows can now be freely repositioned:
+  - Chat Window (`chatPos`)
+  - Multipliers Panel (`multPanelPos`)
+  - Attack Damage & DPS Stats Table (`statsPos`)
+  - Centered Combat HUD: Player, Boss & 7 Ability Slots (`centerHudPos`)
+  - Boss Encounter & Miniboss HP Bars (`encounterBarsPos`)
+  - Bottom Datatext & XP Bar (`bottomBarPos`)
+  - Death Recap (`deathRecapPos`)
+- **Global UI Window Lock (`/bordo lock` & `/bordo unlock`):**
+  - Lock all UI windows to prevent any accidental dragging during combat.
+  - Interactive lock button `[L]` / `[U]` directly on the Multipliers panel header with tooltips and live status.
+  - Slash commands: `/bordo lock`, `/bordo unlock`, `/bordo move` (or `/lock`, `/unlock`).
+
+---
+
 ## [2.1.3] - 2026-10-23
 
 ### Fixed & Improved
