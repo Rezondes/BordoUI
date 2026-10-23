@@ -66,16 +66,22 @@ local function IsTeammate(unitName)
     local numParty = GetNumPartyMembers() or 0;
     for i = 1, numParty do
         local pName = UnitName("party" .. i);
-        if ( pName and string.lower(pName) == lowName ) then
-            return true, "party" .. i, pName;
+        if ( pName and pName ~= UNKNOWN ) then
+            local lowP = string.lower(pName);
+            if ( lowP == lowName or string.find(lowName, lowP, 1, true) or string.find(lowP, lowName, 1, true) ) then
+                return true, "party" .. i, pName;
+            end
         end
     end
     
     local numRaid = GetNumRaidMembers() or 0;
     for i = 1, numRaid do
         local rName = UnitName("raid" .. i);
-        if ( rName and string.lower(rName) == lowName ) then
-            return true, "raid" .. i, rName;
+        if ( rName and rName ~= UNKNOWN ) then
+            local lowR = string.lower(rName);
+            if ( lowR == lowName or string.find(lowName, lowR, 1, true) or string.find(lowR, lowName, 1, true) ) then
+                return true, "raid" .. i, rName;
+            end
         end
     end
     
@@ -214,16 +220,16 @@ local function StyleNameplate(frame)
     
     -- Extract clean mob name (before our custom prefixes)
     local curName = nameText:GetText();
+    if ( not curName or curName == "" ) then return; end
+    
     local cleanName = frame.azsCleanName;
-    if ( curName and curName ~= "" ) then
-        if ( not string.find(curName, "%[") and not string.find(curName, "%+") ) then
-            cleanName = curName;
-            frame.azsCleanName = cleanName;
-        else
-            cleanName = frame.azsCleanName or curName;
-        end
+    if ( not string.find(curName, "|c") and not string.find(curName, "%[") and not string.find(curName, "%+") and not string.find(curName, "🛡") and not string.find(curName, "👑") ) then
+        cleanName = curName;
+        frame.azsCleanName = curName;
     end
-    if ( not cleanName or cleanName == "" ) then return; end
+    if ( not cleanName or cleanName == "" ) then
+        cleanName = curName;
+    end
     
     local kind = GetUnitClassification(cleanName);
     local isTarget = (UnitExists("target") and UnitName("target") == cleanName);
@@ -247,6 +253,12 @@ local function StyleNameplate(frame)
     -- CLASSIFICATION 0: TEAMMATES & PARTY MEMBERS (Vibrant Green Health Bar!)
     -- ---------------------------------------------------------------------
     local isAlly, allyToken, allyRealName = IsTeammate(cleanName);
+    if ( not isAlly and isTarget and UnitIsFriend("player", "target") ) then
+        isAlly = true;
+        allyToken = "target";
+        allyRealName = UnitName("target");
+    end
+    
     if ( isAlly ) then
         healthBar:SetWidth(130);
         healthBar:SetHeight(15);
@@ -279,10 +291,25 @@ local function StyleNameplate(frame)
             levelText:SetTextColor(0.40, 1.0, 0.40);
         end
         
-        if ( pct <= 0 ) then
-            healthBar.azsHpText:SetText("|cffff2222DEAD|r");
+        -- Calculate accurate HP for ally if unit token is available
+        local allyPct = pct;
+        if ( allyToken and UnitExists(allyToken) ) then
+            local curHp = UnitHealth(allyToken) or 0;
+            local maxHp = UnitHealthMax(allyToken) or 100;
+            if ( maxHp > 0 ) then
+                allyPct = math.floor((curHp / maxHp) * 100);
+            end
+            if ( UnitIsDead(allyToken) or UnitIsGhost(allyToken) or curHp <= 0 ) then
+                healthBar.azsHpText:SetText("|cffff2222DEAD|r");
+            else
+                healthBar.azsHpText:SetText(string.format("%d%%", allyPct));
+            end
         else
-            healthBar.azsHpText:SetText(string.format("%d%%", pct));
+            if ( pct <= 0 ) then
+                healthBar.azsHpText:SetText("|cffff2222DEAD|r");
+            else
+                healthBar.azsHpText:SetText(string.format("%d%%", pct));
+            end
         end
         healthBar.azsHpText:Show();
         return;
@@ -426,12 +453,43 @@ local function StyleNameplate(frame)
     end
 end
 
+-- Ensure native WoW 1.12.1 friendly and enemy nameplates are turned on
+local function EnsureNameplatesEnabled()
+    -- Native WoW 1.12.1 engine functions to toggle/show friendly & enemy nameplates
+    if ( ShowFriendNameplates ) then
+        pcall(ShowFriendNameplates);
+    end
+    if ( ShowNameplates ) then
+        pcall(ShowNameplates);
+    end
+    pcall(SetCVar, "UnitNamePlayer", "1");
+    pcall(SetCVar, "UnitNameFriendlyPlayerName", "1");
+    pcall(SetCVar, "UnitNameEnemyPlayerName", "1");
+end
+if ( BordoUI ) then
+    BordoUI.EnsureNameplates = EnsureNameplatesEnabled;
+end
+
 -- Continuous Scanner for Active Nameplates
 local scanFrame = CreateFrame("Frame", "AZSHelper_NameplateScanner");
 local scanElapsed = 0;
+local checkTimer = 0;
+local hasInitialRun = false;
 
 scanFrame:SetScript("OnUpdate", function()
-    scanElapsed = scanElapsed + arg1;
+    local elapsed = arg1 or 0.05;
+    scanElapsed = scanElapsed + elapsed;
+    checkTimer = checkTimer + elapsed;
+    
+    -- Ensure friendly nameplates are active on load and periodically checked in group
+    if ( not hasInitialRun or checkTimer >= 4.0 ) then
+        checkTimer = 0;
+        hasInitialRun = true;
+        if ( GetNumPartyMembers() > 0 or GetNumRaidMembers() > 0 ) then
+            EnsureNameplatesEnabled();
+        end
+    end
+    
     if ( scanElapsed < 0.05 ) then return; end
     scanElapsed = 0;
     
@@ -449,8 +507,8 @@ local npAutoFrame = CreateFrame("Frame", "BordoUI_NameplateAutoFrame");
 npAutoFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 npAutoFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
 npAutoFrame:RegisterEvent("RAID_ROSTER_UPDATE");
+npAutoFrame:RegisterEvent("PLAYER_ALIVE");
 
 npAutoFrame:SetScript("OnEvent", function()
-    pcall(SetCVar, "nameplateShowFriends", "1");
-    pcall(SetCVar, "ShowFriendlyPlayerNames", "1");
+    EnsureNameplatesEnabled();
 end);

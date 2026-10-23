@@ -12,7 +12,8 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
   - Teammates now feature an unmistakable, vibrant lime-green health bar (`130x15px`, color `0.12, 0.95, 0.22`) floating over their heads in the 3D world, making them instantly recognizable in crowds of 50+ red-barred enemies.
   - Emerald green borders (`0.15, 0.85, 0.30`) with special shield (`🛡️ Name`) and gold crown (`👑 Name` for Party Leader) title tags.
   - Displays live health percentage in the center of the teammate nameplate and red `DEAD` warning when fallen.
-  - Automatic friendly nameplate activation (`nameplateShowFriends = 1`) on login and party join.
+  - **Native Vanilla 1.12.1 Engine Integration:** Automatically calls native `ShowFriendNameplates()` and `ShowNameplates()` upon login, zone change, and party events. Continuously monitors group state to ensure friendly nameplates remain active throughout intense survivor rounds.
+  - Added `/bordo plates` and `/plates` slash commands to instantly force-enable teammate & enemy nameplates.
 - **Teammate Green Health Bars in Party Frames (PartyFrames.lua):**
   - Updated party member unit cards with vibrant green health bars (`0.15, 0.88, 0.25`) for visual consistency with overhead nameplates, preserving class-colored player names.
 - **Quick Party Frames Toggle Button:** Added a `[👥 Party]` button in the Damage Stats table header for instant one-click access.

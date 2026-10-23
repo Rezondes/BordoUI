@@ -78,6 +78,7 @@
 |---|---|
 | `/bordo` or `/azs` | Toggle the detailed Damage Stats table |
 | `/bparty` or `/bordo party` | Toggle Modern Party Frames (`/bparty test` for preview) |
+| `/plates` or `/bordo plates` | Force-enable Teammate (vibrant green) & Enemy nameplates |
 | `/bordo lock` | Lock all UI windows in place (disables dragging) |
 | `/bordo unlock` | Unlock all UI windows (freely drag & reposition on screen) |
 | `/bordo move` | Toggle between locked and unlocked state |

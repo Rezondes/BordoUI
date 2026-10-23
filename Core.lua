@@ -233,6 +233,14 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( BordoUI.TogglePartyFrames ) then
             BordoUI:TogglePartyFrames(val);
         end
+    elseif ( cmd == "plates" or cmd == "nameplates" or cmd == "teammates" ) then
+        if ( BordoUI.EnsureNameplates ) then
+            BordoUI:EnsureNameplates();
+        else
+            if ( ShowFriendNameplates ) then pcall(ShowFriendNameplates); end
+            if ( ShowNameplates ) then pcall(ShowNameplates); end
+        end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
     elseif ( cmd == "lock" ) then
         BordoUI:SetLocked(true);
     elseif ( cmd == "unlock" ) then
@@ -243,6 +251,7 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Force-enable Teammate (green) & Enemy nameplates");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
@@ -322,4 +331,15 @@ end;
 SLASH_BORDOUNLOCK1 = "/unlock";
 SlashCmdList["BORDOUNLOCK"] = function()
     BordoUI:SetLocked(false);
+end;
+
+SLASH_BORDOPLATES1 = "/plates";
+SlashCmdList["BORDOPLATES"] = function()
+    if ( BordoUI.EnsureNameplates ) then
+        BordoUI:EnsureNameplates();
+    else
+        if ( ShowFriendNameplates ) then pcall(ShowFriendNameplates); end
+        if ( ShowNameplates ) then pcall(ShowNameplates); end
+    end
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
 end;
