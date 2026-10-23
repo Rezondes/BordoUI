@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.0.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.1.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -11,11 +11,11 @@
 
 ## ✨ Key Features
 
-### 1. 🛡️ Centered Combat Unit Frames (Player & Boss)
+### 1. 🛡️ Centered Combat Unit Frames & Ability Bar
 - **3D Class Portraits:** Seamlessly flush with the health bar with a sleek dark border.
 - **Dynamic Class Colors:** Tailored to all 9 WoW classes (Warrior brown, Mage sky blue, Rogue yellow, etc.).
 - **Absorb Shields:** Clean overlay of active shield absorption amounts directly on the health bar.
-- **Centered HUD:** Action bar cooldowns and abilities positioned right between you and the enemy.
+- **Centered HUD with Racial Ability:** 6 Survivor skills plus a dedicated **Racial Ability slot** (with radiant golden border and real-time cooldown tracking) positioned between player and boss.
 
 ### 2. 📊 Bottom Datatext Bar & Seamless XP Bar
 - **Compact Datatext Bar:** Displays Level, XP%, Kills, Gold, Next Chest Cost, Health, Rerolls, Total Damage, and FPS in an elegant dark-cyan theme.

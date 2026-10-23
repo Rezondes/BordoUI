@@ -175,7 +175,7 @@ end);
 
 -- Central Skills Container (Centered horizontally under the character)
 UI.skillsContainer = CreateFrame("Frame", "AZSHelper_SkillsContainer", UIParent);
-UI.skillsContainer:SetWidth(188);
+UI.skillsContainer:SetWidth(224);
 UI.skillsContainer:SetHeight(34);
 UI.skillsContainer:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 200);
 UI.skillsContainer:SetFrameStrata("MEDIUM");
@@ -563,7 +563,7 @@ local function HideDefaultBlizzardFrames()
     end
 end
 
--- Setup Action Buttons 1..6 inside skillsContainer
+-- Setup Action Buttons 1..6 (Skills) + Slot 12/7 (Racial Ability) inside skillsContainer
 local function SetupActionButtons()
     local btnSize = 28;
     local btnGap  = 3;
@@ -628,9 +628,78 @@ local function SetupActionButtons()
         end
     end
 
-    -- Hide unused action buttons 7-12
+    -- Setup Racial Ability Slot (Native slot 12 in stock Azeroth Survivors, fallback to slot 7)
+    local racialSlot = 12;
+    if ( not HasAction(12) and HasAction(7) ) then
+        racialSlot = 7;
+    end
+    UI.racialSlot = racialSlot;
+
+    local racialBtn = getglobal("ActionButton" .. racialSlot);
+    UI.racialBtn = racialBtn;
+
+    if ( racialBtn ) then
+        racialBtn:SetParent(UI.skillsContainer);
+        racialBtn:ClearAllPoints();
+        local racialX = startX + 6 * (btnSize + btnGap) + 4; -- 4px separator gap
+        racialBtn:SetPoint("TOPLEFT", UI.skillsContainer, "TOPLEFT", racialX, -startY);
+        racialBtn:SetWidth(btnSize);
+        racialBtn:SetHeight(btnSize);
+        racialBtn:SetFrameStrata("MEDIUM");
+        racialBtn:SetFrameLevel(UI.skillsContainer:GetFrameLevel() + 2);
+        racialBtn:Show();
+
+        local border = getglobal("ActionButton" .. racialSlot .. "Border");
+        if ( border ) then border:Hide(); border.Show = function() end; end
+
+        local norm = getglobal("ActionButton" .. racialSlot .. "NormalTexture");
+        if ( norm ) then norm:SetAlpha(0); end
+
+        local icon = getglobal("ActionButton" .. racialSlot .. "Icon");
+        if ( icon ) then
+            icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+        end
+
+        -- Radiant gold border for Racial ability
+        if ( not racialBtn.darkBorder ) then
+            local b = CreateFrame("Frame", nil, racialBtn);
+            b:SetPoint("TOPLEFT", racialBtn, "TOPLEFT", -1, 1);
+            b:SetPoint("BOTTOMRIGHT", racialBtn, "BOTTOMRIGHT", 1, -1);
+            b:SetFrameLevel(racialBtn:GetFrameLevel() + 1);
+            b:SetBackdrop({
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                tile = true,
+                tileSize = 8,
+                edgeSize = 6,
+                insets = { left = 1, right = 1, top = 1, bottom = 1 }
+            });
+            b:SetBackdropBorderColor(0.90, 0.70, 0.15, 0.95); -- Gold highlight
+            racialBtn.darkBorder = b;
+        end
+
+        local hotkey = getglobal("ActionButton" .. racialSlot .. "HotKey");
+        if ( hotkey ) then
+            hotkey:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
+            hotkey:SetTextColor(1.0, 0.85, 0.3);
+        end
+
+        local count = getglobal("ActionButton" .. racialSlot .. "Count");
+        if ( count ) then count:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE"); end
+
+        if ( not racialBtn.cdText ) then
+            local cdText = racialBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightLarge");
+            cdText:SetPoint("CENTER", racialBtn, "CENTER", 0, 0);
+            cdText:SetFont("Fonts\\ARIALN.TTF", 13, "OUTLINE");
+            cdText:SetTextColor(1, 1, 1, 1);
+            racialBtn.cdText = cdText;
+        end
+    end
+
+    -- Hide remaining unused action buttons
     for i = 7, 12 do
-        SafeHide("ActionButton" .. i);
+        if ( i ~= racialSlot ) then
+            SafeHide("ActionButton" .. i);
+        end
     end
 end
 
@@ -1108,10 +1177,13 @@ local function UpdatePlayerFrame()
 
     -- Action Button Cooldown Overlays from AZS_SPELLS
     if ( AZS_SPELLS ) then
+        local totalSpells = table.getn(AZS_SPELLS);
+        local normalCount = math.min(6, math.max(0, totalSpells - 1));
+
         for i = 1, 6 do
             local btn = getglobal("ActionButton" .. i);
             if ( btn and btn.cdText ) then
-                local sp = AZS_SPELLS[i];
+                local sp = (i <= normalCount) and AZS_SPELLS[i] or nil;
                 if ( sp and sp.cd and sp.cd >= 1.5 ) then
                     if ( sp.cd >= 60 ) then
                         btn.cdText:SetText(string.format("%dm", math.ceil(sp.cd / 60)));
@@ -1122,6 +1194,34 @@ local function UpdatePlayerFrame()
                 else
                     btn.cdText:SetText("");
                     btn.cdText:Hide();
+                end
+            end
+        end
+
+        -- Racial Ability Cooldown & Icon (Last entry in AZS_SPELLS)
+        local racialSlot = UI.racialSlot or 12;
+        local rBtn = UI.racialBtn or getglobal("ActionButton" .. racialSlot);
+        if ( rBtn and totalSpells > 0 ) then
+            local rSp = AZS_SPELLS[totalSpells];
+            if ( rSp ) then
+                local rIcon = getglobal("ActionButton" .. racialSlot .. "Icon");
+                if ( rIcon and rSp.icon and (not rIcon:GetTexture() or rIcon:GetTexture() == "") ) then
+                    rIcon:SetTexture(rSp.icon);
+                    rIcon:Show();
+                end
+
+                if ( rBtn.cdText ) then
+                    if ( rSp.cd and rSp.cd >= 1.5 ) then
+                        if ( rSp.cd >= 60 ) then
+                            rBtn.cdText:SetText(string.format("%dm", math.ceil(rSp.cd / 60)));
+                        else
+                            rBtn.cdText:SetText(string.format("%d", math.ceil(rSp.cd)));
+                        end
+                        rBtn.cdText:Show();
+                    else
+                        rBtn.cdText:SetText("");
+                        rBtn.cdText:Hide();
+                    end
                 end
             end
         end
@@ -1641,9 +1741,12 @@ local themeInit = CreateFrame("Frame", "AZSHelper_ThemeInit");
 themeInit:RegisterEvent("PLAYER_ENTERING_WORLD");
 themeInit:RegisterEvent("VARIABLES_LOADED");
 themeInit:RegisterEvent("PLAYER_TARGET_CHANGED");
+themeInit:RegisterEvent("ACTIONBAR_SLOT_CHANGED");
 themeInit:SetScript("OnEvent", function()
     if ( event == "PLAYER_TARGET_CHANGED" ) then
         HideDefaultBlizzardFrames();
+    elseif ( event == "ACTIONBAR_SLOT_CHANGED" ) then
+        SetupActionButtons();
     else
         InitTheme();
     end
