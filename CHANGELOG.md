@@ -4,6 +4,23 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.4.1] - 2026-10-23
+
+### Fixed & Improved
+- **Robust Multi-Language Addon Synchronization:**
+  - Fixed an issue where localized class names (German umlauts like `Jäger` or Cyrillic characters like `Воин`) caused `string.find` regex pattern matching to drop incoming teammate sync packets.
+  - Switched to delimiter splitting (`[^;]+`) to parse damage, DPS, kills, and health without locale encoding errors.
+  - Converted float damage/DPS values to integer values (`math.floor`) before broadcast, preventing decimal comma vs point locale parsing mismatches.
+  - Dual prefix broadcast (`BordoCoop` and `BORDO_COOP`) for universal private server packet compatibility.
+  - Case-insensitive teammate name matching for party member data lookup.
+- **Enhanced Combat Log Tracking for Teammates Without Addon:**
+  - Expanded combat log event listeners across all spell, periodic, creature, and friendly player damage events (`CHAT_MSG_SPELL_*` and `CHAT_MSG_COMBAT_*`).
+  - Switched party member name matching to plain substring search (`plain = true`) to prevent pattern escaping bugs with player names.
+  - Multi-language damage extraction supporting English (`for 190`), German (`190 Schaden`, `für 190`), and Russian (`190 ед.`, `190 урона`).
+- **Faster Broadcast Rate:** Increased sync broadcast frequency from every 1.0s to every 0.5s and enabled sync during card selection (`choosing` phase).
+
+---
+
 ## [2.4.0] - 2026-10-23
 
 ### Added

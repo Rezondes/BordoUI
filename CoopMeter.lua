@@ -202,80 +202,109 @@ local function BroadcastMyStats()
     local numRaid = GetNumRaidMembers() or 0;
     if ( numParty <= 0 and numRaid <= 0 ) then return; end
     
-    local myDmg = (AZS_RUN and AZS_RUN.dealt) or 0;
+    local myDmg = math.floor((AZS_RUN and AZS_RUN.dealt) or 0);
     local _, _, myDps = AZS_GetMeter();
-    myDps = myDps or 0;
+    myDps = math.floor(myDps or 0);
     local myKills = (AZS_RUN and AZS_RUN.kills) or 0;
-    local _, myClass = UnitClass("player");
-    myClass = myClass or "WARRIOR";
+    local locCls, engCls = UnitClass("player");
+    local myClass = engCls or locCls or "WARRIOR";
     local myHp = (AZS_RUN and AZS_RUN.hp) or UnitHealth("player") or 0;
     local myMaxHp = (AZS_RUN and AZS_RUN.hpm) or UnitHealthMax("player") or 100;
     
     local channel = (numRaid > 0) and "RAID" or "PARTY";
-    local msg = string.format("%d;%.1f;%s;%d;%d;%d", myDmg, myDps, myClass, myKills, myHp, myMaxHp);
+    local msg = myDmg .. ";" .. myDps .. ";" .. myClass .. ";" .. myKills .. ";" .. myHp .. ";" .. myMaxHp;
+    pcall(SendAddonMessage, "BordoCoop", msg, channel);
     pcall(SendAddonMessage, "BORDO_COOP", msg, channel);
 end
 
--- Multi-language Combat Log Parser for party members without Bordo UI
+-- Universal Multi-Language Combat Log Parser for party members without Bordo UI
 local function ProcessCombatLogPartyHit(msg)
-    if ( not msg ) then return; end
+    if ( not msg or msg == "" ) then return; end
     
     local numParty = GetNumPartyMembers() or 0;
     if ( numParty <= 0 ) then return; end
     
-    -- Check which party member name appears in the combat log message
     local matchedName = nil;
     local matchedClass = "WARRIOR";
+    local lowMsg = string.lower(msg);
+    
     for i = 1, numParty do
         local pName = UnitName("party" .. i);
-        if ( pName and pName ~= UNKNOWN and string.find(msg, pName) ) then
-            matchedName = pName;
-            local _, cl = UnitClass("party" .. i);
-            matchedClass = cl or "WARRIOR";
-            break;
+        if ( pName and pName ~= UNKNOWN ) then
+            local lowPName = string.lower(pName);
+            -- Plain substring search without pattern escaping
+            if ( string.find(lowMsg, lowPName, 1, true) ) then
+                matchedName = pName;
+                local _, cl = UnitClass("party" .. i);
+                matchedClass = cl or "WARRIOR";
+                break;
+            end
         end
     end
     
     if ( not matchedName ) then return; end
     
-    -- Extract damage number
+    -- Extract damage amount:
+    -- In WoW combat logs, damage is always an integer number.
+    -- English: "for 190", "suffers 190"
+    -- German: "für 190", "190 Schaden"
+    -- Russian: "190 ед. урона", "наносит 190"
     local amount = nil;
-    local _, _, n1 = string.find(msg, "for (%d+)");
-    if ( n1 ) then amount = tonumber(n1); end
+    
+    local _, _, a1 = string.find(msg, "(%d+)%s*Schaden");
+    if ( a1 ) then amount = tonumber(a1); end
     if ( not amount ) then
-        local _, _, n2 = string.find(msg, "f%A+r (%d+)");
-        if ( n2 ) then amount = tonumber(n2); end
+        local _, _, a2 = string.find(msg, "for (%d+)");
+        if ( a2 ) then amount = tonumber(a2); end
     end
     if ( not amount ) then
-        local _, _, n3 = string.find(msg, "(%d+) ед%.");
-        if ( n3 ) then amount = tonumber(n3); end
+        local _, _, a3 = string.find(msg, "(%d+)%s*ед%.");
+        if ( a3 ) then amount = tonumber(a3); end
     end
     if ( not amount ) then
-        local _, _, n4 = string.find(msg, "(%d+) урона");
-        if ( n4 ) then amount = tonumber(n4); end
+        local _, _, a4 = string.find(msg, "(%d+)%s*урона");
+        if ( a4 ) then amount = tonumber(a4); end
     end
     if ( not amount ) then
-        local _, _, n5 = string.find(msg, "suffers (%d+)");
-        if ( n5 ) then amount = tonumber(n5); end
+        local _, _, a5 = string.find(msg, "suffers (%d+)");
+        if ( a5 ) then amount = tonumber(a5); end
     end
+    if ( not amount ) then
+        local _, _, a6 = string.find(msg, "f%A+r (%d+)");
+        if ( a6 ) then amount = tonumber(a6); end
+    end
+    -- Fallback: extract last number in the string (in almost all WoW combat messages, the damage number is the last number)
     if ( not amount ) then
         local gFunc = string.gfind or string.gmatch;
         if ( gFunc ) then
-            for w in gFunc(msg, "(%d+)") do amount = tonumber(w); end
+            for num in gFunc(msg, "(%d+)") do
+                amount = tonumber(num);
+            end
         end
     end
     
-    if ( amount and amount > 0 ) then
+    if ( amount and amount > 0 and amount < 5000000 ) then
         local existing = BordoUI.CoopData[matchedName];
-        -- Only attribute combat log hits if player is not sending addon syncs
+        -- Only attribute combat log hits if player is not sending fresh addon syncs (< 3.0s ago)
         if ( not existing or existing.source ~= "addon" or (GetTime() - (existing.lastUpdate or 0) > 3.0) ) then
             if ( not existing ) then
-                existing = { name = matchedName, dmg = 0, dps = 0, class = matchedClass, kills = 0, source = "combatlog" };
+                existing = {
+                    name       = matchedName,
+                    dmg        = 0,
+                    dps        = 0,
+                    class      = matchedClass,
+                    kills      = 0,
+                    hp         = 0,
+                    maxHp      = 100,
+                    source     = "combatlog",
+                    lastUpdate = GetTime(),
+                };
                 BordoUI.CoopData[matchedName] = existing;
             end
             existing.dmg = existing.dmg + amount;
+            existing.class = matchedClass;
             local runT = (AZS_GetRunTime and AZS_GetRunTime()) or (AZS_RUN and AZS_RUN.t) or 1;
-            existing.dps = existing.dmg / math.max(1, runT);
+            existing.dps = math.floor(existing.dmg / math.max(1, runT));
             existing.lastUpdate = GetTime();
             existing.source = "combatlog";
         end
@@ -291,6 +320,15 @@ coopListener:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PARTY_DAMAGE");
 coopListener:RegisterEvent("CHAT_MSG_COMBAT_FRIENDLYPLAYER_HITS");
 coopListener:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE");
 coopListener:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_FRIENDLYPLAYER_DAMAGE");
+coopListener:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_HITS");
+coopListener:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE");
+coopListener:RegisterEvent("CHAT_MSG_COMBAT_HOSTILEPLAYER_HITS");
+coopListener:RegisterEvent("CHAT_MSG_SPELL_HOSTILEPLAYER_DAMAGE");
+coopListener:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE");
+coopListener:RegisterEvent("CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS");
+coopListener:RegisterEvent("CHAT_MSG_COMBAT_PET_HITS");
+coopListener:RegisterEvent("CHAT_MSG_SPELL_PET_DAMAGE");
+coopListener:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_PET_DAMAGE");
 coopListener:RegisterEvent("PLAYER_ENTERING_WORLD");
 coopListener:RegisterEvent("PARTY_MEMBERS_CHANGED");
 
@@ -301,20 +339,47 @@ coopListener:SetScript("OnEvent", function()
         local sender = arg4;
         local myName = UnitName("player");
         
-        if ( prefix == "BORDO_COOP" and sender and msg and sender ~= myName ) then
-            local _, _, dStr, dpsStr, cStr, kStr, hpStr, hpmStr = string.find(msg, "^(%d+);([%d%.]+);(%a+);(%d+);(%d+);(%d+)");
-            if ( dStr ) then
-                BordoUI.CoopData[sender] = {
-                    name       = sender,
-                    dmg        = tonumber(dStr) or 0,
-                    dps        = tonumber(dpsStr) or 0,
-                    class      = cStr or "WARRIOR",
-                    kills      = tonumber(kStr) or 0,
-                    hp         = tonumber(hpStr) or 0,
-                    maxHp      = tonumber(hpmStr) or 100,
-                    lastUpdate = GetTime(),
-                    source     = "addon",
-                };
+        if ( (prefix == "BordoCoop" or prefix == "BORDO_COOP") and sender and msg ) then
+            if ( string.lower(sender) ~= string.lower(myName or "") ) then
+                local parts = {};
+                local gFunc = string.gfind or string.gmatch;
+                if ( gFunc ) then
+                    for w in gFunc(msg, "([^;]+)") do
+                        table.insert(parts, w);
+                    end
+                end
+                
+                if ( table.getn(parts) >= 2 ) then
+                    local pDmg = tonumber(parts[1]) or 0;
+                    local pDps = tonumber(parts[2]) or 0;
+                    local pClass = parts[3] or "WARRIOR";
+                    local pKills = tonumber(parts[4]) or 0;
+                    local pHp = tonumber(parts[5]) or 0;
+                    local pHpMax = tonumber(parts[6]) or 100;
+                    
+                    -- Match exact party member case if possible
+                    local normName = sender;
+                    local numParty = GetNumPartyMembers() or 0;
+                    for i = 1, numParty do
+                        local pName = UnitName("party" .. i);
+                        if ( pName and string.lower(pName) == string.lower(sender) ) then
+                            normName = pName;
+                            break;
+                        end
+                    end
+                    
+                    BordoUI.CoopData[normName] = {
+                        name       = normName,
+                        dmg        = pDmg,
+                        dps        = pDps,
+                        class      = pClass,
+                        kills      = pKills,
+                        hp         = pHp,
+                        maxHp      = pHpMax,
+                        lastUpdate = GetTime(),
+                        source     = "addon",
+                    };
+                end
             end
         end
         return;
@@ -325,8 +390,8 @@ coopListener:SetScript("OnEvent", function()
         return;
     end
     
-    -- Combat Log Fallback
-    if ( string.find(event or "", "PARTY") or string.find(event or "", "FRIENDLYPLAYER") ) then
+    -- Universal Combat Log Damage Fallback
+    if ( string.find(event or "", "COMBAT_") or string.find(event or "", "SPELL_") ) then
         ProcessCombatLogPartyHit(arg1);
     end
 end);
@@ -369,6 +434,16 @@ function BordoUI:UpdateCoopMeter()
             if ( pName and pName ~= UNKNOWN and pName ~= myName ) then
                 local _, pClass = UnitClass("party" .. i);
                 local pData = BordoUI.CoopData[pName];
+                if ( not pData ) then
+                    local lowP = string.lower(pName);
+                    for k, v in pairs(BordoUI.CoopData) do
+                        if ( string.lower(k) == lowP ) then
+                            pData = v;
+                            break;
+                        end
+                    end
+                end
+                
                 if ( pData ) then
                     pData.class = pClass or pData.class;
                     table.insert(players, pData);
@@ -459,11 +534,11 @@ coopWorker:SetScript("OnUpdate", function()
     syncElapsed = syncElapsed + dt;
     updateElapsed = updateElapsed + dt;
     
-    -- 1. Broadcast stats every 1.0 second during active run
-    if ( syncElapsed >= 1.0 ) then
+    -- 1. Broadcast stats every 0.5 seconds during active run or card picking
+    if ( syncElapsed >= 0.5 ) then
         syncElapsed = 0;
         local ph = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph);
-        if ( ph == "playing" ) then
+        if ( ph == "playing" or ph == "choosing" or ph == "paused" ) then
             BroadcastMyStats();
         end
     end
