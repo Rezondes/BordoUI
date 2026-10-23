@@ -1,0 +1,13 @@
+## Interface: 11200
+## Title: |cff00ccffBordo UI|r |cffffd100[Azeroth Survivors]|r
+## Notes: Modernes UI Suite fuer Azeroth Survivors (Zentrierter Unit-Frame, Datatext-Leiste, Boss-Timeline, Multipliers, Kisten-Radar & Stats).
+## Author: Bordo
+## Version: 2.0.0
+## SavedVariables: BordoUIDB, AZSHelperDB
+Core.lua
+DamageFont.lua
+StatsTable.lua
+ThemeUI.lua
+Nameplates.lua
+MapPins.lua
+DeathRecap.lua
