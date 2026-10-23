@@ -6,7 +6,7 @@
 
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.1.1";
+BordoUI.version = "2.1.2";
 
 -- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
 -- (Keeps bottom-right corner clear for damage meters / DPS addons)
@@ -35,6 +35,7 @@ local defaults = {
     tableScale = 0.80,
     collapsed  = false,
     statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
+    multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 },
     centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
     deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 },
     encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
@@ -192,9 +193,13 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Max camera zoom unlocked (factor 4 / 50 yards). Zoomed out by %d yards. You can now zoom out further using your mouse wheel!", yards));
     elseif ( cmd == "reset" ) then
         BordoUIDB.statsPos = nil;
+        BordoUIDB.multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 };
         BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
         BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
+        if ( AZSHelper_MultipliersPanel ) then
+            BordoUI:RestorePosition(AZSHelper_MultipliersPanel, BordoUIDB.multPanelPos);
+        end
         if ( AZSHelper_StatsTableFrame ) then
             if ( AZSHelper.AnchorStatsTableToMultipliers ) then
                 AZSHelper:AnchorStatsTableToMultipliers();

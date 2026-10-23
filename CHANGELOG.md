@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.1.2] - 2026-10-23
+
+### Added
+- **Movable Multipliers Panel:** The Multipliers panel can now be freely dragged and repositioned anywhere on screen using `LeftButton`.
+- **Saved Position:** Its custom position is automatically saved across sessions and restored on login/reload (`multPanelPos`).
+- **Dynamic Docking Follow:** When moving the Multipliers panel, the docked Attack Stats table automatically moves along with it.
+- **Intelligent Click vs Drag:** Clicking the panel toggles the attack stats table without accidentally triggering movement, while dragging moves the panel smoothly.
+
+---
+
 ## [2.1.1] - 2026-10-23
 
 ### Added

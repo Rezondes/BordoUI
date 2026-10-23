@@ -877,7 +877,9 @@ UI.multPanel = CreateFrame("Frame", "AZSHelper_MultipliersPanel", UIParent);
 UI.multPanel:SetWidth(125);
 UI.multPanel:SetHeight(192);
 UI.multPanel:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -120);
-UI.multPanel:SetFrameStrata("BACKGROUND");
+UI.multPanel:SetFrameStrata("LOW");
+UI.multPanel:SetMovable(true);
+UI.multPanel:SetClampedToScreen(true);
 
 UI.multPanel:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -1048,10 +1050,33 @@ btnDetails:SetScript("OnLeave", function()
     GameTooltip:Hide();
 end);
 
--- Click anywhere on the Multipliers panel to also toggle detailed table
+-- Make Multipliers panel draggable & clickable
+local isDraggingMult = false;
 UI.multPanel:EnableMouse(true);
-UI.multPanel:SetScript("OnMouseDown", function()
-    ToggleStatsTable();
+UI.multPanel:RegisterForDrag("LeftButton");
+
+UI.multPanel:SetScript("OnDragStart", function()
+    isDraggingMult = true;
+    this:StartMoving();
+end);
+
+UI.multPanel:SetScript("OnDragStop", function()
+    this:StopMovingOrSizing();
+    isDraggingMult = false;
+    local point, _, relPoint, x, y = this:GetPoint();
+    if ( AZSHelperDB ) then
+        AZSHelperDB.multPanelPos = { point = point, relativePoint = relPoint, x = x, y = y };
+    end
+    if ( AZSHelper_StatsTableFrame and AZSHelper_StatsTableFrame:IsShown() ) then
+        AZSHelper_StatsTableFrame:ClearAllPoints();
+        AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", this, "TOPRIGHT", 6, 0);
+    end
+end);
+
+UI.multPanel:SetScript("OnMouseUp", function()
+    if ( arg1 == "LeftButton" and not isDraggingMult ) then
+        ToggleStatsTable();
+    end
 end);
 
 UI.multPanel:SetScript("OnEnter", function()
@@ -1061,6 +1086,7 @@ UI.multPanel:SetScript("OnEnter", function()
     GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
     GameTooltip:AddLine("|cff00ccffMultipliers & Crit Statistics|r");
     GameTooltip:AddLine("Click anywhere or click [Attack Stats >>] to open the detailed attack breakdown table.", 1, 1, 1, 1);
+    GameTooltip:AddLine("Hold & drag to move window.", 0.7, 0.7, 0.7);
     GameTooltip:Show();
 end);
 
@@ -1804,6 +1830,9 @@ local function InitTheme()
     AZSHelper:SkinChatWindow();
     if ( AZSHelperDB and AZSHelperDB.centerHudPos ) then
         AZSHelper:RestorePosition(UI.skillsContainer, AZSHelperDB.centerHudPos);
+    end
+    if ( AZSHelperDB and AZSHelperDB.multPanelPos ) then
+        AZSHelper:RestorePosition(UI.multPanel, AZSHelperDB.multPanelPos);
     end
     if ( AZSHelperDB and AZSHelperDB.bossPanelPos ) then
         AZSHelper:RestorePosition(UI.bossPanel, AZSHelperDB.bossPanelPos);
