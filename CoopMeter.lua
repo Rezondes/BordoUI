@@ -197,10 +197,18 @@ end
 -- =========================================================================
 -- 2. ADDON BROADCAST & COMBAT LOG LISTENER
 -- =========================================================================
+local debugPacketsSent = 0;
+local debugPacketsRecv = 0;
+local debugLastRecvText = "None";
+local debugLastRecvSender = "None";
+
 local function BroadcastMyStats()
     local numParty = GetNumPartyMembers() or 0;
     local numRaid = GetNumRaidMembers() or 0;
     if ( numParty <= 0 and numRaid <= 0 ) then return; end
+    
+    local myName = UnitName("player");
+    if ( not myName or myName == UNKNOWN or myName == "" ) then return; end
     
     local myDmg = math.floor((AZS_RUN and AZS_RUN.dealt) or 0);
     local _, _, myDps = AZS_GetMeter();
@@ -211,10 +219,22 @@ local function BroadcastMyStats()
     local myHp = (AZS_RUN and AZS_RUN.hp) or UnitHealth("player") or 0;
     local myMaxHp = (AZS_RUN and AZS_RUN.hpm) or UnitHealthMax("player") or 100;
     
+    -- Format: NAME;DMG;DPS;CLASS;KILLS;HP;MAXHP
+    local msg = myName .. ";" .. myDmg .. ";" .. myDps .. ";" .. myClass .. ";" .. myKills .. ";" .. myHp .. ";" .. myMaxHp;
     local channel = (numRaid > 0) and "RAID" or "PARTY";
-    local msg = myDmg .. ";" .. myDps .. ";" .. myClass .. ";" .. myKills .. ";" .. myHp .. ";" .. myMaxHp;
+    
     pcall(SendAddonMessage, "BordoCoop", msg, channel);
     pcall(SendAddonMessage, "BORDO_COOP", msg, channel);
+    
+    -- Direct Whisper fallback to each party member (bypasses party channel restrictions)
+    for i = 1, numParty do
+        local pName = UnitName("party" .. i);
+        if ( pName and pName ~= UNKNOWN and string.lower(pName) ~= string.lower(myName) ) then
+            pcall(SendAddonMessage, "BordoCoop", msg, "WHISPER", pName);
+            pcall(SendAddonMessage, "BORDO_COOP", msg, "WHISPER", pName);
+        end
+    end
+    debugPacketsSent = debugPacketsSent + 1;
 end
 
 -- Universal Multi-Language Combat Log Parser for party members without Bordo UI
@@ -336,50 +356,67 @@ coopListener:SetScript("OnEvent", function()
     if ( event == "CHAT_MSG_ADDON" ) then
         local prefix = arg1;
         local msg = arg2;
+        local channel = arg3;
         local sender = arg4;
-        local myName = UnitName("player");
+        local myName = UnitName("player") or "";
         
-        if ( (prefix == "BordoCoop" or prefix == "BORDO_COOP") and sender and msg ) then
-            if ( string.lower(sender) ~= string.lower(myName or "") ) then
-                local parts = {};
-                local gFunc = string.gfind or string.gmatch;
-                if ( gFunc ) then
-                    for w in gFunc(msg, "([^;]+)") do
-                        table.insert(parts, w);
+        if ( (prefix == "BordoCoop" or prefix == "BORDO_COOP") and msg ) then
+            debugPacketsRecv = debugPacketsRecv + 1;
+            debugLastRecvText = msg;
+            debugLastRecvSender = sender or "Unknown";
+            
+            local parts = {};
+            local gFunc = string.gfind or string.gmatch;
+            if ( gFunc ) then
+                for w in gFunc(msg, "([^;]+)") do
+                    table.insert(parts, w);
+                end
+            end
+            
+            local pName, pDmg, pDps, pClass, pKills, pHp, pHpMax;
+            -- New 7-parameter format: NAME;DMG;DPS;CLASS;KILLS;HP;MAXHP
+            if ( table.getn(parts) >= 7 ) then
+                pName = parts[1];
+                pDmg = tonumber(parts[2]) or 0;
+                pDps = tonumber(parts[3]) or 0;
+                pClass = parts[4] or "WARRIOR";
+                pKills = tonumber(parts[5]) or 0;
+                pHp = tonumber(parts[6]) or 0;
+                pHpMax = tonumber(parts[7]) or 100;
+            -- Legacy 6-parameter format: DMG;DPS;CLASS;KILLS;HP;MAXHP
+            elseif ( table.getn(parts) >= 6 ) then
+                pName = sender;
+                pDmg = tonumber(parts[1]) or 0;
+                pDps = tonumber(parts[2]) or 0;
+                pClass = parts[3] or "WARRIOR";
+                pKills = tonumber(parts[4]) or 0;
+                pHp = tonumber(parts[5]) or 0;
+                pHpMax = tonumber(parts[6]) or 100;
+            end
+            
+            pName = pName or sender;
+            if ( pName and string.lower(pName) ~= string.lower(myName) ) then
+                local normName = pName;
+                local numParty = GetNumPartyMembers() or 0;
+                for i = 1, numParty do
+                    local partyTokenName = UnitName("party" .. i);
+                    if ( partyTokenName and string.lower(partyTokenName) == string.lower(pName) ) then
+                        normName = partyTokenName;
+                        break;
                     end
                 end
                 
-                if ( table.getn(parts) >= 2 ) then
-                    local pDmg = tonumber(parts[1]) or 0;
-                    local pDps = tonumber(parts[2]) or 0;
-                    local pClass = parts[3] or "WARRIOR";
-                    local pKills = tonumber(parts[4]) or 0;
-                    local pHp = tonumber(parts[5]) or 0;
-                    local pHpMax = tonumber(parts[6]) or 100;
-                    
-                    -- Match exact party member case if possible
-                    local normName = sender;
-                    local numParty = GetNumPartyMembers() or 0;
-                    for i = 1, numParty do
-                        local pName = UnitName("party" .. i);
-                        if ( pName and string.lower(pName) == string.lower(sender) ) then
-                            normName = pName;
-                            break;
-                        end
-                    end
-                    
-                    BordoUI.CoopData[normName] = {
-                        name       = normName,
-                        dmg        = pDmg,
-                        dps        = pDps,
-                        class      = pClass,
-                        kills      = pKills,
-                        hp         = pHp,
-                        maxHp      = pHpMax,
-                        lastUpdate = GetTime(),
-                        source     = "addon",
-                    };
-                end
+                BordoUI.CoopData[normName] = {
+                    name       = normName,
+                    dmg        = pDmg,
+                    dps        = pDps,
+                    class      = pClass,
+                    kills      = pKills,
+                    hp         = pHp,
+                    maxHp      = pHpMax,
+                    lastUpdate = GetTime(),
+                    source     = "addon",
+                };
             end
         end
         return;
@@ -534,11 +571,12 @@ coopWorker:SetScript("OnUpdate", function()
     syncElapsed = syncElapsed + dt;
     updateElapsed = updateElapsed + dt;
     
-    -- 1. Broadcast stats every 0.5 seconds during active run or card picking
+    -- 1. Broadcast stats every 0.5 seconds whenever in a group
     if ( syncElapsed >= 0.5 ) then
         syncElapsed = 0;
-        local ph = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph);
-        if ( ph == "playing" or ph == "choosing" or ph == "paused" ) then
+        local numParty = GetNumPartyMembers() or 0;
+        local numRaid = GetNumRaidMembers() or 0;
+        if ( numParty > 0 or numRaid > 0 ) then
             BroadcastMyStats();
         end
     end
@@ -591,6 +629,36 @@ function BordoUI:ToggleCoopMeter(param)
         userClosedThisSession = false;
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Co-op damage meter reset.");
         BordoUI:UpdateCoopMeter();
+        return;
+    end
+    
+    if ( param == "debug" or param == "diag" ) then
+        local myName = UnitName("player") or "You";
+        local numParty = GetNumPartyMembers() or 0;
+        local ph = (AZS_GetPhase and AZS_GetPhase()) or (AZS_RUN and AZS_RUN.ph) or "nil";
+        local myDmg = math.floor((AZS_RUN and AZS_RUN.dealt) or 0);
+        
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccff--- Bordo UI Co-op Diagnostics ---|r");
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("Player: |cffffd100%s|r | Phase: |cff00e5ff%s|r | Dmg: |cff55ff55%d|r", myName, ph, myDmg));
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("Party Members (%d):", numParty));
+        for i = 1, numParty do
+            local pName = UnitName("party" .. i) or "Unknown";
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("  [%d] %s", i, pName));
+        end
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("Packets Sent: |cff55ff55%d|r | Packets Received: |cff55ff55%d|r", debugPacketsSent, debugPacketsRecv));
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("Last Recv From: |cffffd100%s|r (Payload: %s)", debugLastRecvSender, debugLastRecvText));
+        
+        local count = 0;
+        for k, v in pairs(BordoUI.CoopData) do
+            count = count + 1;
+            local age = math.floor(GetTime() - (v.lastUpdate or 0));
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("  -> Teammate |cffffd100%s|r: %d dmg (%d DPS) [%s, %ds ago]",
+                k, v.dmg or 0, v.dps or 0, v.source or "unknown", age));
+        end
+        if ( count == 0 ) then
+            DEFAULT_CHAT_FRAME:AddMessage("|cffff4444No teammate data received yet!|r");
+            DEFAULT_CHAT_FRAME:AddMessage("Ask teammate to type |cffffd100/bordo|r. If unknown, they must restart WoW and check folder name!");
+        end
         return;
     end
     

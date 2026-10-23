@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.4.2] - 2026-10-23
+
+### Fixed & Improved
+- **Dual-Channel Synchronization (Party + Whisper):** Co-op damage broadcasts are now transmitted over both `PARTY` and direct `WHISPER` addon messages, ensuring data passes through even if a server blocks or throttles party chat channels.
+- **Embedded Name Payload:** Character names are now embedded directly within the message payload (`NAME;DMG;DPS;CLASS;...`), completely eliminating reliance on `arg4` (sender token) which can be nil or reformatted across different 1.12 clients.
+- **Unrestricted Group Sync:** Removed restrictive phase checks (`ph == "playing"`) so background sync runs continuously as long as you are in a party or raid.
+- **Live Diagnostics Tool (`/coop debug`):** Added a diagnostic command that outputs live packets sent, packets received, raw payload, and teammate status to pinpoint setup issues in seconds.
+
+---
+
 ## [2.4.1] - 2026-10-23
 
 ### Fixed & Improved
