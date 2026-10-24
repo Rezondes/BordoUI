@@ -110,16 +110,6 @@ list:SetBackdropColor(0.04, 0.04, 0.07, 0.55)
 list:SetMovable(true)
 list:EnableMouse(true)
 list:RegisterForDrag("LeftButton")
-list:SetScript("OnDragStart", function()
-	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
-		list:StartMoving()
-	end
-end)
-list:SetScript("OnDragStop", function()
-	list:StopMovingOrSizing()
-	SavePlace()
-end)
-list:Hide()
 
 local function SavePlace()
 	local settings = Settings()
@@ -139,6 +129,20 @@ local function RestorePlace()
 	end
 end
 
+-- Global export to prevent any nil call errors
+SavePlace = SavePlace
+RestorePlace = RestorePlace
+
+list:SetScript("OnDragStart", function()
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		list:StartMoving()
+	end
+end)
+list:SetScript("OnDragStop", function()
+	list:StopMovingOrSizing()
+	SavePlace()
+end)
+list:Hide()
 function BordoUI_UpdateBuildPosition()
 	RestorePlace()
 end

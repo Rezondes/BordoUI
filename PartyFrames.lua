@@ -208,14 +208,31 @@ holder:Hide()
 BordoUIParty = holder
 BordoUI.Party.holder = holder
 
-local PlaceFrames
+local function PlaceFrames()
+	holder:ClearAllPoints()
+	local db = BordoUIDB or SurvivorUIDB
+	if db and db.partyLeft and db.partyBottom then
+		holder:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", db.partyLeft, db.partyBottom)
+		return
+	end
+	local player = getglobal("SurvivorUIPlayer")
+	if player and player:IsVisible() then
+		holder:SetPoint("BOTTOMRIGHT", player, "BOTTOMLEFT", -14, 0)
+	else
+		holder:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 12, 260)
+	end
+end
 
 local function SaveFrames()
 	BordoUIDB = BordoUIDB or {}
 	BordoUIDB.partyLeft = math.floor(holder:GetLeft() + 0.5)
 	BordoUIDB.partyBottom = math.floor(holder:GetBottom() + 0.5)
-	if PlaceFrames then PlaceFrames() end
+	PlaceFrames()
 end
+
+-- Global export to prevent any nil call errors
+SaveFrames = SaveFrames
+PlaceFrames = PlaceFrames
 
 holder:SetScript("OnDragStart", function()
 	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
@@ -226,7 +243,6 @@ holder:SetScript("OnDragStop", function()
 	holder:StopMovingOrSizing()
 	SaveFrames()
 end)
-
 local rows = {}
 
 local function Tip(row)
@@ -473,28 +489,6 @@ local function DrawFrames(revive)
 		holder:SetHeight(ROW_HEIGHT)
 		holder:Hide()
 	end
-end
-
-local function PlaceFrames()
-	holder:ClearAllPoints()
-	local db = BordoUIDB or SurvivorUIDB
-	if db and db.partyLeft and db.partyBottom then
-		holder:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", db.partyLeft, db.partyBottom)
-		return
-	end
-	local player = getglobal("SurvivorUIPlayer")
-	if player and player:IsVisible() then
-		holder:SetPoint("BOTTOMRIGHT", player, "BOTTOMLEFT", -14, 0)
-	else
-		holder:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 12, 260)
-	end
-end
-
-local function SaveFrames()
-	BordoUIDB = BordoUIDB or {}
-	BordoUIDB.partyLeft = math.floor(holder:GetLeft() + 0.5)
-	BordoUIDB.partyBottom = math.floor(holder:GetBottom() + 0.5)
-	PlaceFrames()
 end
 
 -- Suppress default Blizzard party frames

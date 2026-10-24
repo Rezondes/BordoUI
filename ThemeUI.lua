@@ -174,6 +174,7 @@ row:RegisterForDrag("LeftButton")
 row:SetClampedToScreen(true)
 row:SetFrameStrata("LOW")
 UI.skillsContainer = row
+local PositionMicroButtons
 AZSHelper_SkillsContainer = row
 
 local function SaveHudPosition()
@@ -946,7 +947,7 @@ microDock:SetClampedToScreen(true)
 AZSHelper:MakeMovable(microDock, "microDockPos")
 UI.microDock = microDock
 
-local function PositionMicroButtons()
+PositionMicroButtons = function()
 	local charBtn = getglobal("CharacterMicroButton")
 	if charBtn then
 		charBtn:SetParent(microDock)
