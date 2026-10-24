@@ -1,555 +1,858 @@
-﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
--- Survivor UI: caches and lairs on the minimap.
---
--- The game shares every cache on the field (AZS_CHESTS) and every guardian's
--- lair (AZS_GetLairs), each with its place in the world (x, y, in yards) and
--- on the zone's map (mx, my). Since the game's 0.97 it shares the hero's
--- place in the world too (AZS_RUN px, py) and the way faced (pf): the pins go
--- by those yards, on every map, instances too. On an older game the hero's
--- place comes from the map (GetPlayerMapPosition), and the yards a map unit
--- spans are worked out from two shared places far apart.
---
--- A cache is a golden chest; a lair its own mark (the one the guardians' bar
--- and list show, Guardians.lua), or with the marks off a horned skull, bright
--- while its guardian holds it, dimmed once it is empty. One beyond the
--- minimap's edge sits on the edge, smaller and fainter, pointing the way.
--- Hover a pin for what it is.
--- The options' Minimap tab sets them: lairs and caches each on or off and its
--- size, an empty lair dimmed or hidden, a pin out of reach on the edge or
--- hidden. All off with "Caches on the minimap" (Modules); /sui pins prints
--- what the addon reads, to check it.
+--[[
+    Bordo UI - MapPins.lua
+    World of Warcraft 1.12.1 / Interface 11200 / Azeroth Survivors
+    
+    Complete Unified Map Pin Engine:
+    1. Rock-Solid Stationary Pins:
+       - Client-side 60 FPS real-time positioning outdoors via GetPlayerMapPosition("player")
+       - Continuous coordinate calibration from AZS_LAIRS and AZS_CHESTS (M.mapW, M.mapH, M.originX, M.originY)
+       - Instance-mode smoothing via Glide and Ease for Naxxramas, SM, AQ with true INDOOR diameter scale
+       - Symbols stay 100% stationary on the map terrain when the player moves (no drifting or swaying!)
+    2. Full Chestlight Engine Restored:
+       - High-res loot bag texture (bag.tga) + soft pulsing halo glow (glow.tga)
+       - Clusters nearby caches within 10 yards (MERGE_YD = 10) into single icons with count tooltip
+       - Violet directional edge arrow (AZSHelper_ChestArrow) pointing to distant out-of-range chests
+       - Tooltip displays cache count, exact yard distance, and current chest gold cost
+       - Chat alerts when new caches spawn
+       - World map pins on WorldMapButton
+       - Slash commands: /chestlight and /cl (/cl arrow, /cl chat)
+    3. Bosses & Guardian Lairs:
+       - Active Guardian Lairs with heraldic marks (LairMarks.tga) and warm gold glow
+       - Active Bosses from AZS_UNITS with bright red skull pin and intense pulsing red glow
+       - Off-screen edge clamping with directional guidance
+       - Detailed status tooltips (alive, fighting, empty with respawn timer, distance)
+]]--
 
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
-local PIN_SIZE = 16                -- a pin's size untouched; on the edge, 11 of each 16
-local EDGE_SIZE = 11
+BordoUI = BordoUI or {};
+AZSHelper = AZSHelper or {};
 
--- The yards across the minimap at each zoom level, as the 1.12 client draws
--- it (the game's too): outdoors, and indoors (in a building, most of an
--- instance), where it draws closer and keeps a zoom of its own.
-local MINIMAP_YARDS = { [0] = 466.67, [1] = 400, [2] = 333.33, [3] = 266.67, [4] = 200, [5] = 133.33 }
-local INSIDE_YARDS = { [0] = 300, [1] = 240, [2] = 180, [3] = 120, [4] = 80, [5] = 50 }
+local MEDIA = "Interface\\AddOns\\BordoUI\\Media\\";
+local ART = "Interface\\AddOns\\BordoUI\\Art\\";
 
-local function Enabled()
-	return true or true
+local BAG = MEDIA .. "bag.tga";
+local GLOW = MEDIA .. "glow.tga";
+local ARROW = "Interface\\Minimap\\MinimapArrow";
+local PIN_LAIR = ART .. "PinLair.tga";
+local PACE_GLOW = ART .. "PaceGlow.tga";
+
+local PIN_SIZE = 14;
+local BOSS_PIN_SIZE = 18;
+local MERGE_YD = 10;
+local GLOW_PERIOD = 4.0;
+local GLOW_MIN, GLOW_MAX = 0.20, 0.65;
+local ARROW_SIZE = 24;
+
+-- Outdoor minimap diameter in yards per zoom level (stock Vanilla 1.12 values)
+local OUTDOOR = { [0] = 466.6667, [1] = 400.0, [2] = 333.3333, [3] = 266.6667, [4] = 200.0, [5] = 133.3333 };
+-- Indoors (instances/arenas) the minimap shows far less ground per zoom level
+local INDOOR  = { [0] = 300.0,    [1] = 240.0, [2] = 180.0,    [3] = 120.0,    [4] = 80.0,   [5] = 50.0 };
+
+-- Module state table (consolidated into a single table to keep Lua 5.0 upvalues well below 32)
+local M = {
+    chestPins = {},
+    bossPins = {},
+    worldPins = {},
+    known = {},
+    primed = false,
+    acc = 0,
+    calibratedAt = nil,
+    mapReady = false,
+    indoors = nil,
+    indoorsZoom = nil,
+    glowClock = 0,
+    mapW = 6381.25,
+    mapH = 4254.17,
+    originX = 0,
+    originY = 0,
+    hero = { ivl = 0.2, s = {} }
+};
+
+AZSHelper.MinimapChestPins = M.chestPins;
+AZSHelper.WorldMapChestPins = M.worldPins;
+
+local function DB()
+    if ( type(AZSHelperDB) ~= "table" ) then AZSHelperDB = {}; end
+    if ( AZSHelperDB.chestArrow == nil ) then AZSHelperDB.chestArrow = true; end
+    if ( AZSHelperDB.chestChat == nil ) then AZSHelperDB.chestChat = true; end
+    return AZSHelperDB;
 end
 
-local function Playing()
-	if not (AZS_GetPhase and AZS_CHESTS) then
-		return false
-	end
-	local phase = AZS_GetPhase()
-	return phase == "playing" or phase == "choosing" or phase == "paused"
+local function Print(msg)
+    DEFAULT_CHAT_FRAME:AddMessage("|cffc873ffChestlight:|r |cffe6ccff" .. msg .. "|r");
 end
 
--- A map coordinate as a share of the map, 0 to 1, whether the game sends it
--- that way or in percent. A map the client has none of (an instance's) comes
--- as -1: no place on it.
-local function Share(value)
-	value = tonumber(value)
-	if not value or value < 0 then
-		return nil
-	end
-	if value > 1.5 then
-		return value / 100
-	end
-	return value
+local function Share(v)
+    v = tonumber(v);
+    if ( not v or v < 0 ) then return nil; end
+    if ( v > 1.5 ) then return v / 100; end
+    return v;
 end
 
-------------------------------------------------------------------------------
--- The yards a map unit spans, across (mx) and down (my). On a WoW map, across
--- runs along the world's y and down along its x. Kept per zone once found.
-
-local spans = {}                -- [zone name] = { across, down }
-
-local function Places()
-	local list = {}
-	for index = 1, table.getn(AZS_CHESTS or {}) do
-		table.insert(list, AZS_CHESTS[index])
-	end
-	if AZS_GetLairs then
-		local lairs = AZS_GetLairs()
-		for index = 1, table.getn(lairs or {}) do
-			table.insert(list, lairs[index])
-		end
-	end
-	return list
+local function GetVal(entry, key, i1, i2)
+    if ( not entry ) then return nil; end
+    if ( entry[key] ~= nil ) then return entry[key]; end
+    if ( i1 and entry[i1] ~= nil ) then return entry[i1]; end
+    if ( i2 and entry[i2] ~= nil ) then return entry[i2]; end
+    return nil;
 end
 
--- Two places this far apart on the map at least (a share of it): a run can
--- fill only a corner of a big zone's map (Feralas: its lairs lie within 3% of
--- it), and the game gives four decimals, so even that close they tell the
--- yards to a fraction of a percent. The farthest pair found so far is kept,
--- and a farther one, once shared, betters it.
-local NEAREST = 0.004
-
-local function Span()
-	local zone = (AZS_ZONE and AZS_ZONE.zname) or "?"
-	local known = spans[zone] or { baseAcross = 0, baseDown = 0 }
-	local places = Places()
-	for a = 1, table.getn(places) do
-		for b = a + 1, table.getn(places) do
-			local p, q = places[a], places[b]
-			local pmx, qmx, pmy, qmy = Share(p.mx), Share(q.mx), Share(p.my), Share(q.my)
-			local px, qx, py, qy = tonumber(p.x), tonumber(q.x), tonumber(p.y), tonumber(q.y)
-			if pmx and qmx and pmy and qmy and px and qx and py and qy then
-				local dmx, dmy = math.abs(pmx - qmx), math.abs(pmy - qmy)
-				if dmx > known.baseAcross and dmx > NEAREST then
-					known.baseAcross = dmx
-					known.foundAcross = math.abs(py - qy) / dmx
-				end
-				if dmy > known.baseDown and dmy > NEAREST then
-					known.baseDown = dmy
-					known.foundDown = math.abs(px - qx) / dmy
-				end
-			end
-		end
-	end
-	-- A map is drawn to scale: one side found gives the other.
-	known.across = known.foundAcross or (known.foundDown and known.foundDown * 3 / 2)
-	known.down = known.foundDown or (known.foundAcross and known.foundAcross * 2 / 3)
-	spans[zone] = known
-	if known.across and known.down then
-		return known
-	end
+local function IsSquare()
+    if ( AZSHelper and AZSHelper.isSquareMinimap ) then return true; end
+    if ( AZSHelper_MinimapSquareFrame ) then return true; end
+    if ( type(GetMinimapShape) == "function" ) then
+        local ok, shape = pcall(GetMinimapShape);
+        if ( ok and shape ) then return shape == "SQUARE"; end
+    end
+    if ( DFRL ) then return true; end
+    return false;
 end
 
-------------------------------------------------------------------------------
--- The pins.
-
-local pins = {}
-
-local function Pin(index)
-	local pin = pins[index]
-	if pin then
-		return pin
-	end
-	pin = CreateFrame("Frame", nil, Minimap)
-	pin:SetFrameLevel(Minimap:GetFrameLevel() + 4)
-	pin.art = pin:CreateTexture(nil, "OVERLAY")
-	pin.art:SetAllPoints(pin)
-	-- The game's flag, ours: a gold glow breathing behind the lair it points at.
-	pin.glow = pin:CreateTexture(nil, "ARTWORK")
-	pin.glow:SetTexture(ART.."PaceGlow")
-	pin.glow:SetBlendMode("ADD")
-	pin.glow:SetVertexColor(1, 0.82, 0.2)
-	pin.glow:SetPoint("CENTER", pin, "CENTER", 0, 0)
-	pin.glow:Hide()
-	pin:EnableMouse(true)
-	pin:SetScript("OnEnter", function()
-		GameTooltip:SetOwner(this, "ANCHOR_LEFT")
-		GameTooltip:SetText(this.title or "", 1, 0.82, 0)
-		if this.note then
-			GameTooltip:AddLine(this.note, 0.8, 0.8, 0.8)
-		end
-		if this.flagged then
-			GameTooltip:AddLine("The game's flag points here.", 1, 0.82, 0.2)
-		end
-		if this.yards then
-			GameTooltip:AddLine(math.floor(this.yards + 0.5).." yards away", 0.6, 0.6, 0.6)
-		end
-		GameTooltip:Show()
-	end)
-	pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
-	pins[index] = pin
-	return pin
-end
-
--- The hero's place on the zone's map.
-local function HeroPlace()
-	if not GetPlayerMapPosition then
-		return nil
-	end
-	local x, y = GetPlayerMapPosition("player")
-	if (not x or (x == 0 and y == 0)) and SetMapToCurrentZone then
-		SetMapToCurrentZone()
-		x, y = GetPlayerMapPosition("player")
-	end
-	if not x or (x == 0 and y == 0) then
-		return nil
-	end
-	return x, y
-end
-
--- The guardians' panel (Guardians.lua) finds its way the same way.
-SurvivorUI_HeroPlace = HeroPlace
-SurvivorUI_MapSpan = Span
-SurvivorUI_MapShare = Share
-
--- The hero's place in the world, in the caches' and lairs' yards, and the way
--- faced in radians clockwise from north, as the arrows read it (the game's
--- pf, a WoW orientation: 0 north, turning toward the west). Nil on a game
--- that does not send them (before 0.97).
-local function HeroWorld()
-	local run = AZS_RUN
-	if not run then
-		return nil
-	end
-	local px, py = tonumber(run.px), tonumber(run.py)
-	if not (px and py) then
-		return nil
-	end
-	local facing = tonumber(run.pf)
-	if facing then
-		facing = -facing
-	end
-	return px, py, facing
-end
-
--- From the hero to a place in the world, in yards: east and south. In the
--- world, x runs north and y west.
-local function WorldWay(px, py, x, y)
-	return py - y, px - x
-end
-
-SurvivorUI_HeroWorld = HeroWorld
-SurvivorUI_WorldWay = WorldWay
-
-------------------------------------------------------------------------------
--- Indoors or out, as the minimap draws. Its zoom is the setting
--- minimapInsideZoom's indoors and minimapZoom's outdoors, so while the two
--- differ the zoom tells. While they are the same, a step of the zoom and back
--- does, for the step moves only the setting in use (as Gatherer read it in
--- 1.12); that is tried as the place changes. Where even that tells nothing, a
--- place with no map (an instance's) counts as indoors.
-
-local function Setting(name)
-	local ok, value = pcall(GetCVar, name)
-	return ok and value or nil
-end
-
-local probed                    -- indoors, by the last step of the zoom; nil: untold
-local probing = false
-
-local function Probe()
-	local zoom = Minimap:GetZoom()
-	local outside, inside = tonumber(Setting("minimapZoom")), tonumber(Setting("minimapInsideZoom"))
-	if not (zoom and outside and inside) or outside ~= inside then
-		return
-	end
-	probing = true
-	local step = zoom > 0 and -1 or 1
-	Minimap:SetZoom(zoom + step)
-	local nowOutside, nowInside = tonumber(Setting("minimapZoom")), tonumber(Setting("minimapInsideZoom"))
-	Minimap:SetZoom(zoom)
-	probing = false
-	if nowInside ~= inside then
-		probed = true
-	elseif nowOutside ~= outside then
-		probed = false
-	else
-		probed = nil
-	end
+local function CVarNum(name)
+    local ok, v = pcall(GetCVar, name);
+    return ok and tonumber(v) or nil;
 end
 
 local function Indoors()
-	local zoom = Minimap:GetZoom()
-	local outside, inside = tonumber(Setting("minimapZoom")), tonumber(Setting("minimapInsideZoom"))
-	if zoom and outside and inside and outside ~= inside then
-		return zoom == inside
-	end
-	if probed ~= nil then
-		return probed
-	end
-	return not HeroPlace()
+    local z = Minimap:GetZoom() or 0;
+    if ( M.indoors ~= nil and z == M.indoorsZoom ) then return M.indoors; end
+    M.indoorsZoom = z;
+    
+    local out = CVarNum("minimapZoom");
+    local ins = CVarNum("minimapInsideZoom");
+    if ( out and ins and out ~= ins ) then
+        M.indoors = (z == ins);
+        return M.indoors;
+    end
+    
+    -- Astrolabe detection probe for Vanilla WoW 1.12
+    if ( out and Minimap:GetZoom() ) then
+        Minimap:SetZoom(z < 5 and z + 1 or z - 1);
+        local newOut = CVarNum("minimapZoom");
+        local changed = (newOut and newOut ~= out);
+        Minimap:SetZoom(z);
+        M.indoors = not changed;
+        return M.indoors;
+    end
+    
+    M.indoors = false;
+    return false;
 end
 
-local prober = CreateFrame("Frame")
-prober:RegisterEvent("PLAYER_ENTERING_WORLD")
-prober:RegisterEvent("ZONE_CHANGED")
-prober:RegisterEvent("ZONE_CHANGED_INDOORS")
-prober:RegisterEvent("ZONE_CHANGED_NEW_AREA")
-prober:RegisterEvent("MINIMAP_UPDATE_ZOOM")
-prober:SetScript("OnEvent", function()
-	if not probing then
-		Probe()
-	end
-end)
-
--- The pins' settings (the options' Minimap tab): lairs and caches each on or
--- off and its size, an empty lair dimmed or hidden, a pin out of reach on the
--- edge or hidden.
-local function Settings()
-	BordoUIDB = BordoUIDB or {}
-	return BordoUIDB
+-- Smooth interpolation for instance/server coordinates
+local function Glide(px, py)
+    local now = GetTime and GetTime() or 0;
+    local s = M.hero.s;
+    local n = table.getn(s);
+    local last = s[n];
+    if ( not last or math.abs(px - last.x) > 60 or math.abs(py - last.y) > 60 ) then
+        M.hero.s = { { t = now, x = px, y = py } };
+        return px, py;
+    end
+    if ( px ~= last.x or py ~= last.y ) then
+        local dt = now - last.t;
+        if ( dt > 0.01 and dt < 1 ) then
+            M.hero.ivl = math.max(0.03, math.min(0.6, M.hero.ivl * 0.9 + dt * 0.1));
+        end
+        if ( dt >= 1 ) then
+            last.t = now - M.hero.ivl;
+        end
+        table.insert(s, { t = now, x = px, y = py });
+        while ( table.getn(s) > 6 ) do table.remove(s, 1); end
+    end
+    local at = now - M.hero.ivl * 1.5;
+    for i = table.getn(s), 2, -1 do
+        local a, b = s[i - 1], s[i];
+        if ( at >= a.t ) then
+            if ( at >= b.t ) then return b.x, b.y; end
+            local k = (at - a.t) / (b.t - a.t);
+            return a.x + (b.x - a.x) * k, a.y + (b.y - a.y) * k;
+        end
+    end
+    return s[1].x, s[1].y;
 end
 
--- A kind's pin size, "lair" or "cache": 10 to 28, 16 untouched.
-function SurvivorUI_PinSize(kind)
-	local size = tonumber(Settings()[kind == "cache" and "pinCacheSize" or "pinLairSize"])
-	return size and math.max(10, math.min(28, size)) or PIN_SIZE
+local function Ease(px, py)
+    local now = GetTime and GetTime() or 0;
+    local dt = now - (M.hero.et or now);
+    M.hero.et = now;
+    if ( not M.hero.ex or math.abs(px - M.hero.ex) > 60 or math.abs(py - M.hero.ey) > 60 ) then
+        M.hero.ex, M.hero.ey = px, py;
+    end
+    local k = math.min(1, dt / 0.20);
+    M.hero.ex = M.hero.ex + (px - M.hero.ex) * k;
+    M.hero.ey = M.hero.ey + (py - M.hero.ey) * k;
+    return M.hero.ex, M.hero.ey;
 end
 
-function SurvivorUI_SetPinSize(kind, size)
-	Settings()[kind == "cache" and "pinCacheSize" or "pinLairSize"] = size ~= PIN_SIZE and size or nil
+-- Client-side real-time player position
+local function PlayerPos()
+    local mapOpen = WorldMapFrame and WorldMapFrame:IsVisible();
+    if ( not M.mapReady and not mapOpen and SetMapToCurrentZone ) then
+        SetMapToCurrentZone();
+        M.mapReady = true;
+    end
+    local px, py = GetPlayerMapPosition("player");
+    if ( not px or (px == 0 and py == 0) ) then
+        M.mapReady = false;
+        return nil, nil;
+    end
+    return px, py;
 end
 
-------------------------------------------------------------------------------
--- The game's red flag on the minimap, on the lair it points at (from the
--- game's 0.102: the nearest held, else the one back soonest; each lair's
--- flag field): "ours" (untouched), the game's flag away and that lair's pin
--- glowing instead, its mark in the run tracker too (Guardians.lua); "game",
--- the game's flag; "none", neither. The setting is the game's and is saved,
--- so the addon remembers that it was the one to turn it off.
-
-local function FlagChoice()
-	return Settings().gameFlag or "ours"
+-- Zone Yard Span & Origin Calibration
+local function Calibrate()
+    local pts = {};
+    local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS;
+    if ( type(lairs) == "table" ) then
+        for i = 1, table.getn(lairs) do table.insert(pts, lairs[i]); end
+    end
+    if ( type(AZS_CHESTS) == "table" ) then
+        for i = 1, table.getn(AZS_CHESTS) do table.insert(pts, AZS_CHESTS[i]); end
+    end
+    
+    local bestX, bestY = 0, 0;
+    local bestP, bestQ;
+    local n = table.getn(pts);
+    for i = 1, n do
+        for j = i + 1, n do
+            local a, b = pts[i], pts[j];
+            local amx = Share(GetVal(a, "mx", 9, 3));
+            local bmx = Share(GetVal(b, "mx", 9, 3));
+            local amy = Share(GetVal(a, "my", 10, 4));
+            local bmy = Share(GetVal(b, "my", 10, 4));
+            local ax = tonumber(GetVal(a, "x", 6, 1));
+            local bx = tonumber(GetVal(b, "x", 6, 1));
+            local ay = tonumber(GetVal(a, "y", 7, 2));
+            local by = tonumber(GetVal(b, "y", 7, 2));
+            if ( amx and bmx and amy and bmy and ax and bx and ay and by ) then
+                local dmx = math.abs(amx - bmx);
+                local dmy = math.abs(amy - bmy);
+                if ( dmx > bestX and dmx > 0.003 ) then
+                    bestX = dmx;
+                    M.mapW = math.abs(ay - by) / dmx;
+                    bestP = a;
+                end
+                if ( dmy > bestY and dmy > 0.003 ) then
+                    bestY = dmy;
+                    M.mapH = math.abs(ax - bx) / dmy;
+                    bestQ = a;
+                end
+            end
+        end
+    end
+    if ( M.mapW and not M.mapH ) then M.mapH = M.mapW * 2 / 3; end
+    if ( M.mapH and not M.mapW ) then M.mapW = M.mapH * 3 / 2; end
+    if ( not M.mapW or M.mapW <= 0 ) then M.mapW = 6381.25; end
+    if ( not M.mapH or M.mapH <= 0 ) then M.mapH = 4254.17; end
+    
+    local ref = bestP or bestQ or (n > 0 and pts[1]);
+    if ( ref ) then
+        local rmx = Share(GetVal(ref, "mx", 9, 3));
+        local rmy = Share(GetVal(ref, "my", 10, 4));
+        local rx = tonumber(GetVal(ref, "x", 6, 1));
+        local ry = tonumber(GetVal(ref, "y", 7, 2));
+        if ( rmx and rmy and rx and ry ) then
+            M.originX = rx + rmy * M.mapH;
+            M.originY = ry + rmx * M.mapW;
+        end
+    end
 end
 
--- With the pins off (Modules), the game's flag is back, as every part's own
--- is with SurvivorUI's off, unless The game's is unticked there (noGameFlag).
-local function ApplyGameFlag()
-	if not (AZS_SetHudShown and AZS_IsHudShown and AZS_GetFlaggedLair) then
-		return
-	end
-	local settings = Settings()
-	local away
-	if Enabled() then
-		away = FlagChoice() ~= "game"
-	else
-		away = settings.noGameFlag
-	end
-	if away then
-		if AZS_IsHudShown("flag") then
-			AZS_SetHudShown("flag", false)
-			settings.hidGameFlag = true
-		end
-	elseif settings.hidGameFlag then
-		AZS_SetHudShown("flag", true)
-		settings.hidGameFlag = nil
-	end
+-- Directional Arrow for Distant Caches
+M.arrow = CreateFrame("Frame", "AZSHelper_ChestArrow", Minimap);
+M.arrow:SetWidth(ARROW_SIZE);
+M.arrow:SetHeight(ARROW_SIZE);
+M.arrow:SetFrameLevel(Minimap:GetFrameLevel() + 6);
+M.arrowTex = M.arrow:CreateTexture(nil, "OVERLAY");
+M.arrowTex:SetAllPoints(M.arrow);
+M.arrowTex:SetTexture(ARROW);
+M.arrowTex:SetVertexColor(0.78, 0.45, 1.0); -- Violet
+M.arrow:EnableMouse(true);
+M.arrow:SetScript("OnEnter", function()
+    GameTooltip:SetOwner(this, "ANCHOR_LEFT");
+    GameTooltip:AddLine("Next Battleground Cache", 0.78, 0.45, 1.0);
+    if ( this.dist ) then
+        GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd away", 1, 1, 1);
+    end
+    GameTooltip:Show();
+end);
+M.arrow:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+M.arrow:Hide();
+
+local function RotateArrow(a)
+    local s = math.sin(-a);
+    local c = math.cos(-a);
+    local ulx = 0.5 + (-0.5) * c - (-0.5) * s;
+    local uly = 0.5 + (-0.5) * s + (-0.5) * c;
+    local llx = 0.5 + (-0.5) * c - (0.5) * s;
+    local lly = 0.5 + (-0.5) * s + (0.5) * c;
+    local urx = 0.5 + (0.5) * c - (-0.5) * s;
+    local ury = 0.5 + (0.5) * s + (-0.5) * c;
+    local lrx = 0.5 + (0.5) * c - (0.5) * s;
+    local lry = 0.5 + (0.5) * s + (0.5) * c;
+    if ( M.arrowTex ) then
+        M.arrowTex:SetTexCoord(ulx, uly, llx, lly, urx, ury, lrx, lry);
+    end
 end
 
--- For the options' Minimap tab and the run tracker: "ours", "game" or "none";
--- nil on a game without the flag (before 0.102).
-function SurvivorUI_GameFlag()
-	return AZS_GetFlaggedLair and FlagChoice() or nil
+-- Minimap Chest Pin Factory
+local function NewChestPin(i)
+    local pin = CreateFrame("Frame", "AZSHelper_MinimapChestPin" .. i, Minimap);
+    pin:SetWidth(PIN_SIZE);
+    pin:SetHeight(PIN_SIZE);
+    pin:SetFrameLevel(Minimap:GetFrameLevel() + 5);
+    
+    local glow = pin:CreateTexture(nil, "ARTWORK");
+    glow:SetTexture(GLOW);
+    glow:SetBlendMode("ADD");
+    glow:SetWidth(PIN_SIZE * 1.6);
+    glow:SetHeight(PIN_SIZE * 1.6);
+    glow:SetPoint("CENTER", pin, "CENTER", 0, 0);
+    pin.glow = glow;
+    
+    local tex = pin:CreateTexture(nil, "OVERLAY");
+    tex:SetAllPoints(pin);
+    tex:SetTexture(BAG);
+    pin.tex = tex;
+    
+    pin:EnableMouse(true);
+    pin:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(this, "ANCHOR_LEFT");
+        if ( this.count and this.count > 1 ) then
+            GameTooltip:AddLine(this.count .. " Battleground Caches", 1, 0.82, 0);
+        else
+            GameTooltip:AddLine("Battleground Cache", 1, 0.82, 0);
+        end
+        if ( this.dist ) then
+            GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd away", 1, 1, 1);
+        end
+        if ( AZS_RUN and AZS_RUN.chest and tonumber(AZS_RUN.chest) > 0 ) then
+            GameTooltip:AddLine(string.format("Cost: %d Gold", tonumber(AZS_RUN.chest)), 0, 0.80, 1);
+        end
+        GameTooltip:Show();
+    end);
+    pin:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+    M.chestPins[i] = pin;
+    return pin;
 end
 
-function SurvivorUI_SetGameFlag(choice)
-	Settings().gameFlag = choice ~= "ours" and choice or nil
-	ApplyGameFlag()
+-- Minimap Boss / Guardian Lair Pin Factory
+local function NewBossPin(i)
+    local pin = CreateFrame("Frame", "BordoUI_MinimapBossPin" .. i, Minimap);
+    pin:SetWidth(BOSS_PIN_SIZE);
+    pin:SetHeight(BOSS_PIN_SIZE);
+    pin:SetFrameLevel(Minimap:GetFrameLevel() + 5);
+    
+    local glow = pin:CreateTexture(nil, "ARTWORK");
+    glow:SetTexture(PACE_GLOW);
+    glow:SetBlendMode("ADD");
+    glow:SetWidth(BOSS_PIN_SIZE * 2.0);
+    glow:SetHeight(BOSS_PIN_SIZE * 2.0);
+    glow:SetPoint("CENTER", pin, "CENTER", 0, 0);
+    pin.glow = glow;
+    
+    local art = pin:CreateTexture(nil, "OVERLAY");
+    art:SetAllPoints(pin);
+    pin.art = art;
+    
+    pin:EnableMouse(true);
+    pin:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(this, "ANCHOR_LEFT");
+        GameTooltip:AddLine(this.title or "Boss", 1, 0.82, 0);
+        if ( this.note ) then
+            GameTooltip:AddLine(this.note, 1, 1, 1);
+        end
+        if ( this.dist ) then
+            GameTooltip:AddLine(math.floor(this.dist + 0.5) .. " yd away", 0.7, 0.7, 0.7);
+        end
+        GameTooltip:Show();
+    end);
+    pin:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+    M.bossPins[i] = pin;
+    return pin;
 end
 
-local flagLoader = CreateFrame("Frame")
-flagLoader:RegisterEvent("PLAYER_ENTERING_WORLD")
-flagLoader:SetScript("OnEvent", ApplyGameFlag)
-
--- For the options' Modules: the game's flag ticked or not.
-SurvivorUI_GameHud = SurvivorUI_GameHud or {}
-SurvivorUI_GameHud.flag = ApplyGameFlag
-
-local flaggedPin                -- the pin glowing for the game's flag, if one
-
--- The yards the minimap spans across, now.
-local function MinimapYards()
-	local zoom = Minimap:GetZoom() or 0
-	local yards = Indoors() and INSIDE_YARDS or MINIMAP_YARDS
-	return yards[zoom] or yards[0], zoom
+-- World Map Pins
+local function NewWorldPin(i)
+    if ( not WorldMapButton ) then return nil; end
+    local pin = CreateFrame("Button", "AZSHelper_WorldMapChestPin" .. i, WorldMapButton);
+    pin:SetWidth(14);
+    pin:SetHeight(14);
+    pin:SetFrameLevel(WorldMapButton:GetFrameLevel() + 5);
+    
+    local tex = pin:CreateTexture(nil, "OVERLAY");
+    tex:SetAllPoints(pin);
+    tex:SetTexture(BAG);
+    pin.tex = tex;
+    
+    pin:EnableMouse(true);
+    pin:SetScript("OnEnter", function()
+        GameTooltip:SetOwner(this, "ANCHOR_TOPLEFT");
+        GameTooltip:AddLine("Battleground Cache", 1, 0.82, 0);
+        if ( AZS_RUN and AZS_RUN.chest and tonumber(AZS_RUN.chest) > 0 ) then
+            GameTooltip:AddLine(string.format("Cost: %d Gold", tonumber(AZS_RUN.chest)), 0, 0.80, 1);
+        end
+        GameTooltip:Show();
+    end);
+    pin:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+    M.worldPins[i] = pin;
+    return pin;
 end
 
--- A pin at its size: beyond the square's edge, on the edge (on the line toward
--- it, smaller and fainter), or hidden with "Out of reach: hidden".
-local function Place(pin, east, south, yardsAcross, size)
-	local half = Minimap:GetWidth() / 2
-	local perYard = (2 * half) / yardsAcross
-	pin.yards = math.sqrt(east * east + south * south)
-	local px, py = east * perYard, -south * perYard
-	local edge = math.floor(size * EDGE_SIZE / PIN_SIZE + 0.5)
-	local reach = math.max(math.abs(px), math.abs(py))
-	local limit = half - edge / 2
-	if reach > limit then
-		if Settings().pinEdge == "hide" then
-			pin:Hide()
-			return
-		end
-		px, py = px * limit / reach, py * limit / reach
-		size = edge
-		pin:SetAlpha(0.7)
-	else
-		pin:SetAlpha(1)
-	end
-	pin:SetWidth(size)
-	pin:SetHeight(size)
-	pin:ClearAllPoints()
-	pin:SetPoint("CENTER", Minimap, "CENTER", px, py)
-	pin:Show()
+local function HideAll()
+    for _, pin in pairs(M.chestPins) do if ( pin ) then pin:Hide(); end end
+    for _, pin in pairs(M.bossPins) do if ( pin ) then pin:Hide(); end end
+    for _, wpin in pairs(M.worldPins) do if ( wpin ) then wpin:Hide(); end end
+    if ( M.arrow ) then M.arrow:Hide(); end
 end
 
--- From the hero to a cache or a lair, east and south in yards: by the world's
--- yards when the game sends the hero's, else by the map.
-local function WayTo(place, px, py, heroX, heroY, span)
-	local x, y = tonumber(place.x), tonumber(place.y)
-	if px and x and y then
-		return WorldWay(px, py, x, y)
-	end
-	local mx, my = Share(place.mx), Share(place.my)
-	if heroX and span and mx and my then
-		return (mx - heroX) * span.across, (my - heroY) * span.down
-	end
+-- High-precision Target Vector Calculation relative to Hero
+-- Returns east (yards East) and north (yards North)
+local function TargetWay(target, mode, hx, hy)
+    if ( not target ) then return nil, nil; end
+    
+    if ( mode == "map" ) then
+        local tmx = Share(GetVal(target, "mx", 9, 3));
+        local tmy = Share(GetVal(target, "my", 10, 4));
+        if ( tmx and tmy ) then
+            local east = (tmx - hx) * M.mapW;
+            local north = (hy - tmy) * M.mapH;
+            return east, north;
+        end
+        
+        -- Target has world coordinates in map mode
+        local tx = tonumber(GetVal(target, "x", 6, 1));
+        local ty = tonumber(GetVal(target, "y", 7, 2));
+        if ( tx and ty and M.originX and M.originY ) then
+            local heroX = M.originX - hy * M.mapH;
+            local heroY = M.originY - hx * M.mapW;
+            local east = heroY - ty;
+            local north = tx - heroX;
+            return east, north;
+        end
+    elseif ( mode == "world" ) then
+        local tx = tonumber(GetVal(target, "x", 6, 1));
+        local ty = tonumber(GetVal(target, "y", 7, 2));
+        if ( tx and ty ) then
+            local east = hy - ty;
+            local north = tx - hx;
+            return east, north;
+        end
+        
+        local tmx = Share(GetVal(target, "mx", 9, 3));
+        local tmy = Share(GetVal(target, "my", 10, 4));
+        if ( tmx and tmy and M.originX and M.originY ) then
+            local txCalc = M.originX - tmy * M.mapH;
+            local tyCalc = M.originY - tmx * M.mapW;
+            local east = hy - tyCalc;
+            local north = txCalc - hx;
+            return east, north;
+        end
+    end
+    
+    return nil, nil;
 end
 
-local pinsWere                  -- the pins on or off at the last look
+-- Place Boss Pin with edge clamping
+local function PlaceBossPin(pin, east, north, scale, limit, size, square)
+    local ox = east * scale;
+    local oy = north * scale;
+    local m = square and math.max(math.abs(ox), math.abs(oy)) or math.sqrt(ox * ox + oy * oy);
+    if ( m > limit ) then
+        local k = limit / m;
+        ox = ox * k;
+        oy = oy * k;
+        local edgeSize = math.floor(size * 0.75 + 0.5);
+        pin:SetWidth(edgeSize);
+        pin:SetHeight(edgeSize);
+        pin:SetAlpha(0.75);
+    else
+        pin:SetWidth(size);
+        pin:SetHeight(size);
+        pin:SetAlpha(1.0);
+    end
+    pin:ClearAllPoints();
+    pin:SetPoint("CENTER", Minimap, "CENTER", ox, oy);
+    pin:Show();
+end
 
+local function UpdateWorldMap(list)
+    if ( not WorldMapFrame or not WorldMapFrame:IsShown() or not WorldMapButton ) then return; end
+    local wmbW = WorldMapButton:GetWidth();
+    local wmbH = WorldMapButton:GetHeight();
+    local numChests = table.getn(list or {});
+    for i = 1, numChests do
+        local c = list[i];
+        local wPin = M.worldPins[i] or NewWorldPin(i);
+        local cmx = Share(GetVal(c, "mx", 9, 3));
+        local cmy = Share(GetVal(c, "my", 10, 4));
+        if ( wPin and cmx and cmy and cmx >= 0 and cmy >= 0 ) then
+            wPin:ClearAllPoints();
+            wPin:SetPoint("CENTER", WorldMapButton, "TOPLEFT", cmx * wmbW, -cmy * wmbH);
+            wPin:Show();
+        elseif ( wPin ) then
+            wPin:Hide();
+        end
+    end
+    for i = numChests + 1, table.getn(M.worldPins) do
+        if ( M.worldPins[i] ) then M.worldPins[i]:Hide(); end
+    end
+end
+
+-- Main Map Pin Update Loop (called every 0.03s)
 local function Update()
-	local shown = 0
-	flaggedPin = nil
-	-- The pins switched on or off (Modules, at once): the game's flag follows.
-	if Enabled() ~= pinsWere then
-		pinsWere = Enabled()
-		ApplyGameFlag()
-	end
-	if Enabled() and Playing() then
-		local px, py = HeroWorld()
-		local heroX, heroY, span
-		if not px then
-			heroX, heroY = HeroPlace()
-			span = heroX and Span()
-		end
-		if px or span then
-			local settings = Settings()
-			local yardsAcross = MinimapYards()
-			local chests = settings.pinCaches ~= false and AZS_CHESTS or {}
-			local cacheSize = SurvivorUI_PinSize("cache")
-			for index = 1, table.getn(chests) do
-				local chest = chests[index]
-				local east, south = WayTo(chest, px, py, heroX, heroY, span)
-				if east then
-					shown = shown + 1
-					local pin = Pin(shown)
-					pin.art:SetTexture(ART.."PinCache")
-					pin.art:SetTexCoord(0, 1, 0, 1)
-					pin.art:SetVertexColor(1, 1, 1)
-					pin.glow:Hide()
-					pin.title, pin.note, pin.flagged = "Cache", nil, nil
-					Place(pin, east, south, yardsAcross, cacheSize)
-				end
-			end
-			local lairs = settings.pinLairs ~= false and AZS_GetLairs and AZS_GetLairs() or {}
-			local marks = SurvivorUI_LairMarks and SurvivorUI_LairMarks(lairs) or {}
-			local lairSize = SurvivorUI_PinSize("lair")
-			for index = 1, table.getn(lairs) do
-				local lair = lairs[index]
-				local east, south = WayTo(lair, px, py, heroX, heroY, span)
-				if east and (lair.active or settings.pinEmpty ~= "hide") then
-					shown = shown + 1
-					local pin = Pin(shown)
-					-- Its mark, as the guardians' bar and list show it; with the
-					-- marks off, the skull.
-					local mark = marks[tonumber(lair.index) or index]
-					if mark and SurvivorUI_SetLairMark then
-						SurvivorUI_SetLairMark(pin.art, mark, not lair.active)
-					else
-						pin.art:SetTexture(ART.."PinLair")
-						pin.art:SetTexCoord(0, 1, 0, 1)
-						if lair.active then
-							pin.art:SetVertexColor(1, 1, 1)
-						else
-							pin.art:SetVertexColor(0.45, 0.45, 0.45)
-						end
-					end
-					if lair.active then
-						pin.note = "Guardian's lair: "..(lair.name and lair.name ~= "" and lair.name or "a guardian holds it")
-					else
-						pin.note = "Empty lair"
-					end
-					local markName = SurvivorUI_LairMarkName and SurvivorUI_LairMarkName(mark)
-					pin.title = markName and (markName.." lair") or "Lair"
-					pin.flagged = tonumber(lair.flag) == 1 or nil
-					if pin.flagged and FlagChoice() == "ours" then
-						flaggedPin = pin
-					else
-						pin.glow:Hide()
-					end
-					Place(pin, east, south, yardsAcross, lairSize)
-				end
-			end
-		end
-	end
-	for index = shown + 1, table.getn(pins) do
-		pins[index]:Hide()
-	end
+    local phase = AZS_GetPhase and AZS_GetPhase() or nil;
+    if ( not phase or phase == "dead" ) then
+        HideAll();
+        M.known = {};
+        M.primed = false;
+        return;
+    end
+    if ( phase == "ready" ) then M.primed = false; end
+    
+    local stamp = (AZS_CHESTS_UPDATED or 0) + (AZS_LAIRS_UPDATED or 0);
+    if ( stamp ~= M.calibratedAt ) then
+        M.calibratedAt = stamp;
+        Calibrate();
+    end
+    
+    -- Check active chests and trigger chat notification on fresh spawns
+    local chestList = AZS_CHESTS or {};
+    local presentChests = {};
+    local fresh = 0;
+    for i = 1, table.getn(chestList) do
+        local id = chestList[i].id or i;
+        if ( id ) then
+            presentChests[id] = chestList[i];
+            if ( not M.known[id] ) then
+                M.known[id] = true;
+                if ( M.primed ) then fresh = fresh + 1; end
+            end
+        end
+    end
+    for id in pairs(M.known) do
+        if ( not presentChests[id] ) then M.known[id] = nil; end
+    end
+    if ( phase ~= "ready" ) then M.primed = true; end
+    
+    local db = DB();
+    if ( fresh > 0 and db.chestChat ) then
+        Print(fresh == 1 and "A new Battleground Cache has spawned." or (fresh .. " new Battleground Caches have spawned."));
+    end
+    
+    -- Determine whether we are in instance / world coordinates mode (Naxx, SM, AQ or missing map position)
+    local isInstance = false;
+    if ( AZS_ZONE and (AZS_ZONE.zone == "naxx" or AZS_ZONE.zone == "sm" or AZS_ZONE.zone == "aq") ) then
+        isInstance = true;
+    end
+    if ( not isInstance ) then
+        for _, c in pairs(presentChests) do
+            local cmx = GetVal(c, "mx", 9, 3);
+            if ( cmx and tonumber(cmx) and tonumber(cmx) < 0 ) then
+                isInstance = true;
+                break;
+            end
+        end
+    end
+    
+    -- Obtain Hero Position:
+    -- 1. Client-side real-time map position (60 FPS, no lag)
+    local mpx, mpy = PlayerPos();
+    local mode = "map";
+    local hx, hy;
+    
+    if ( not isInstance and mpx and mpy and (mpx > 0 or mpy > 0) ) then
+        mode = "map";
+        hx, hy = mpx, mpy;
+    elseif ( type(AZS_RUN) == "table" and tonumber(AZS_RUN.px) and tonumber(AZS_RUN.py) ) then
+        mode = "world";
+        local rawX = tonumber(AZS_RUN.px);
+        local rawY = tonumber(AZS_RUN.py);
+        local wpx, wpy = Glide(rawX, rawY);
+        wpx, wpy = Ease(wpx, wpy);
+        hx, hy = wpx, wpy;
+    else
+        HideAll();
+        return;
+    end
+    
+    local z = Minimap:GetZoom() or 0;
+    local diameter;
+    if ( isInstance or mode == "world" ) then
+        -- In instances/arenas the minimap ALWAYS renders at indoor yard scale!
+        diameter = INDOOR[z] or 180;
+    elseif ( Indoors() ) then
+        diameter = INDOOR[z] or 180;
+    else
+        diameter = OUTDOOR[z] or 333.3333;
+    end
+    
+    local scale = Minimap:GetWidth() / diameter;
+    local half = Minimap:GetWidth() / 2;
+    local chestLimit = half - PIN_SIZE / 2;
+    local square = IsSquare();
+    
+    -------------------------------------------------------------------------
+    -- 1. BATTLEGROUND CACHES (CHESTLIGHT ENGINE)
+    -------------------------------------------------------------------------
+    -- Group nearby chests within MERGE_YD = 10 yards into single icons with count
+    local groups = {};
+    for _, c in pairs(presentChests) do
+        local east, north = TargetWay(c, mode, hx, hy);
+        if ( east and north ) then
+            local joined = false;
+            for g = 1, table.getn(groups) do
+                local gr = groups[g];
+                local dx = east - gr.east;
+                local dy = north - gr.north;
+                if ( dx * dx + dy * dy <= MERGE_YD * MERGE_YD ) then
+                    gr.n = gr.n + 1;
+                    gr.east = gr.east + dx / gr.n;
+                    gr.north = gr.north + dy / gr.n;
+                    joined = true;
+                    break;
+                end
+            end
+            if ( not joined ) then
+                table.insert(groups, { east = east, north = north, n = 1, c = c });
+            end
+        end
+    end
+    
+    for i = table.getn(groups) + 1, table.getn(M.chestPins) do
+        if ( M.chestPins[i] ) then M.chestPins[i]:Hide(); end
+    end
+    
+    local inRange = false;
+    local nearDist, nearX, nearY;
+    
+    for i = 1, table.getn(groups) do
+        local gr = groups[i];
+        local east = gr.east;
+        local north = gr.north;
+        local pin = M.chestPins[i] or NewChestPin(i);
+        pin.count = gr.n;
+        pin.dist = math.sqrt(east * east + north * north);
+        
+        local ox = east * scale;
+        local oy = north * scale;
+        local m = square and math.max(math.abs(ox), math.abs(oy)) or math.sqrt(ox * ox + oy * oy);
+        
+        if ( m > chestLimit ) then
+            pin:Hide();
+            if ( not nearDist or pin.dist < nearDist ) then
+                nearDist = pin.dist;
+                nearX = ox;
+                nearY = oy;
+            end
+        else
+            inRange = true;
+            pin:ClearAllPoints();
+            pin:SetPoint("CENTER", Minimap, "CENTER", ox, oy);
+            pin:Show();
+        end
+    end
+    
+    -- Directional edge arrow pointing towards distant caches
+    if ( db.chestArrow and not inRange and nearDist and M.arrow ) then
+        local a = math.atan2(nearX, nearY);
+        local dx = math.sin(a);
+        local dy = math.cos(a);
+        local edge = half - ARROW_SIZE / 2;
+        local m = square and math.max(math.abs(dx), math.abs(dy)) or 1;
+        RotateArrow(a);
+        M.arrow.dist = nearDist;
+        M.arrow:ClearAllPoints();
+        M.arrow:SetPoint("CENTER", Minimap, "CENTER", dx / m * edge, dy / m * edge);
+        M.arrow:Show();
+    else
+        if ( M.arrow ) then M.arrow:Hide(); end
+    end
+    
+    UpdateWorldMap(chestList);
+    
+    -------------------------------------------------------------------------
+    -- 2. BOSSES & GUARDIAN LAIRS
+    -------------------------------------------------------------------------
+    local shownBoss = 0;
+    local bossLimit = half - BOSS_PIN_SIZE / 2;
+    
+    -- Active Bosses from AZS_UNITS
+    if ( AZS_UNITS and type(AZS_UNITS) == "table" ) then
+        for i = 1, table.getn(AZS_UNITS) do
+            local u = AZS_UNITS[i];
+            local kind = GetVal(u, "kind", 1);
+            if ( kind == "boss" or kind == "final" ) then
+                local east, north = TargetWay(u, mode, hx, hy);
+                if ( east and north ) then
+                    shownBoss = shownBoss + 1;
+                    local pin = M.bossPins[shownBoss] or NewBossPin(shownBoss);
+                    pin.isUnitBoss = true;
+                    local bName = GetVal(u, "name", 3) or "Boss";
+                    local dist = math.sqrt(east * east + north * north);
+                    pin.dist = dist;
+                    pin.title = "|cffff2020★ BOSS: " .. bName .. " ★|r";
+                    pin.note = "|cffff5533⚠ Active Boss!|r";
+                    
+                    pin.art:SetTexture(PIN_LAIR);
+                    pin.art:SetTexCoord(0, 1, 0, 1);
+                    pin.art:SetVertexColor(1, 0.15, 0.15);
+                    pin.glow:SetTexture(PACE_GLOW);
+                    pin.glow:SetVertexColor(1, 0.20, 0.10);
+                    pin.glow:Show();
+                    
+                    PlaceBossPin(pin, east, north, scale, bossLimit, BOSS_PIN_SIZE, square);
+                end
+            end
+        end
+    end
+    
+    -- Guardian Lairs from AZS_GetLairs() or AZS_LAIRS
+    local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS;
+    if ( type(lairs) == "table" ) then
+        local marks = SurvivorUI_LairMarks and SurvivorUI_LairMarks(lairs) or {};
+        for i = 1, table.getn(lairs) do
+            local lair = lairs[i];
+            local east, north = TargetWay(lair, mode, hx, hy);
+            if ( east and north ) then
+                local isActive = (lair.active == true or lair.active == 1);
+                local isAwake = (lair.awake == true or lair.awake == 1);
+                local isFlagged = (tonumber(lair.flag) == 1);
+                
+                shownBoss = shownBoss + 1;
+                local pin = M.bossPins[shownBoss] or NewBossPin(shownBoss);
+                pin.isUnitBoss = false;
+                local markId = marks[tonumber(lair.index or lair[1]) or i] or i;
+                local markName = SurvivorUI_LairMarkName and SurvivorUI_LairMarkName(markId);
+                local lName = GetVal(lair, "name", 4) or "Guardian";
+                local dist = math.sqrt(east * east + north * north);
+                pin.dist = dist;
+                
+                if ( markName ) then
+                    pin.title = markName .. " Lair (" .. lName .. ")";
+                else
+                    pin.title = "Guardian's Lair: " .. lName;
+                end
+                
+                if ( isAwake ) then
+                    pin.note = "|cffff9900⚔ Guardian in Combat!|r";
+                elseif ( isActive ) then
+                    pin.note = "|cff55ff55● Guardian is Alive|r";
+                else
+                    local rem = tonumber(lair.respawn or lair.left) or 0;
+                    if ( rem > 0 ) then
+                        pin.note = string.format("|cffff4444✕ Empty (Respawn in %d:%02d)|r", math.floor(rem / 60), math.mod(rem, 60));
+                    else
+                        pin.note = "|cff888888✕ Empty Lair|r";
+                    end
+                end
+                
+                if ( SurvivorUI_SetLairMark ) then
+                    SurvivorUI_SetLairMark(pin.art, markId, not isActive);
+                else
+                    pin.art:SetTexture(PIN_LAIR);
+                    pin.art:SetTexCoord(0, 1, 0, 1);
+                    if ( isActive ) then
+                        pin.art:SetVertexColor(1, 1, 1);
+                    else
+                        pin.art:SetVertexColor(0.45, 0.45, 0.45);
+                    end
+                end
+                
+                if ( isActive or isFlagged ) then
+                    pin.glow:SetTexture(PACE_GLOW);
+                    pin.glow:SetVertexColor(1, 0.82, 0.20);
+                    pin.glow:Show();
+                else
+                    pin.glow:Hide();
+                end
+                
+                PlaceBossPin(pin, east, north, scale, bossLimit, 16, square);
+            end
+        end
+    end
+    
+    for i = shownBoss + 1, table.getn(M.bossPins) do
+        if ( M.bossPins[i] ) then M.bossPins[i]:Hide(); end
+    end
 end
 
-local elapsed = 0
-local breath = 0
-local watcher = CreateFrame("Frame")
-watcher:SetScript("OnUpdate", function()
-	elapsed = elapsed + arg1
-	if elapsed >= 0.1 then
-		elapsed = 0
-		Update()
-	end
-	-- The flagged lair's glow breathes, every frame.
-	breath = breath + arg1
-	if flaggedPin and flaggedPin:IsShown() then
-		local size = flaggedPin:GetWidth() * (2.4 + 0.35 * math.sin(breath * 4))
-		flaggedPin.glow:SetWidth(size)
-		flaggedPin.glow:SetHeight(size)
-		flaggedPin.glow:SetAlpha(0.6 + 0.3 * math.sin(breath * 4))
-		flaggedPin.glow:Show()
-	end
-end)
+-- Animation & Position Ticker
+local updateFrame = CreateFrame("Frame", "BordoUI_ChestlightUpdateFrame", UIParent);
+updateFrame:SetScript("OnUpdate", function()
+    local dt = arg1 or 0;
+    M.glowClock = M.glowClock + dt;
+    M.acc = M.acc + dt;
+    
+    -- Smooth pulsing glows
+    local chestPulse = GLOW_MIN + (GLOW_MAX - GLOW_MIN) * (0.5 + 0.5 * math.sin(M.glowClock * 2 * math.pi / GLOW_PERIOD));
+    local bossPulse = 0.55 + 0.35 * math.sin(M.glowClock * 4);
+    
+    for _, pin in pairs(M.chestPins) do
+        if ( pin and pin:IsShown() and pin.glow and pin.glow:IsShown() ) then
+            pin.glow:SetAlpha(chestPulse);
+        end
+    end
+    for _, pin in pairs(M.bossPins) do
+        if ( pin and pin:IsShown() and pin.glow and pin.glow:IsShown() ) then
+            pin.glow:SetAlpha(bossPulse);
+        end
+    end
+    
+    -- Rock-solid 30 FPS position update
+    if ( M.acc < 0.03 ) then return; end
+    M.acc = 0;
+    Update();
+end);
 
--- The nearest of a list of places, by the world's yards: how far, east and
--- south.
-local function Nearest(list, px, py)
-	local best, bestEast, bestSouth
-	for index = 1, table.getn(list) do
-		local x, y = tonumber(list[index].x), tonumber(list[index].y)
-		if x and y then
-			local east, south = WorldWay(px, py, x, y)
-			local yards = math.sqrt(east * east + south * south)
-			if not best or yards < best then
-				best, bestEast, bestSouth = yards, east, south
-			end
-		end
-	end
-	return best, bestEast, bestSouth
-end
+updateFrame:RegisterEvent("VARIABLES_LOADED");
+updateFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
+updateFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA");
+updateFrame:RegisterEvent("ZONE_CHANGED_INDOORS");
+updateFrame:SetScript("OnEvent", function()
+    if ( event == "VARIABLES_LOADED" ) then
+        DB();
+    elseif ( event == "ZONE_CHANGED_INDOORS" ) then
+        M.indoors = nil;
+    else
+        M.mapReady = false;
+        M.indoors = nil;
+    end
+end);
 
-local COMPASS = { "north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west" }
+-- Slash Commands (Chestlight compatible & AZSHelper integrated)
+SLASH_AZSCHESTLIGHT1 = "/chestlight";
+SLASH_AZSCHESTLIGHT2 = "/cl";
+SlashCmdList["AZSCHESTLIGHT"] = function(msg)
+    local db = DB();
+    msg = string.lower(msg or "");
+    if ( msg == "arrow" ) then
+        db.chestArrow = not db.chestArrow;
+        Print("Directional Arrow to Distant Caches: " .. (db.chestArrow and "|cff55ff55Enabled|r" or "|cffff5555Disabled|r"));
+    elseif ( msg == "chat" ) then
+        db.chestChat = not db.chestChat;
+        Print("Chat notification on Cache Spawn: " .. (db.chestChat and "|cff55ff55Enabled|r" or "|cffff5555Disabled|r"));
+    else
+        Print("/cl chat - Toggle chat notification when caches spawn (" .. (db.chestChat and "Enabled" or "Disabled") .. ")");
+        Print("/cl arrow - Toggle violet directional edge arrow (" .. (db.chestArrow and "Enabled" or "Disabled") .. ")");
+    end
+end;
 
-local function Compass(east, south)
-	local bearing = math.atan2(east, -south) * 180 / math.pi
-	return COMPASS[math.mod(math.floor((bearing + 22.5) / 45) + 8, 8) + 1]
-end
-
--- /sui pins: what the addon reads, to check the pins against the world.
-function SurvivorUI_PinsReport()
-	local say = function(text) DEFAULT_CHAT_FRAME:AddMessage("|cffffd100Survivor UI|r "..text) end
-	say("zone: "..tostring(AZS_ZONE and AZS_ZONE.zone).." (map "..tostring(AZS_ZONE and AZS_ZONE.map)
-		.."); the client's: "..tostring(GetRealZoneText and GetRealZoneText()))
-	local chests = AZS_CHESTS or {}
-	local lairs = AZS_GetLairs and AZS_GetLairs() or {}
-	say("caches: "..table.getn(chests)..", lairs: "..table.getn(lairs))
-	local px, py, facing = HeroWorld()
-	if px then
-		-- The way faced, as a compass reads it: 0 north, 90 east.
-		local degrees = facing and math.mod(math.floor(facing * 180 / math.pi + 0.5) + 720, 360)
-		say(string.format("hero in the world: x %.1f, y %.1f; facing %s", px, py,
-			degrees and (degrees.."Â° (0 north, 90 east)") or "not sent"))
-		local yards, east, south = Nearest(chests, px, py)
-		if yards then
-			say(string.format("nearest cache: %d yards %s", math.floor(yards + 0.5), Compass(east, south)))
-		end
-		yards, east, south = Nearest(lairs, px, py)
-		if yards then
-			say(string.format("nearest lair: %d yards %s", math.floor(yards + 0.5), Compass(east, south)))
-		end
-	else
-		say("hero in the world: not sent by this version of the game")
-		local heroX, heroY = HeroPlace()
-		say("hero on the map: "..(heroX and string.format("%.3f, %.3f", heroX, heroY) or "unknown"))
-		local span = Span()
-		if span then
-			say(string.format("map spans %.0f yards across, %.0f down", span.across, span.down))
-		else
-			say("map size not found yet: needs two caches or lairs far apart")
-		end
-	end
-	local yardsAcross, zoom = MinimapYards()
-	say(string.format("minimap: %s, zoom %d, %d yards across (zoom set outdoors %s, indoors %s)",
-		Indoors() and "indoors" or "outdoors", zoom, math.floor(yardsAcross + 0.5),
-		tostring(Setting("minimapZoom")), tostring(Setting("minimapInsideZoom"))))
-end
-
+-- Exported SurvivorUI & BordoUI compatibility APIs
+SurvivorUI_HeroPlace = PlayerPos;
+SurvivorUI_MapSpan = function() return { across = M.mapW, down = M.mapH }; end;
+SurvivorUI_MapShare = Share;
+SurvivorUI_HeroWorld = function()
+    local r = AZS_RUN;
+    if ( not r ) then return nil, nil, nil; end
+    return tonumber(r.px), tonumber(r.py), tonumber(r.pf);
+end;
+SurvivorUI_WorldWay = function(px, py, x, y)
+    return py - y, px - x;
+end;
+SurvivorUI_PinSize = function(kind)
+    return kind == "cache" and PIN_SIZE or BOSS_PIN_SIZE;
+end;
+SurvivorUI_PinsReport = function()
+    Print(string.format("Map calibration: %.1f x %.1f yards (Indoors: %s)", M.mapW, M.mapH, tostring(Indoors())));
+end;
