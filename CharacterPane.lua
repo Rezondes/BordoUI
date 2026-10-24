@@ -10,7 +10,28 @@
 -- AZS_STATS table, fed by the server. This file only reads that table.
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
+local FONT_PATH = "Fonts\\FRIZQT__.TTF"
+SurvivorUI_FONT = SurvivorUI_FONT or FONT_PATH
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
+
+if not SurvivorUI_ClassColor then
+	local CLASS_OVERRIDES = {
+		["SHAMAN"] = { r = 0.00, g = 0.44, b = 0.87 },
+	}
+	function SurvivorUI_ClassColor(class)
+		local color = class and (CLASS_OVERRIDES[class] or (RAID_CLASS_COLORS and RAID_CLASS_COLORS[class]))
+		if color then
+			return color.r, color.g, color.b
+		end
+		return 1, 0.82, 0
+	end
+end
+
+if not SurvivorUI_Feature then
+	function SurvivorUI_Feature(key)
+		return true
+	end
+end
 
 if not PaperDollFrame or not CharacterFrame then
 	return
@@ -36,33 +57,22 @@ end
 ------------------------------------------------------------------------------
 -- The panel.
 
-local panel = CreateFrame("Frame", "BordoUICharacter", PaperDollFrame)
+local panel = CreateFrame("Frame", "SurvivorUICharacter", PaperDollFrame)
 panel:SetPoint("TOPLEFT", CharacterFrame, "TOPLEFT", ART_LEFT, ART_TOP)
 panel:SetWidth(ART_WIDTH + STATS_WIDTH)
 panel:SetHeight(ART_HEIGHT)
 panel:SetFrameLevel(math.max(0, PaperDollFrame:GetFrameLevel() - 1))
 
-panel:SetBackdrop({
-	bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile     = true,
-	tileSize = 16,
-	edgeSize = 12,
-	insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-})
-panel:SetBackdropColor(0.04, 0.04, 0.06, 0.92)
-panel:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
+local panelEdge = panel:CreateTexture(nil, "BACKGROUND")
+panelEdge:SetTexture(FLAT)
+panelEdge:SetVertexColor(0, 0, 0, 1)
+panelEdge:SetPoint("TOPLEFT", panel, "TOPLEFT", -1, 1)
+panelEdge:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 1, -1)
 
-CharacterFrame:SetBackdrop({
-	bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile     = true,
-	tileSize = 16,
-	edgeSize = 12,
-	insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-})
-CharacterFrame:SetBackdropColor(0.04, 0.04, 0.06, 0.92)
-CharacterFrame:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
+local panelFill = panel:CreateTexture(nil, "BORDER")
+panelFill:SetTexture(FLAT)
+panelFill:SetVertexColor(0.05, 0.05, 0.07, 0.96)
+panelFill:SetAllPoints(panel)
 
 -- A hairline between the hero and the numbers.
 local divider = Line(panel, 1, 1, 1, 0.08)
@@ -205,11 +215,14 @@ for index = 1, 5 do
 
 		local text = getglobal(name.."Text")
 		if text then
-			text:SetFont(SurvivorUI_FONT, 11 + FONT_BUMP)
+			text:SetFont(SurvivorUI_FONT or FONT_PATH, 11 + FONT_BUMP)
 		end
 		table.insert(tabs, tab)
-		-- Tabs styled in modern dark flat box with gold indicator line
-		tab:Show()
+		-- Only the character's own page: skills, honor and the rest are not
+		-- part of a run, and a tab alone to the page it is on says nothing.
+		-- Every tab kept away, though the stock code shows them again.
+		tab:Hide()
+		tab.Show = function() end
 	end
 end
 
@@ -337,6 +350,7 @@ end
 
 local function DB()
 	BordoUIDB = BordoUIDB or {}
+	SurvivorUIDB = SurvivorUIDB or BordoUIDB
 	return BordoUIDB
 end
 
@@ -346,11 +360,11 @@ end
 -- and the pane's numbers off, as the screen was.
 local function Migrate()
 	local db = DB()
+	if db.statsInPane == nil then
+		db.statsInPane = true
+	end
+	db.statsPanel = false -- BordoUI uses standalone StatsWindow.lua for on-screen HUD
 	if db.statsMode then
-		if db.statsMode == "always" then
-			db.statsPanel = true
-			db.statsInPane = false
-		end
 		db.statsMode = nil
 		db.statsWindowSize = nil
 	end
@@ -367,7 +381,7 @@ end
 ------------------------------------------------------------------------------
 -- The order: each group, and each number within its group, where the player
 -- put it; a number can be switched off for good (the options, Stats panel).
--- Kept per class, as names, in BordoUIDB.statsByClass; anything the addon
+-- Kept per class, as names, in SurvivorUIDB.statsByClass; anything the addon
 -- adds later goes at the end of its group.
 
 -- This class's choices: { order, hidden }. The ones kept before v2.9 (for
@@ -856,7 +870,7 @@ local function MakeView(alone)
 		end
 		-- In the pane, the text size set in the options' Character pane tab, on top.
 		if not alone then
-			fontSize = math.max(6, fontSize + (BordoUIDB and tonumber(BordoUIDB.paneStatsStep) or 0))
+			fontSize = math.max(6, fontSize + (SurvivorUIDB and tonumber(SurvivorUIDB.paneStatsStep) or 0))
 		end
 
 		local y = 0
@@ -1132,13 +1146,13 @@ local panelView = MakeView(true)
 -- The pane's stats' text size, -4 to +8 over what their rows give (the
 -- options' Character pane tab; the Stats panel's is its own tab's).
 function SurvivorUI_PaneStatsStep()
-	return BordoUIDB and tonumber(BordoUIDB.paneStatsStep) or 0
+	return SurvivorUIDB and tonumber(SurvivorUIDB.paneStatsStep) or 0
 end
 
 function SurvivorUI_SetPaneStatsStep(step)
-	BordoUIDB = BordoUIDB or {}
+	SurvivorUIDB = SurvivorUIDB or {}
 	step = math.max(-4, math.min(8, math.floor((tonumber(step) or 0) + 0.5)))
-	BordoUIDB.paneStatsStep = step ~= 0 and step or nil
+	SurvivorUIDB.paneStatsStep = step ~= 0 and step or nil
 	paneView.Apply()
 end
 
@@ -1156,7 +1170,7 @@ end
 -- Switched off in the options panel: the stock pane stays, the game's own box
 -- with it.
 local function Enabled()
-	return true
+	return not SurvivorUI_Feature or SurvivorUI_Feature("characterPane")
 end
 
 -- The game's own side box would sit on top of the numbers.
@@ -1173,22 +1187,19 @@ local function HideStock()
 	for _, name in pairs({
 		"CharacterAttributesFrame", "CharacterResistanceFrame", "AZSMoreStats", "CharacterFramePortrait",
 		"CharacterFrameTopLeft", "CharacterFrameTopRight", "CharacterFrameBottomLeft", "CharacterFrameBottomRight",
+		"PaperDollFrameCorner0", "PaperDollFrameCorner1", "PaperDollFrameCorner2", "PaperDollFrameCorner3"
 	}) do
 		local frame = getglobal(name)
 		if frame then
 			frame:Hide()
+			if frame.SetAlpha then frame:SetAlpha(0) end
 		end
 	end
 	local regions = { PaperDollFrame:GetRegions() }
 	for index = 1, table.getn(regions) do
 		if regions[index]:GetObjectType() == "Texture" then
 			regions[index]:Hide()
-		end
-	end
-	local cRegions = { CharacterFrame:GetRegions() }
-	for index = 1, table.getn(cRegions) do
-		if cRegions[index]:GetObjectType() == "Texture" then
-			cRegions[index]:Hide()
+			regions[index]:SetAlpha(0)
 		end
 	end
 end
@@ -1263,20 +1274,11 @@ CharacterFrame:SetMovable(true)
 if CharacterFrame.SetClampedToScreen then
 	CharacterFrame:SetClampedToScreen(true)
 end
-CharacterFrame:EnableMouse(true)
-CharacterFrame:RegisterForDrag("LeftButton")
-CharacterFrame:SetScript("OnDragStart", function()
-	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
-		CharacterFrame:StartMoving()
-	end
-end)
-CharacterFrame:SetScript("OnDragStop", function()
-	CharacterFrame:StopMovingOrSizing()
-	SavePanePlace()
-end)
-
-if BordoUI and BordoUI.AttachLockButton then
-	BordoUI:AttachLockButton(panel, "TOPRIGHT", panel, "TOPRIGHT", -28, -6)
+if SurvivorUI_RegisterMover then
+	local paneHandle = SurvivorUI_RegisterMover(panel, "Character pane", SavePanePlace, CharacterFrame, DefaultPanePlace)
+	-- With the pane: shown and hidden with it, over it.
+	paneHandle:SetParent(panel)
+	paneHandle:SetFrameStrata("DIALOG")
 end
 
 -- The hero's class color: on the name and level line, and the pane's edge.
@@ -1285,8 +1287,6 @@ local function PaintClass()
 	local r, g, b = 1, 0.82, 0
 	if SurvivorUI_ClassColor then
 		r, g, b = SurvivorUI_ClassColor(class)
-	elseif class and RAID_CLASS_COLORS and RAID_CLASS_COLORS[class] then
-		r, g, b = RAID_CLASS_COLORS[class].r, RAID_CLASS_COLORS[class].g, RAID_CLASS_COLORS[class].b
 	end
 	for _, name in pairs({ "CharacterNameText", "CharacterLevelText", "CharacterTitleText" }) do
 		local text = getglobal(name)
@@ -1294,23 +1294,13 @@ local function PaintClass()
 			text:SetTextColor(r, g, b)
 		end
 	end
+	panelEdge:SetVertexColor(r, g, b, 1)
 end
 
 panel:SetScript("OnShow", function()
 	if not Enabled() then
 		this:Hide()
 		return
-	end
-	CharacterFrame:SetWidth(panel:GetWidth() + ART_LEFT * 2)
-	CharacterFrame:SetHeight(panel:GetHeight() + 24)
-	local model = CharacterModelFrame
-	local nameText = getglobal("CharacterNameText")
-	local levelText = getglobal("CharacterLevelText")
-	if model and nameText and levelText then
-		nameText:ClearAllPoints()
-		nameText:SetPoint("BOTTOM", levelText, "TOP", 0, 2)
-		levelText:ClearAllPoints()
-		levelText:SetPoint("TOP", model, "TOP", 0, 36)
 	end
 	PaintClass()
 	HideStock()
@@ -1321,15 +1311,12 @@ panel:SetScript("OnShow", function()
 	placePending = true
 	if closeButton then
 		closeButton:ClearAllPoints()
-		closeButton:SetPoint("TOPRIGHT", panel, "TOPRIGHT", -6, -6)
-		closeButton:SetFrameLevel(panel:GetFrameLevel() + 10)
+		closeButton:SetPoint("TOPRIGHT", panel, "TOPRIGHT", 4, 4)
 	end
 end)
 
 -- The other tabs keep the stock frame, portrait and close button.
 panel:SetScript("OnHide", function()
-	CharacterFrame:SetWidth(384)
-	CharacterFrame:SetHeight(512)
 	local portrait = getglobal("CharacterFramePortrait")
 	if portrait then
 		portrait:Show()
@@ -1376,7 +1363,7 @@ keeper:SetScript("OnUpdate", function()
 		return
 	end
 	keepElapsed = 0
-	if BordoUIDB and PanelOn() and not panelView.frame:IsShown() then
+	if SurvivorUIDB and PanelOn() and not panelView.frame:IsShown() then
 		panelView.Apply()
 	end
 end)
