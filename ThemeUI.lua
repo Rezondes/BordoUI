@@ -1016,85 +1016,131 @@ UI.goldSlot:SetScript("OnUpdate", function()
 	end
 end)
 -- C) MODERN MINIMAP ACTION DOCK (Character, Talents, Damage Meter)
-local function SuppressBattlefieldMinimapButton()
+local hiddenDummy = CreateFrame("Frame", "BordoUI_HiddenDummy", UIParent)
+hiddenDummy:Hide()
+
+local capturedMeterClick = nil
+local capturedMeterFrame = nil
+
+local function CleanMinimapButtons()
+	-- 1. Specifically clean and reparent MiniMapBattlefieldFrame
 	local bf = MiniMapBattlefieldFrame or getglobal("MiniMapBattlefieldFrame")
 	if bf then
-		bf:ClearAllPoints()
-		bf:SetPoint("TOP", UIParent, "BOTTOM", 0, -5000)
-		bf:SetAlpha(0)
-		bf:Hide()
-		bf:EnableMouse(false)
-
-		if not bf.bordoLocked then
-			bf.bordoLocked = true
-			bf.SetPoint = function() end
-			bf:SetScript("OnShow", function()
-				this:Hide()
-				this:SetAlpha(0)
-			end)
+		if bf.GetScript and bf:GetScript("OnClick") and not bf.bordoCaptured then
+			bf.bordoCaptured = true
+			capturedMeterClick = bf:GetScript("OnClick")
+			capturedMeterFrame = bf
 		end
+		bf:SetParent(hiddenDummy)
+		bf:ClearAllPoints()
+		bf:SetPoint("CENTER", hiddenDummy, "CENTER", 0, -5000)
+		bf:SetAlpha(0)
+		if bf.EnableMouse then bf:EnableMouse(false) end
+		bf:Hide()
 	end
-
 	local border = MiniMapBattlefieldBorder or getglobal("MiniMapBattlefieldBorder")
 	if border then
-		border:Hide()
+		border:SetTexture("")
 		border:SetAlpha(0)
-		border.Show = function() end
 	end
-
 	local icon = MiniMapBattlefieldIcon or getglobal("MiniMapBattlefieldIcon")
 	if icon then
-		icon:Hide()
+		icon:SetTexture("")
 		icon:SetAlpha(0)
-		icon.Show = function() end
+	end
+
+	-- 2. Inspect all children of Minimap and suppress any unwanted round buttons
+	if Minimap and Minimap.GetChildren then
+		local children = { Minimap:GetChildren() }
+		for i = 1, table.getn(children) do
+			local child = children[i]
+			if child and child ~= UI.minimapDock and child ~= BordoUI_MinimapDock and child ~= MiniMapTrackingFrame and child ~= MinimapBackdrop and child ~= hiddenDummy then
+				local name = child:GetName() or ""
+				local isWanted = (name == "MiniMapTrackingFrame" or name == "BordoUI_MinimapDock")
+				if not isWanted then
+					if child.GetScript and child:GetScript("OnClick") and not child.bordoCaptured then
+						child.bordoCaptured = true
+						capturedMeterClick = child:GetScript("OnClick")
+						capturedMeterFrame = child
+					end
+					child:SetParent(hiddenDummy)
+					child:ClearAllPoints()
+					child:SetPoint("CENTER", hiddenDummy, "CENTER", 0, -5000)
+					child:SetAlpha(0)
+					if child.EnableMouse then child:EnableMouse(false) end
+					child:Hide()
+				end
+			end
+		end
 	end
 end
 
+local function SuppressBattlefieldMinimapButton()
+	CleanMinimapButtons()
+end
+
 local function ToggleOriginalDamageMeter()
-	-- 1. Invoke MiniMapBattlefieldFrame's native click handler (toggles game's built-in damage meter/score frame)
-	if MiniMapBattlefieldFrame then
-		local clickFunc = MiniMapBattlefieldFrame:GetScript("OnClick")
-		if clickFunc then
-			local oldThis, oldArg1 = this, arg1
-			this = MiniMapBattlefieldFrame
-			arg1 = "LeftButton"
-			local ok = pcall(clickFunc)
-			this = oldThis
-			arg1 = oldArg1
-			if ok then return end
-		end
-	end
-	if MiniMapBattlefieldFrame_OnClick then
+	local meterBefore = (SurvivorUIMeter and SurvivorUIMeter:IsShown())
+		or (WorldStateScoreFrame and WorldStateScoreFrame:IsShown())
+		or (AZS_IsHudShown and AZS_IsHudShown("meter"))
+
+	-- 1. Try invoking captured round button's OnClick script
+	if capturedMeterClick and capturedMeterFrame then
 		local oldThis, oldArg1 = this, arg1
-		this = MiniMapBattlefieldFrame or UIParent
+		this = capturedMeterFrame
 		arg1 = "LeftButton"
-		local ok = pcall(MiniMapBattlefieldFrame_OnClick)
+		pcall(capturedMeterClick)
 		this = oldThis
 		arg1 = oldArg1
-		if ok then return end
 	end
-	-- 2. ToggleWorldStateScoreFrame fallback
-	if ToggleWorldStateScoreFrame then
-		ToggleWorldStateScoreFrame()
+
+	local meterAfter = (SurvivorUIMeter and SurvivorUIMeter:IsShown())
+		or (WorldStateScoreFrame and WorldStateScoreFrame:IsShown())
+		or (AZS_IsHudShown and AZS_IsHudShown("meter"))
+	if meterAfter ~= meterBefore then
 		return
 	end
-	-- 3. Azeroth Survivors HUD Meter toggle API
-	if AZS_IsHudShown and AZS_SetHudShown then
-		AZS_SetHudShown("meter", not AZS_IsHudShown("meter"))
+
+	-- 2. Try simulated click on captured frame or MiniMapBattlefieldFrame
+	if capturedMeterFrame and capturedMeterFrame.Click then
+		pcall(function() capturedMeterFrame:Click("LeftButton") end)
+	end
+	local bf = MiniMapBattlefieldFrame or getglobal("MiniMapBattlefieldFrame")
+	if bf and bf.Click then
+		pcall(function() bf:Click("LeftButton") end)
+	end
+
+	meterAfter = (SurvivorUIMeter and SurvivorUIMeter:IsShown())
+		or (WorldStateScoreFrame and WorldStateScoreFrame:IsShown())
+		or (AZS_IsHudShown and AZS_IsHudShown("meter"))
+	if meterAfter ~= meterBefore then
 		return
 	end
-	-- 4. SurvivorUI toggle fallback
+
+	-- 3. Toggle SurvivorUI damage meter directly (the meter in bottom right)
 	if SurvivorUI_ToggleMeter then
-		SurvivorUI_ToggleMeter()
+		pcall(SurvivorUI_ToggleMeter)
 		return
 	end
-	-- 5. Direct frame toggle fallback
-	if WorldStateScoreFrame then
-		if WorldStateScoreFrame:IsShown() then
-			WorldStateScoreFrame:Hide()
+	if SurvivorUIMeter then
+		if SurvivorUIMeter:IsShown() then
+			SurvivorUIMeter:Hide()
 		else
-			WorldStateScoreFrame:Show()
+			SurvivorUIMeter:Show()
 		end
+		return
+	end
+
+	-- 4. Native Azeroth Survivors HUD meter API
+	if AZS_IsHudShown and AZS_SetHudShown then
+		pcall(AZS_SetHudShown, "meter", not AZS_IsHudShown("meter"))
+		return
+	end
+
+	-- 5. Blizzard WorldStateScoreFrame fallback
+	if ToggleWorldStateScoreFrame then
+		pcall(ToggleWorldStateScoreFrame)
+		return
 	end
 end
 
@@ -1620,6 +1666,7 @@ local unitElapsed = 0
 local auraElapsed = 0
 local tallyElapsed = 0
 local skillElapsed = 0
+local cleanElapsed = 0
 local mainWatcher = CreateFrame("Frame")
 mainWatcher:SetScript("OnUpdate", function()
 	unitElapsed = unitElapsed + arg1
@@ -1646,6 +1693,11 @@ mainWatcher:SetScript("OnUpdate", function()
 	if skillElapsed >= 0.1 then
 		skillElapsed = 0
 		UpdateSkills()
+	end
+	cleanElapsed = cleanElapsed + arg1
+	if cleanElapsed >= 0.25 then
+		cleanElapsed = 0
+		CleanMinimapButtons()
 	end
 end)
 local eventHandler = CreateFrame("Frame")
