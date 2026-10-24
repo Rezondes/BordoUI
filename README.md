@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.6.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.7.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -11,17 +11,22 @@
 
 ## ✨ Key Features & Modules
 
-### 1. 🛡️ Centered Combat Unit Frames & Ability Bar
-- **3D Class Portraits:** Seamlessly flush with the player health bar.
-- **Dynamic Class Colors:** Tailored to all 9 WoW classes.
-- **Centered HUD with Racial Ability:** 6 Survivor action buttons plus a dedicated **Racial Ability slot** with golden border and real-time cooldown numbers.
+### 1. 🛡️ Centered Combat HUD (`SurvivorUI` 1:1 Architecture)
+- **Centered 7-Slot Action Bar (`SurvivorUIRow`):** Buttons 1 to 6 plus slot 12 (racial ability) with dark bordered backing slots, cropped icon textures (`0.08, 0.92, 0.08, 0.92`), and built-in numerical cooldown countdown overlays (`CooldownFrame_SetTimer` hook) that turn red when `< 2.0s`.
+- **Player Unit Frame (`SurvivorUIPlayer`):** 150x32 class-colored health bar with 1px black border, 36x36 square cropped 3D portrait on far left, 150x3 power bar, absorb shield overlay (`ShieldStripes.tga`), player name on left, live `HP | %` on right (`257 | 100%`).
+- **Player Buffs & Debuffs Row (`SurvivorUIBuffs`):** 12 aura buttons directly above the player frame with remaining duration countdowns, stack counts, black border for buffs, crimson red border for debuffs, and right-click to cancel.
+- **Target Unit Frame (`SurvivorUITarget`):** Mirrored 150x32 health bar on left, 36x36 portrait on far right, power bar underneath, red for enemy (`0.80, 0.22, 0.22`), class color for player targets, name on left, `HP | %` or `%` on right. Shows when target exists, cleanly hides when no target.
+- **Target Debuffs Row:** 8 debuff icons directly above target frame with stack counts.
+- **Integrated Bottom XP Bar & Kills/Gold Tracker:** Full-width (650px) bar beneath the HUD featuring a sleek XP bar, Red Skull kill tracker, Gold Coin chest ratio tracker, and smart golden pulse glow when affordable!
 
-### 2. ⚡ Bottom XP Bar & Kills / Gold Tracker
-- **Streamlined XP Progress Bar:** High-visibility progress bar anchored at the bottom of the screen.
-- **Clean Kills & Gold Display:** Replaces cluttered datatext with ONLY two centered indicators:
-  - **Kills Tracker:** Red skull icon (`Art\Kills.tga`) + live kill count (`811`).
-  - **Gold / Chest Ratio Tracker:** Gold coin icon (`Art\Coin.tga`) + live gold / next chest cost (`516 / 155`).
-  - **Smart Affordability Glow:** When `gold >= chest`, the chest cost turns bright lime-green (`|cff33ff33`), and the coin breathes with a golden pulsing aura (`Art\PaceGlow.tga`).
+### 2. 👥 1:1 Co-op Party Frames (`PartyFrames.lua`)
+- **Anchored to Player Frame:** Positioned directly to the left of `SurvivorUIPlayer`, stacked upwards from bottom to top (`party1` at bottom).
+- **Teammate Rows (165x24):** 24x24 square class icon with leader crown, 140x24 class-colored health bar, teammate name, and live health percentage.
+- **Full Co-op States:** `Offline` (dark gray), `DOWN` (crimson red fill and text), `Reviving %` (gold rescue bar fill), `Reviving you` (gold text if teammate is rescuing you).
+- **Live Hover Tooltip:** Shows damage dealt this run, DPS, and top damage spell (`AZS_PARTY` / `AZS_GetPartyMeter`).
+- **Click-to-Target:** Left-click instantly targets teammate.
+- **Revive Bar:** Visual rescue progress bar while down or bringing a friend back.
+- **Test Preview Mode:** `/bordo party test` toggles sample party frames with realistic damage stats and co-op states.
 
 ### 3. 📊 Modern 4-Section Stats Window (`StatsWindow.lua`)
 - **EllesmereUI/SurvivorUI Aesthetic:** Clean dark panel with colored category dividers:

@@ -4,6 +4,58 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.0] - 2026-10-24
+
+### Added
+- **1:1 SurvivorUI Centered Combat HUD (`ThemeUI.lua`):**
+  - **Centered 7-Slot Action Bar (`SurvivorUIRow`):**
+    - Centered horizontally under the hero with 7 dark bordered slots for buttons 1 to 6 plus slot 12 (the racial ability). Empty slots maintain clean dark bordered backing frames.
+    - Action buttons styled with cropped icons (`0.08, 0.92, 0.08, 0.92`), default Blizzard art textures stripped, and keybind labels cleanly hidden.
+    - Built-in numerical cooldown countdown overlays (`CooldownFrame_SetTimer` hook), dimming buttons on cooldown and turning bright red when under 2.0 seconds.
+  - **Player Unit Frame (`SurvivorUIPlayer`):**
+    - Anchored directly to the left of the action bar (`RIGHT` to `SurvivorUIRow, LEFT, -6, 0`).
+    - 36x36 square cropped 3D portrait on the far left with a 1px black border.
+    - 150x32 flat class-colored health bar with 1px black border and dark backing.
+    - 150x3 slim power bar directly beneath the health bar (Mana Blue, Rage Red, Energy Yellow).
+    - Dynamic absorb shield overlay on health bar with diagonal stripes (`Art\ShieldStripes.tga`) and bright leading edge.
+    - Name on the left, live `HP | %` on the right (e.g. `257 | 100%`, or `Down`/`Dead` in co-op).
+    - Left-click targets player, right-click opens standard Blizzard player menu, Alt-drag moves the entire HUD.
+  - **Player Buffs & Debuffs Row (`SurvivorUIBuffs`):**
+    - 12 aura buttons (`22x22`) lined up directly above the Player Frame.
+    - Time remaining text centered (`10pt`, `1, 0.95, 0.6`, e.g. `30`, `1.5s`, `5m`) and stack counts in bottom-right.
+    - 1px black border for helpful buffs, 1px crimson red border for harmful debuffs.
+    - Right-click cancels helpful buffs (`CancelPlayerBuff`). Hover shows detailed spell tooltip.
+    - Default Blizzard `BuffFrame` and `TemporaryEnchantFrame` are cleanly suppressed.
+  - **Target Unit Frame (`SurvivorUITarget`):**
+    - Anchored directly to the right of the action bar (`LEFT` to `SurvivorUIRow, RIGHT, 6, 0`).
+    - Mirrored layout: 150x32 health bar on left, 150x3 power bar underneath, 36x36 square cropped portrait on the far right.
+    - Enemy red health bar (`0.80, 0.22, 0.22`), or class-colored for friendly player targets.
+    - Target name on left, live `HP | %` or `%` on right (supports server-sent `AZS_TARGET` exact values).
+    - Left-click targets, right-click opens target menu, Alt-drag moves the HUD.
+    - Shows when target exists, cleanly hides when no target is selected.
+  - **Target Debuffs Row:**
+    - 8 debuff icons (`18x18`) lined up directly above the Target Frame.
+    - Displays live `UnitDebuff("target", i)` textures, stack counts, and 1px black borders.
+  - **Integrated Bottom XP Bar & Kills/Gold Tracker (`UI.bottomBar`):**
+    - Full-width (650px) bar anchored directly under the centered combat HUD.
+    - Sleek flat XP progress bar on top with percentage and XP values.
+    - Centered tally frame underneath with Red Skull (`Art\Kills.tga`) + kill count, and Gold Coin (`Art\Coin.tga`) + Gold/Chest ratio (`516 / 155`).
+    - Turns bright lime-green with pulsating golden glow (`Art\PaceGlow.tga`) and twinkling star (`Art\PaceSpark.tga`) whenever the player can afford the next chest!
+- **1:1 Co-op Party Frames (`PartyFrames.lua`):**
+  - Anchored directly to the left of the player frame (`BOTTOMRIGHT` to `SurvivorUIPlayer, BOTTOMLEFT, -14, 0`), stacked upwards from bottom to top (`party1` at bottom, `party2..4` above).
+  - Each teammate row (165x24):
+    - 24x24 square class icon with leader crown overlay (`UI-Group-LeaderIcon`).
+    - 140x24 flat health bar colored by teammate's class.
+    - Teammate name on left, live health percentage on right.
+    - Full co-op status integration: `Offline` (dark gray), `DOWN` (crimson red fill and text), `Reviving %` (gold rescue bar fill), `Reviving you` (gold text if teammate is rescuing you).
+    - Live hover tooltip displaying damage dealt this run, DPS, and top damage spell (`AZS_PARTY` / `AZS_GetPartyMeter`).
+    - Left-click targets the teammate.
+    - Movable support via Alt-drag or Shift-drag, saving position to `BordoUIDB.partyLeft` and `BordoUIDB.partyBottom`.
+    - Integrated Revive Bar module (`SurvivorUIRevive`) showing rescue progress while down or reviving a friend.
+    - Test preview command: `/bordo party test` toggles sample party frames with realistic damage stats and co-op states.
+
+---
+
 ## [2.6.0] - 2026-10-24
 
 ### Added
