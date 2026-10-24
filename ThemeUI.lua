@@ -395,8 +395,19 @@ local function LayoutBar()
 
 	local expBar = getglobal("MainMenuExpBar")
 	if expBar then
+		expBar:UnregisterAllEvents()
+		expBar:ClearAllPoints()
+		expBar:SetPoint("TOP", UIParent, "BOTTOM", 0, -600)
+		expBar:SetAlpha(0)
 		expBar:Hide()
 		expBar.Show = function() end
+	end
+	if MainMenuExpBar_Update then
+		MainMenuExpBar_Update = function() end
+	end
+	if SurvivorUIXpBar then
+		SurvivorUIXpBar:Hide()
+		SurvivorUIXpBar.Show = function() end
 	end
 
 	for _, name in pairs({ "MainMenuBarMaxLevelBar", "ReputationWatchBar" }) do
@@ -404,9 +415,10 @@ local function LayoutBar()
 		if frame then
 			frame:Hide()
 			frame.Show = function() end
-	end
+		end
 	end
 
+	if PositionMicroButtons then PositionMicroButtons() end
 	UpdateSkills()
 end
 
@@ -773,45 +785,82 @@ local function UpdateDebuffs()
 end
 
 -- =========================================================================
--- 5. BOTTOM XP BAR + KILLS & GOLD TRACKER (UI.bottomBar)
+-- 5. STANDALONE BOTTOM XP BAR, CENTERED TALLY FRAME & MICRO BUTTONS DOCK
 -- =========================================================================
-local fullBarWidth = row:GetWidth() + 2 * (SECTION_GAP + FRAME_WIDTH + 1 + BUTTON_SIZE)
 
-UI.bottomBar = CreateFrame("Frame", "AZSHelper_BottomBar", UIParent)
-UI.bottomBar:SetWidth(fullBarWidth)
-UI.bottomBar:SetHeight(22)
-UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
-UI.bottomBar:SetFrameStrata("LOW")
-UI.bottomBar:SetFrameLevel(5)
-UI.bottomBar:SetClampedToScreen(true)
-
--- Sleek 4px flat XP Bar directly under the buttons
-UI.xpBar = CreateFrame("StatusBar", "AZSHelper_XPBar", UI.bottomBar)
-UI.xpBar:SetPoint("TOPLEFT", UI.bottomBar, "TOPLEFT", 0, 0)
-UI.xpBar:SetPoint("TOPRIGHT", UI.bottomBar, "TOPRIGHT", 0, 0)
-UI.xpBar:SetHeight(4)
+-- A) STANDALONE FULL-WIDTH XP BAR (Pinned at the very bottom edge)
+UI.xpBar = CreateFrame("StatusBar", "AZSHelper_XPBar", UIParent)
+UI.xpBar:ClearAllPoints()
+UI.xpBar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+UI.xpBar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+UI.xpBar:SetHeight(8)
 UI.xpBar:SetStatusBarTexture(FLAT)
 UI.xpBar:SetStatusBarColor(0.55, 0.20, 0.85, 1.0)
 UI.xpBar:SetMinMaxValues(0, 100)
-AddBorder(UI.xpBar)
+UI.xpBar:SetFrameStrata("LOW")
+UI.xpBar:SetFrameLevel(10)
 AddBacking(UI.xpBar)
+
+local xpTopBorder = UI.xpBar:CreateTexture(nil, "OVERLAY")
+xpTopBorder:SetTexture(FLAT)
+xpTopBorder:SetVertexColor(0, 0, 0, 1)
+xpTopBorder:SetPoint("TOPLEFT", UI.xpBar, "TOPLEFT", 0, 0)
+xpTopBorder:SetPoint("TOPRIGHT", UI.xpBar, "TOPRIGHT", 0, 0)
+xpTopBorder:SetHeight(1)
 
 UI.xpText = UI.xpBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 UI.xpText:SetPoint("CENTER", UI.xpBar, "CENTER", 0, 0)
 UI.xpText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE")
-UI.xpText:SetTextColor(1, 1, 1, 0)
+UI.xpText:SetTextColor(1, 1, 1, 0.85)
 
--- Centered Tally Frame for Kills & Gold
-UI.tallyFrame = CreateFrame("Frame", "AZSHelper_TallyFrame", UI.bottomBar)
-UI.tallyFrame:SetHeight(16)
-UI.tallyFrame:SetPoint("TOP", UI.xpBar, "BOTTOM", 0, -2)
+UI.xpBar:EnableMouse(true)
+UI.xpBar:SetScript("OnEnter", function()
+	UI.xpText:SetTextColor(1, 1, 1, 1)
+end)
+UI.xpBar:SetScript("OnLeave", function()
+	UI.xpText:SetTextColor(1, 1, 1, 0.85)
+end)
+
+-- B) CENTERED KILLS & GOLD TALLY FRAME (Positioned right under the action bar)
+UI.tallyFrame = CreateFrame("Frame", "AZSHelper_TallyFrame", UIParent)
+UI.tallyFrame:SetHeight(22)
+UI.tallyFrame:SetWidth(180)
+UI.tallyFrame:ClearAllPoints()
+UI.tallyFrame:SetPoint("TOP", row, "BOTTOM", 0, -12)
+UI.tallyFrame:SetFrameStrata("MEDIUM")
+UI.tallyFrame:SetFrameLevel(6)
+UI.tallyFrame:SetClampedToScreen(true)
+UI.tallyFrame:SetMovable(true)
+UI.tallyFrame:EnableMouse(true)
+UI.tallyFrame:RegisterForDrag("LeftButton")
+
+local tallyBg = UI.tallyFrame:CreateTexture(nil, "BACKGROUND")
+tallyBg:SetTexture(FLAT)
+tallyBg:SetVertexColor(0.04, 0.04, 0.06, 0.82)
+tallyBg:SetAllPoints(UI.tallyFrame)
+AddBorder(UI.tallyFrame)
+
+UI.tallyFrame:SetScript("OnDragStart", function()
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		UI.tallyFrame:StartMoving()
+	end
+end)
+UI.tallyFrame:SetScript("OnDragStop", function()
+	UI.tallyFrame:StopMovingOrSizing()
+	BordoUIDB = BordoUIDB or {}
+	local pt, _, relPt, x, y = UI.tallyFrame:GetPoint()
+	BordoUIDB.tallyPos = { point = pt, relativePoint = relPt, x = x, y = y }
+end)
+
+-- Backward compatibility reference for scripts expecting UI.bottomBar
+UI.bottomBar = UI.tallyFrame
 
 -- Red Skull Icon for Kills
 UI.killsSkull = UI.tallyFrame:CreateTexture(nil, "ARTWORK")
 UI.killsSkull:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Kills")
 UI.killsSkull:SetWidth(15)
 UI.killsSkull:SetHeight(15)
-UI.killsSkull:SetPoint("LEFT", UI.tallyFrame, "LEFT", 0, 0)
+UI.killsSkull:SetPoint("LEFT", UI.tallyFrame, "LEFT", 8, 0)
 
 UI.killsText = UI.tallyFrame:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
 UI.killsText:SetFont("Fonts\\ARIALN.TTF", 12, "OUTLINE")
@@ -823,7 +872,7 @@ UI.killsText:SetText("0")
 UI.goldSlot = CreateFrame("Frame", nil, UI.tallyFrame)
 UI.goldSlot:SetWidth(15)
 UI.goldSlot:SetHeight(15)
-UI.goldSlot:SetPoint("LEFT", UI.killsText, "RIGHT", 20, 0)
+UI.goldSlot:SetPoint("LEFT", UI.killsText, "RIGHT", 18, 0)
 
 UI.goldGlow = UI.goldSlot:CreateTexture(nil, "BACKGROUND")
 UI.goldGlow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
@@ -885,6 +934,52 @@ UI.goldSlot:SetScript("OnUpdate", function()
 	end
 end)
 
+-- C) MICRO DOCK (Character & Talent Buttons in Bottom-Right Corner)
+local microDock = CreateFrame("Frame", "BordoUI_MicroDock", UIParent)
+microDock:SetWidth(56)
+microDock:SetHeight(28)
+microDock:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 14)
+microDock:SetFrameStrata("LOW")
+microDock:SetFrameLevel(10)
+microDock:SetMovable(true)
+microDock:SetClampedToScreen(true)
+AZSHelper:MakeMovable(microDock, "microDockPos")
+UI.microDock = microDock
+
+local function PositionMicroButtons()
+	local charBtn = getglobal("CharacterMicroButton")
+	if charBtn then
+		charBtn:SetParent(microDock)
+		charBtn:ClearAllPoints()
+		charBtn:SetPoint("LEFT", microDock, "LEFT", 0, 0)
+		charBtn:SetScale(0.85)
+		charBtn:Show()
+	end
+
+	local talentBtn = getglobal("TalentMicroButton")
+	if talentBtn then
+		talentBtn:SetParent(microDock)
+		talentBtn:ClearAllPoints()
+		talentBtn:SetPoint("LEFT", charBtn or microDock, "RIGHT", -2, 0)
+		talentBtn:SetScale(0.85)
+		talentBtn:Show()
+	end
+
+	for _, name in pairs({
+		"SpellbookMicroButton", "QuestLogMicroButton", "SocialsMicroButton",
+		"WorldMapMicroButton", "MainMenuMicroButton", "HelpMicroButton"
+	}) do
+		local btn = getglobal(name)
+		if btn then
+			btn:ClearAllPoints()
+			btn:SetPoint("TOP", UIParent, "BOTTOM", 0, -600)
+			btn:Hide()
+			btn.Show = function() end
+		end
+	end
+end
+PositionMicroButtons()
+
 local function UpdateBottomBar()
 	local xp = (AZS_RUN and AZS_RUN.xp) or 0
 	local xpn = (AZS_RUN and AZS_RUN.xpn) or 1
@@ -907,7 +1002,7 @@ local function UpdateBottomBar()
 
 	local kw = UI.killsText:GetStringWidth() or 20
 	local gw = UI.goldText:GetStringWidth() or 40
-	local totalW = 15 + 4 + kw + 20 + 15 + 4 + gw
+	local totalW = 8 + 15 + 4 + kw + 18 + 15 + 4 + gw + 8
 	UI.tallyFrame:SetWidth(totalW)
 end
 
@@ -1199,8 +1294,30 @@ eventHandler:SetScript("OnEvent", function()
 			row:ClearAllPoints()
 			row:SetPoint("CENTER", UIParent, "CENTER", 0, -170)
 		end
-		UI.bottomBar:ClearAllPoints()
-		UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
+		UI.xpBar:ClearAllPoints()
+		UI.xpBar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+		UI.xpBar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+
+		if BordoUIDB and BordoUIDB.tallyPos and BordoUIDB.tallyPos.point then
+			AZSHelper:RestorePosition(UI.tallyFrame, BordoUIDB.tallyPos)
+		elseif AZSHelperDB and AZSHelperDB.tallyPos and AZSHelperDB.tallyPos.point then
+			AZSHelper:RestorePosition(UI.tallyFrame, AZSHelperDB.tallyPos)
+		else
+			UI.tallyFrame:ClearAllPoints()
+			UI.tallyFrame:SetPoint("TOP", row, "BOTTOM", 0, -12)
+		end
+
+		if UI.microDock then
+			if BordoUIDB and BordoUIDB.microDockPos and BordoUIDB.microDockPos.point then
+				AZSHelper:RestorePosition(UI.microDock, BordoUIDB.microDockPos)
+			elseif AZSHelperDB and AZSHelperDB.microDockPos and AZSHelperDB.microDockPos.point then
+				AZSHelper:RestorePosition(UI.microDock, AZSHelperDB.microDockPos)
+			else
+				UI.microDock:ClearAllPoints()
+				UI.microDock:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 14)
+			end
+		end
+		if PositionMicroButtons then PositionMicroButtons() end
 	elseif event == "ACTIONBAR_PAGE_CHANGED" then
 		if CURRENT_ACTIONBAR_PAGE ~= 1 then
 			CURRENT_ACTIONBAR_PAGE = 1
@@ -1229,14 +1346,30 @@ end)
 function BordoUI_ResetThemeUI()
 	row:ClearAllPoints()
 	row:SetPoint("CENTER", UIParent, "CENTER", 0, -170)
-	UI.bottomBar:ClearAllPoints()
-	UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
+
+	UI.xpBar:ClearAllPoints()
+	UI.xpBar:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 0, 0)
+	UI.xpBar:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", 0, 0)
+
+	UI.tallyFrame:ClearAllPoints()
+	UI.tallyFrame:SetPoint("TOP", row, "BOTTOM", 0, -12)
+
+	if UI.microDock then
+		UI.microDock:ClearAllPoints()
+		UI.microDock:SetPoint("BOTTOMRIGHT", UIParent, "BOTTOMRIGHT", -12, 14)
+	end
+	if PositionMicroButtons then PositionMicroButtons() end
+
 	if BordoUIDB then
 		BordoUIDB.hudPos = nil
 		BordoUIDB.bottomBarPos = nil
+		BordoUIDB.tallyPos = nil
+		BordoUIDB.microDockPos = nil
 	end
 	if AZSHelperDB then
 		AZSHelperDB.rowPos = nil
 		AZSHelperDB.bottomBarPos = nil
+		AZSHelperDB.tallyPos = nil
+		AZSHelperDB.microDockPos = nil
 	end
 end

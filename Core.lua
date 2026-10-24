@@ -40,7 +40,8 @@ local defaults = {
     centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
     deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 },
     encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
-    bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 },
+    tallyPos = nil, -- Defaults to centered under combat HUD
+    microDockPos = nil, -- Defaults to bottom-right corner
     chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
     partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 },
     showParty = true,
@@ -462,6 +463,8 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = BordoUI_BossTrackerFrame or AZSHelper_BossSchedulePanel, name = "Boss Tracker (Drag Me)", key = "bossTrackerPos" },
         { frame = SurvivorUIBuild, name = "Build & Jewelry (Drag Me)", key = "buildPos" },
         { frame = SurvivorUIParty, name = "Party Frames (Drag Me)", key = "partyPos" },
+        { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos" },
+        { frame = BordoUI_MicroDock, name = "Micro Buttons (Drag Me)", key = "microDockPos" },
     };
 
     for i = 1, table.getn(targets) do
@@ -506,11 +509,15 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.partyBottom = nil;
     BordoUIDB.partyPos = nil;
     BordoUIDB.bottomBarPos = nil;
+    BordoUIDB.tallyPos = nil;
+    BordoUIDB.microDockPos = nil;
     BordoUIDB.centerHudPos = nil;
     BordoUIDB.multPanelPos = nil;
     if ( AZSHelperDB ) then
         AZSHelperDB.rowPos = nil;
         AZSHelperDB.bottomBarPos = nil;
+        AZSHelperDB.tallyPos = nil;
+        AZSHelperDB.microDockPos = nil;
         AZSHelperDB.centerHudPos = nil;
     end
 
