@@ -1,44 +1,19 @@
 ## Interface: 11200
 ## Title: |cff00ccffBordo UI|r |cffffd100[Azeroth Survivors]|r
-## Notes: Complete Modern UI Suite for Azeroth Survivors (Survivor UI + Death Recap + High-Visibility Green Teammate Nameplates).
-## Author: Bordo (based on Survivor UI & Survivor Plates by morderous)
-## Version: 3.2.0
-## SavedVariables: BordoUIDB, AZSHelperDB, SurvivorUIDB, SurvivorUIJewelryBook, SurvivorPlatesDB
-## SavedVariablesPerCharacter: SurvivorUIJewelry
-SurvivorUI.lua
-LocaleData.lua
-Locale.lua
-Mover.lua
-Hover.lua
-Tally.lua
-XpBar.lua
-LevelUp.lua
-Pace.lua
-CharacterPane.lua
-RunPanel.lua
-Meter.lua
-DotCounter.lua
-SoulShards.lua
-Summons.lua
-Party.lua
-Tracker.lua
-AbilityTooltip.lua
-BossBars.lua
-MapPins.lua
-Guardians.lua
-LootLog.lua
-ChatFilter.lua
-BuildList.lua
-JewelryData.lua
-Jewelry.lua
-RunHistory.lua
-Career.lua
-Confirm.lua
-Options.lua
-EditCard.lua
-MinimapButton.lua
-Nameplates.lua
+## Notes: Modern UI Suite for Azeroth Survivors (Centered Combat HUD, XP & Kills/Gold Bar, Modern Stats, Boss Timeline & Arrows, Build & Jewelry, Party Frames, Nameplates, Map Pins, Damage Font).
+## Author: Bordo
+## Version: 2.6.0
+## SavedVariables: BordoUIDB, AZSHelperDB
+
 Core.lua
 DamageFont.lua
 StatsTable.lua
+AbilityTooltip.lua
+ThemeUI.lua
+StatsWindow.lua
+BossTracker.lua
+BuildList.lua
+PartyFrames.lua
+Nameplates.lua
+MapPins.lua
 DeathRecap.lua

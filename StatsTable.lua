@@ -8,9 +8,6 @@
     - Draggable and collapsible
 ]]--
 
-BordoUI = BordoUI or {};
-AZSHelper = AZSHelper or BordoUI;
-
 AZSHelper.SpellStats = {};
 AZSHelper.OverallMaxCrit = 0;
 AZSHelper.OverallMaxCritSpell = "-";
@@ -19,10 +16,7 @@ AZSHelper.TotalCrits = 0;
 
 -- Reset Stats Function
 function AZSHelper:ResetSpellStats()
-BordoUI = BordoUI or {};
-AZSHelper = AZSHelper or BordoUI;
-
-AZSHelper.SpellStats = {};
+    AZSHelper.SpellStats = {};
     AZSHelper.OverallMaxCrit = 0;
     AZSHelper.OverallMaxCritSpell = "-";
     AZSHelper.TotalHits = 0;
@@ -448,8 +442,8 @@ mainFrame:SetFrameStrata("MEDIUM"); -- Above background panels so nothing bleeds
 tinsert(UISpecialFrames, "AZSHelper_StatsTableFrame"); -- Close with ESC
 
 -- Positioned directly to the right of Multipliers panel
-mainFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 18, -60);
-mainFrame:Show(); -- Shown by default for attack & crit tracking
+mainFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
+mainFrame:Hide(); -- Hidden by default so it doesn't clutter screen
 
 -- Solid Dark Backdrop (Opaque so background frames don't bleed through)
 mainFrame:SetBackdrop({
@@ -471,7 +465,7 @@ function AZSHelper:AnchorStatsTableToMultipliers()
         mainFrame:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 6, 0);
     elseif ( mainFrame ) then
         mainFrame:ClearAllPoints();
-        mainFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 18, -60);
+        mainFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
     end
 end
 
@@ -975,16 +969,3 @@ initFrame:SetScript("OnEvent", function()
         end
     end
 end);
-
-function AZSHelper:ToggleStatsTable()
-    if ( mainFrame:IsShown() ) then
-        mainFrame:Hide();
-        if ( AZSHelperDB ) then AZSHelperDB.statsHidden = true; end
-    else
-        mainFrame:Show();
-        if ( AZSHelperDB ) then AZSHelperDB.statsHidden = nil; end
-        AZSHelper:UpdateStatsTable();
-    end
-end
-BordoUI.ToggleStatsTable = AZSHelper.ToggleStatsTable;
-BordoUI.StatsTableFrame = mainFrame;

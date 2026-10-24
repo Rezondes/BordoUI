@@ -1,18 +1,51 @@
 --[[
     Bordo UI - Core (Core.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
-    Modern UI Suite by Bordo (Survivor UI + Death Recap + Green Teammate Nameplates)
+    Modern UI Suite by Bordo
 ]]--
 
-BordoUI = BordoUI or {};
+BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "3.2.0";
+BordoUI.version = "2.3.0";
+
+-- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
+-- (Keeps bottom-right corner clear for damage meters / DPS addons)
+local orig_GameTooltip_SetDefaultAnchor = GameTooltip_SetDefaultAnchor;
+function GameTooltip_SetDefaultAnchor(tooltip, parent)
+    tooltip:SetOwner(parent, "ANCHOR_NONE");
+    tooltip:ClearAllPoints();
+    tooltip:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0);
+    tooltip.default = 1;
+end
+
+if ( updateContainerFrameAnchors ) then
+    local orig_updateContainerFrameAnchors = updateContainerFrameAnchors;
+    updateContainerFrameAnchors = function()
+        orig_updateContainerFrameAnchors();
+        if ( GameTooltip:IsShown() and GameTooltip.default ) then
+            GameTooltip:ClearAllPoints();
+            GameTooltip:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0);
+        end
+    end
+end
 
 -- Default Settings
 local defaults = {
-    locked        = false,
+    dmgScale   = 0.75,
+    tableScale = 0.80,
+    collapsed  = false,
+    locked     = false, -- Global UI window lock
+    statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
+    multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 },
+    centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
     deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 },
-    goldPos       = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 },
+    encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 },
+    bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 },
+    chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 },
+    partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 },
+    showParty = true,
+    chestArrow = true,
+    chestChat  = true,
 };
 
 local function InitDB()
@@ -25,18 +58,12 @@ local function InitDB()
             BordoUIDB[k] = v;
         end
     end
+    -- Migrate old positions to under-character HUD & non-overlapping Death Recap
+    if ( not BordoUIDB.centerHudPos or (BordoUIDB.centerHudPos.y and BordoUIDB.centerHudPos.y < 100) ) then
+        BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
+    end
     if ( not BordoUIDB.deathRecapPos or (BordoUIDB.deathRecapPos.x and BordoUIDB.deathRecapPos.x > -250) ) then
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
-    end
-    if ( not BordoUIDB.goldPos ) then
-        BordoUIDB.goldPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 };
-    end
-    SurvivorUIDB = SurvivorUIDB or {};
-    if ( SurvivorUIDB.statsPanel == nil ) then
-        SurvivorUIDB.statsPanel = true;
-    end
-    if ( SurvivorUIDB.runPanel == nil ) then
-        SurvivorUIDB.runPanel = false;
     end
 end
 
@@ -70,7 +97,7 @@ function BordoUI:ApplyMaxCameraDistance()
     pcall(SetCVar, "cameraDistanceMaxFactor", "4");
 end
 
--- Frame Movement Utility
+-- Frame Movement & Lock Utility
 function BordoUI:MakeMovable(frame, saveKey, callback)
     if ( not frame ) then return; end
     frame:SetMovable(true);
@@ -99,140 +126,51 @@ function BordoUI:RestorePosition(frame, posData)
     end
 end
 
+function BordoUI:SetLocked(locked)
+    if ( not BordoUIDB ) then return; end
+    BordoUIDB.locked = locked and true or false;
+    if ( BordoUI.UpdateLockState ) then
+        BordoUI:UpdateLockState();
+    end
+    if ( BordoUI.UpdatePartyFrames ) then
+        BordoUI:UpdatePartyFrames();
+    end
+    if ( BordoUIDB.locked ) then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cffff3333[LOCKED]|r. Dragging is disabled.");
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows are now |cff55ff55[UNLOCKED]|r. You can freely drag and reposition Chat, Multipliers, Combat HUD, Boss Bars, Party & Co-op Meter.");
+    end
+end
+
+function BordoUI:ToggleLock()
+    local newState = not (BordoUIDB and BordoUIDB.locked);
+    BordoUI:SetLocked(newState);
+    return newState;
+end
+
 -- Event Listener Frame
 local eventFrame = CreateFrame("Frame", "BordoUI_CoreEventFrame");
 eventFrame:RegisterEvent("VARIABLES_LOADED");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 
-------------------------------------------------------------------------------
--- Gold & Chest Tracker Frame (Bottom-Center, Movable, Dynamic Pricing)
-------------------------------------------------------------------------------
-local goldTracker = CreateFrame("Button", "BordoUI_GoldTrackerFrame", UIParent);
-goldTracker:SetWidth(110);
-goldTracker:SetHeight(28);
-goldTracker:SetFrameStrata("MEDIUM");
-goldTracker:SetFrameLevel(15);
-goldTracker:SetClampedToScreen(true);
-
-goldTracker:SetBackdrop({
-    bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile = true, tileSize = 16, edgeSize = 12,
-    insets = { left = 3, right = 3, top = 3, bottom = 3 }
-});
-goldTracker:SetBackdropColor(0, 0, 0, 0.70);
-goldTracker:SetBackdropBorderColor(0.4, 0.4, 0.4, 0.8);
-
--- Coin Icon
-local coinIcon = goldTracker:CreateTexture("BordoUI_GoldTrackerCoin", "ARTWORK");
-coinIcon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Coin");
-coinIcon:SetWidth(18);
-coinIcon:SetHeight(18);
-coinIcon:SetPoint("LEFT", goldTracker, "LEFT", 6, 0);
-
--- Breathing Glow behind Coin when affordable
-local coinGlow = goldTracker:CreateTexture("BordoUI_GoldTrackerGlow", "BACKGROUND");
-coinGlow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow");
-coinGlow:SetBlendMode("ADD");
-coinGlow:SetVertexColor(1, 0.85, 0.2, 0.7);
-coinGlow:SetPoint("CENTER", coinIcon, "CENTER", 0, 0);
-coinGlow:SetWidth(30);
-coinGlow:SetHeight(30);
-coinGlow:Hide();
-
--- Text (e.g. 400 / 20)
-local goldText = goldTracker:CreateFontString("BordoUI_GoldTrackerText", "OVERLAY");
-goldText:SetFont(SurvivorUI_FONT or "Fonts\\FRIZQT__.TTF", 12, "OUTLINE");
-goldText:SetPoint("LEFT", coinIcon, "RIGHT", 6, 0);
-goldText:SetJustifyH("LEFT");
-goldText:SetText("|cffffd7000|r |cff888888/|r |cff33ff3320|r");
-
--- Draggable
-BordoUI:MakeMovable(goldTracker, "goldPos");
-
--- Tooltip
-goldTracker:SetScript("OnEnter", function()
-    GameTooltip:SetOwner(this, "ANCHOR_TOP");
-    GameTooltip:SetText("|cffffd200Bordo UI - Gold & Chest Tracker|r", 1, 1, 1);
-    local curGold = (AZS_RUN and tonumber(AZS_RUN.gold)) or 0;
-    local nextCost = (AZS_RUN and tonumber(AZS_RUN.chest)) or 20;
-    GameTooltip:AddLine("Current Gold: |cffffffff" .. BordoUI:FormatNumber(curGold) .. "|r", 0.9, 0.9, 0.9);
-    GameTooltip:AddLine("Next Chest Cost: |cffffffff" .. BordoUI:FormatNumber(nextCost) .. "|r", 0.9, 0.9, 0.9);
-    if ( nextCost > 0 and curGold >= nextCost ) then
-        GameTooltip:AddLine("|cff33ff33★ Affordable! Go open a chest! ★|r");
-    elseif ( nextCost > 0 ) then
-        GameTooltip:AddLine(string.format("|cffff6666✖ Need %s more gold|r", BordoUI:FormatNumber(nextCost - curGold)));
-    end
-    GameTooltip:AddLine("|cff888888(Left-Click and drag to move)|r", 0.7, 0.7, 0.7);
-    GameTooltip:Show();
-end);
-goldTracker:SetScript("OnLeave", function()
-    GameTooltip:Hide();
-end);
-
--- OnUpdate loop
-local goldTimer = 0;
-local glowBreath = 0;
-goldTracker:SetScript("OnUpdate", function()
-    glowBreath = glowBreath + arg1;
-    goldTimer = goldTimer + arg1;
-    if ( goldTimer < 0.12 ) then return; end
-    goldTimer = 0;
-
-    local isPlaying = false;
-    if ( AZS_GetPhase ) then
-        local ph = AZS_GetPhase();
-        isPlaying = (ph == "playing" or ph == "choosing" or ph == "paused");
-    elseif ( AZS_RUN and AZS_RUN.t ) then
-        local ph = AZS_RUN.ph;
-        isPlaying = (ph == "playing" or ph == "choosing" or ph == "paused" or not ph);
-    end
-
-    if ( not isPlaying and not (BordoUIDB and BordoUIDB.goldPreview) ) then
-        if ( this:IsShown() ) then this:Hide(); end
-        return;
-    end
-
-    if ( not this:IsShown() ) then this:Show(); end
-
-    local g = (AZS_RUN and tonumber(AZS_RUN.gold)) or 0;
-    local c = (AZS_RUN and tonumber(AZS_RUN.chest)) or 20;
-
-    local gStr = BordoUI:FormatNumber(g);
-    local cStr = BordoUI:FormatNumber(c);
-
-    if ( c > 0 and g >= c ) then
-        goldText:SetText("|cffffd700" .. gStr .. "|r |cff888888/|r |cff33ff33" .. cStr .. "|r");
-        this:SetBackdropBorderColor(1, 0.85, 0.2, 0.9);
-        coinGlow:Show();
-        local pulse = 0.55 + 0.35 * math.sin(glowBreath * 5);
-        coinGlow:SetAlpha(pulse);
-    else
-        goldText:SetText("|cffffd700" .. gStr .. "|r |cff888888/|r |cffcca050" .. cStr .. "|r");
-        this:SetBackdropBorderColor(0.35, 0.35, 0.35, 0.8);
-        coinGlow:Hide();
-    end
-
-    local textWidth = goldText:GetStringWidth() or 40;
-    local wantedWidth = math.max(105, textWidth + 34);
-    if ( math.abs(this:GetWidth() - wantedWidth) > 2 ) then
-        this:SetWidth(wantedWidth);
-    end
-end);
-BordoUI.GoldTrackerFrame = goldTracker;
-
 eventFrame:SetScript("OnEvent", function()
     if ( event == "VARIABLES_LOADED" or event == "PLAYER_ENTERING_WORLD" ) then
         InitDB();
-        if ( BordoUIDB and BordoUIDB.goldPos ) then
-            BordoUI:RestorePosition(goldTracker, BordoUIDB.goldPos);
-        else
-            goldTracker:ClearAllPoints();
-            goldTracker:SetPoint("BOTTOM", UIParent, "BOTTOM", 0, 185);
-        end
         if ( event == "PLAYER_ENTERING_WORLD" ) then
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r v3.0 loaded (Survivor UI + Death Recap + Green Teammate Nameplates + Gold Tracker). Type |cffffd100/bordo|r or |cffffd100/sui|r.");
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r loaded (Modern UI Suite, Miniboss Timer, Chest Radar & Boss Highlight). Type |cffffd100/bordo|r or |cffffd100/azs|r.");
             BordoUI:ApplyMaxCameraDistance();
+            if ( BordoUI.ApplyModernDamageText ) then
+                BordoUI:ApplyModernDamageText();
+            end
+            if ( BordoUI.ApplySquareMinimapStyle ) then
+                BordoUI:ApplySquareMinimapStyle();
+            end
+            if ( BordoUI.UpdateLockState ) then
+                BordoUI:UpdateLockState();
+            end
+            if ( ChatFrame1 and BordoUIDB and BordoUIDB.chatPos ) then
+                BordoUI:RestorePosition(ChatFrame1, BordoUIDB.chatPos);
+            end
         end
     end
 end);
@@ -242,37 +180,59 @@ SLASH_BORDOU1 = "/bordo";
 SLASH_BORDOU2 = "/bordoui";
 SLASH_BORDOU3 = "/bu";
 SLASH_BORDOU4 = "/azs";
+SLASH_BORDOU5 = "/survivor";
 SlashCmdList["BORDOU"] = function(msg)
     msg = string.lower(msg or "");
     local _, _, cmd, val = string.find(msg, "^(%a+)%s*(.*)$");
     
-    if ( cmd == "death" or cmd == "recap" or cmd == "tod" or cmd == "" ) then
+    if ( cmd == "scale" or cmd == "dmg" ) then
+        local num = tonumber(val);
+        if ( num and num >= 0.4 and num <= 1.5 ) then
+            BordoUIDB.dmgScale = num;
+            if ( BordoUI.ApplyModernDamageText ) then
+                BordoUI:ApplyModernDamageText();
+            end
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Floating combat text scale set to %.0f%%.", num * 100));
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo dmg 0.75 (value between 0.4 and 1.5)");
+        end
+    elseif ( cmd == "size" or cmd == "table" ) then
+        local num = tonumber(val);
+        if ( num and num >= 0.4 and num <= 1.5 ) then
+            if ( BordoUI.SetTableScale ) then
+                BordoUI:SetTableScale(num);
+            end
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Stats table scale set to %.0f%%.", num * 100));
+        else
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo size 0.75 (value between 0.4 and 1.5)");
+        end
+    elseif ( cmd == "death" or cmd == "recap" or cmd == "tod" ) then
         if ( BordoUI.ShowDeathRecap ) then
             BordoUI:ShowDeathRecap();
         end
-    elseif ( cmd == "crit" or cmd == "crits" or cmd == "table" ) then
-        if ( BordoUI.ToggleStatsTable ) then
-            BordoUI:ToggleStatsTable();
+    elseif ( cmd == "boss" or cmd == "timer" ) then
+        if ( AZSHelper_BossSchedulePanel ) then
+            if ( AZSHelper_BossSchedulePanel:IsShown() ) then
+                AZSHelper_BossSchedulePanel:Hide();
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss timer list hidden.");
+            else
+                AZSHelper_BossSchedulePanel:Show();
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss timer list shown.");
+            end
         end
-    elseif ( cmd == "stat" or cmd == "stats" ) then
-        if ( SurvivorUI_ToggleStatsPanel ) then
-            SurvivorUI_ToggleStatsPanel();
-        end
-    elseif ( cmd == "gold" ) then
-        if ( val == "reset" ) then
-            BordoUIDB.goldPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 };
-            BordoUI:RestorePosition(goldTracker, BordoUIDB.goldPos);
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Gold & Chest Tracker position reset to bottom-center.");
-        else
-            BordoUIDB.goldPreview = not BordoUIDB.goldPreview;
-            if ( BordoUIDB.goldPreview ) then goldTracker:Show(); end
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Gold Tracker test preview " .. (BordoUIDB.goldPreview and "|cff33ff33ON|r (drag to move)" or "|cffff3333OFF|r"));
-        end
+    elseif ( cmd == "test" or cmd == "preview" ) then
+        BordoUI.TestBossPreview = not BordoUI.TestBossPreview;
+        local st = BordoUI.TestBossPreview and "enabled (Hogger test boss)" or "disabled";
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss HP preview " .. st .. ".");
     elseif ( cmd == "zoom" or cmd == "cam" or cmd == "camera" ) then
         BordoUI:ApplyMaxCameraDistance();
         local yards = tonumber(val) or 35;
         pcall(CameraZoomOut, yards);
         DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Max camera zoom unlocked (factor 4 / 50 yards). Zoomed out by %d yards. You can now zoom out further using your mouse wheel!", yards));
+    elseif ( cmd == "party" or cmd == "group" ) then
+        if ( BordoUI.TogglePartyFrames ) then
+            BordoUI:TogglePartyFrames(val);
+        end
     elseif ( cmd == "plates" or cmd == "nameplates" or cmd == "teammates" ) then
         if ( BordoUI.EnsureNameplates ) then
             BordoUI:EnsureNameplates();
@@ -281,77 +241,96 @@ SlashCmdList["BORDOU"] = function(msg)
             if ( ShowNameplates ) then pcall(ShowNameplates); end
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
-    elseif ( cmd == "opt" or cmd == "options" or cmd == "config" ) then
-        if ( SlashCmdList["SURVIVORUI"] ) then
-            SlashCmdList["SURVIVORUI"]("opt");
-        end
+    elseif ( cmd == "lock" ) then
+        BordoUI:SetLocked(true);
+    elseif ( cmd == "unlock" ) then
+        BordoUI:SetLocked(false);
+    elseif ( cmd == "move" or cmd == "togglelock" ) then
+        BordoUI:ToggleLock();
+    elseif ( cmd == "help" ) then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Force-enable Teammate (green) & Enemy nameplates");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset all window positions to defaults");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo recap|r - View Death Recap & Recent Damage");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo dmg <0.4-1.5>|r - Set floating damage font scale");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo size <0.4-1.5>|r - Set stats table scale");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance");
     elseif ( cmd == "reset" ) then
+        BordoUIDB.statsPos = nil;
+        BordoUIDB.multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 };
+        BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
         BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
+        BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
+        BordoUIDB.bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 };
+        BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 };
+        BordoUIDB.partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 };
+        if ( ChatFrame1 ) then
+            ChatFrame1:ClearAllPoints();
+            ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
+        end
+        if ( AZSHelper_BottomBar ) then
+            BordoUI:RestorePosition(AZSHelper_BottomBar, BordoUIDB.bottomBarPos);
+        end
+        if ( AZSHelper_MultipliersPanel ) then
+            BordoUI:RestorePosition(AZSHelper_MultipliersPanel, BordoUIDB.multPanelPos);
+        end
+        if ( AZSHelper_StatsTableFrame ) then
+            if ( AZSHelper.AnchorStatsTableToMultipliers ) then
+                AZSHelper:AnchorStatsTableToMultipliers();
+            else
+                AZSHelper_StatsTableFrame:ClearAllPoints();
+                AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
+            end
+        end
+        if ( AZSHelper_SkillsContainer ) then
+            BordoUI:RestorePosition(AZSHelper_SkillsContainer, BordoUIDB.centerHudPos);
+        end
         if ( AZSHelper_DeathRecapFrame ) then
             BordoUI:RestorePosition(AZSHelper_DeathRecapFrame, BordoUIDB.deathRecapPos);
         end
-        BordoUIDB.goldPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 };
-        if ( goldTracker ) then
-            BordoUI:RestorePosition(goldTracker, BordoUIDB.goldPos);
+        if ( AZSHelper_BossEncounterContainer ) then
+            BordoUI:RestorePosition(AZSHelper_BossEncounterContainer, BordoUIDB.encounterBarsPos);
         end
+        if ( BordoUI_PartyContainer ) then
+            BordoUI:RestorePosition(BordoUI_PartyContainer, BordoUIDB.partyPos);
+            if ( BordoUI.UpdatePartyFrames ) then BordoUI:UpdatePartyFrames(); end
+        end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI window positions reset to defaults.");
+    elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
+        if ( SlashCmdList["AZSCHESTLIGHT"] ) then
+            SlashCmdList["AZSCHESTLIGHT"](val);
+        end
+    else
+        -- Toggle Stats Table
         if ( AZSHelper_StatsTableFrame ) then
-            AZSHelper_StatsTableFrame:ClearAllPoints();
-            AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 18, -60);
-            if ( BordoUIDB ) then BordoUIDB.statsPos = nil; end
+            if ( AZSHelper_StatsTableFrame:IsShown() ) then
+                AZSHelper_StatsTableFrame:Hide();
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table hidden.");
+            else
+                if ( AZSHelper.AnchorStatsTableToMultipliers ) then
+                    AZSHelper:AnchorStatsTableToMultipliers();
+                end
+                AZSHelper_StatsTableFrame:Show();
+                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table shown.");
+            end
         end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Positions reset to default.");
-    else
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r or |cffffd100/recap|r - Toggle Death Recap & Lethal Hits Window");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo crit|r or |cffffd100/crit|r - Toggle Attack & Highest Crit Statistics Table");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo stats|r or |cffffd100/stats|r - Toggle On-Screen Stats HUD Window (No need to press C)");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo gold|r or |cffffd100/gold|r - Toggle Gold & Chest Tracker test preview or reset position");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r or |cffffd100/plates|r - Toggle Teammate (vibrant green) & Enemy nameplates");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance (50 yards)");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo opt|r or |cffffd100/sui opt|r - Open Survivor UI Settings Panel");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset Death Recap, Crit Table & Gold frame positions");
     end
 end;
 
-SLASH_BORDOCRIT1 = "/crit";
-SLASH_BORDOCRIT2 = "/crits";
-SlashCmdList["BORDOCRIT"] = function()
-    if ( BordoUI.ToggleStatsTable ) then
-        BordoUI:ToggleStatsTable();
-    end
+-- Standalone Slash Commands for Locking / Unlocking
+SLASH_BORDOLOCK1 = "/lock";
+SlashCmdList["BORDOLOCK"] = function()
+    BordoUI:SetLocked(true);
 end;
 
-SLASH_BORDOSTATS1 = "/stats";
-SlashCmdList["BORDOSTATS"] = function()
-    if ( SurvivorUI_ToggleStatsPanel ) then
-        SurvivorUI_ToggleStatsPanel();
-    end
-end;
-
-SLASH_BORDOGOLD1 = "/gold";
-SlashCmdList["BORDOGOLD"] = function(msg)
-    msg = string.lower(msg or "");
-    if ( msg == "reset" ) then
-        BordoUIDB.goldPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 };
-        BordoUI:RestorePosition(goldTracker, BordoUIDB.goldPos);
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Gold & Chest Tracker position reset to bottom-center.");
-    elseif ( msg == "show" or msg == "test" ) then
-        BordoUIDB.goldPreview = not BordoUIDB.goldPreview;
-        if ( BordoUIDB.goldPreview ) then goldTracker:Show(); end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Gold Tracker test preview " .. (BordoUIDB.goldPreview and "|cff33ff33ON|r (drag to move)" or "|cffff3333OFF|r"));
-    else
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Gold Tracker:|r (Left-Click & Drag to move)");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/gold reset|r - Reset position to bottom center");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/gold test|r - Toggle test preview outside of a run");
-    end
-end;
-
-SLASH_BORDORECAP1 = "/recap";
-SLASH_BORDORECAP2 = "/death";
-SlashCmdList["BORDORECAP"] = function()
-    if ( BordoUI.ShowDeathRecap ) then
-        BordoUI:ShowDeathRecap();
-    end
+SLASH_BORDOUNLOCK1 = "/unlock";
+SlashCmdList["BORDOUNLOCK"] = function()
+    BordoUI:SetLocked(false);
 end;
 
 SLASH_BORDOPLATES1 = "/plates";
@@ -364,3 +343,45 @@ SlashCmdList["BORDOPLATES"] = function()
     end
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
 end;
+
+-- Lair Marks Helpers (used by BossTracker, MapPins, Guardians)
+local MARK_KINDS = 8;
+local MARK_NAMES = { "Crossed swords", "Shield", "Crown", "Chalice", "Fleur-de-lis", "War hammer", "Tower", "Helm" };
+
+function SurvivorUI_LairMarks(lairs)
+    local marks = {};
+    lairs = lairs or (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
+    local places = {};
+    for index = 1, table.getn(lairs) do
+        local l = lairs[index];
+        local idx = (l and (l.index or l[1])) or index;
+        table.insert(places, tonumber(idx) or index);
+    end
+    table.sort(places);
+    for rank = 1, table.getn(places) do
+        marks[places[rank]] = math.mod(rank - 1, MARK_KINDS) + 1;
+    end
+    return marks;
+end
+
+function SurvivorUI_SetLairMark(texture, mark, dim)
+    if ( not mark or not texture ) then
+        if ( texture ) then texture:Hide(); end
+        return;
+    end
+    local column = math.mod(mark - 1, 4);
+    local line = math.floor((mark - 1) / 4);
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
+    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
+    if ( dim ) then
+        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
+    else
+        texture:SetVertexColor(1, 1, 1, 1);
+    end
+    texture:Show();
+end
+
+function SurvivorUI_LairMarkName(mark)
+    return mark and MARK_NAMES[mark] or nil;
+end
+

@@ -1,4 +1,6 @@
-﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿local SurvivorUI_FONT = "Fonts\\ARIALN.TTF"
+local SurvivorUI_FONT_BUMP = 0
+-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the build, in the right column between the run tracker and the
 -- damage meter, the same spells side by side with what they deal.
 --
@@ -14,13 +16,13 @@
 --
 -- Under the spells, the jewelry worn (neck, rings, trinkets), the gear a run
 -- drops: each slot filled with the piece's quality color, with what it gives in
--- short, read off its tooltip ("Neck  CDR · DMG").
+-- short, read off its tooltip ("Neck  CDR Â· DMG").
 --
 -- From the game's addon API (AZS_SPELLS); without it nothing shows. Hold Alt
 -- and drag to move; /sui build hides it.
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local ART = "Interface\\AddOns\\BordoUI\\Art\\"
+local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 
 local WIDTH = 224
@@ -36,11 +38,11 @@ local GEAR_SLOTS = {               -- inventory slot, label
 local GEAR_TOP = TITLE_HEIGHT + HEAD_HEIGHT + (SLOTS + 1) * ROW_HEIGHT + 6
 
 local function Settings()
-	SurvivorUIDB = SurvivorUIDB or {}
-	if SurvivorUIDB.buildList == nil then
-		SurvivorUIDB.buildList = true
+	BordoUIDB = BordoUIDB or {}
+	if BordoUIDB.buildList == nil then
+		BordoUIDB.buildList = true
 	end
-	return SurvivorUIDB
+	return BordoUIDB
 end
 
 local function Field(entry, name, index)
@@ -1016,7 +1018,7 @@ local function ReadPiece(slot, link)
 			end
 		end
 	end
-	pieces[link] = { rank = rank or "I", spell = spell, tags = table.concat(tags, " · ") }
+	pieces[link] = { rank = rank or "I", spell = spell, tags = table.concat(tags, " Â· ") }
 	return pieces[link]
 end
 
@@ -1299,3 +1301,4 @@ end)
 if SurvivorUI_RegisterMover then
 	SurvivorUI_RegisterMover(list, "Build list", SavePlace, nil, RestorePlace)
 end
+

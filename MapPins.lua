@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: caches and lairs on the minimap.
 --
 -- The game shares every cache on the field (AZS_CHESTS) and every guardian's
@@ -19,7 +19,7 @@
 -- hidden. All off with "Caches on the minimap" (Modules); /sui pins prints
 -- what the addon reads, to check it.
 
-local ART = "Interface\\AddOns\\BordoUI\\Art\\"
+local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
 local PIN_SIZE = 16                -- a pin's size untouched; on the edge, 11 of each 16
 local EDGE_SIZE = 11
 
@@ -30,7 +30,7 @@ local MINIMAP_YARDS = { [0] = 466.67, [1] = 400, [2] = 333.33, [3] = 266.67, [4]
 local INSIDE_YARDS = { [0] = 300, [1] = 240, [2] = 180, [3] = 120, [4] = 80, [5] = 50 }
 
 local function Enabled()
-	return not SurvivorUI_Feature or SurvivorUI_Feature("mapPins")
+	return true or true
 end
 
 local function Playing()
@@ -55,14 +55,6 @@ local function Share(value)
 	return value
 end
 
-local function GetVal(entry, key, i1, i2)
-	if not entry then return nil end
-	if entry[key] ~= nil then return entry[key] end
-	if i1 and entry[i1] ~= nil then return entry[i1] end
-	if i2 and entry[i2] ~= nil then return entry[i2] end
-	return nil
-end
-
 ------------------------------------------------------------------------------
 -- The yards a map unit spans, across (mx) and down (my). On a WoW map, across
 -- runs along the world's y and down along its x. Kept per zone once found.
@@ -74,9 +66,11 @@ local function Places()
 	for index = 1, table.getn(AZS_CHESTS or {}) do
 		table.insert(list, AZS_CHESTS[index])
 	end
-	local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS
-	for index = 1, table.getn(lairs or {}) do
-		table.insert(list, lairs[index])
+	if AZS_GetLairs then
+		local lairs = AZS_GetLairs()
+		for index = 1, table.getn(lairs or {}) do
+			table.insert(list, lairs[index])
+		end
 	end
 	return list
 end
@@ -95,14 +89,8 @@ local function Span()
 	for a = 1, table.getn(places) do
 		for b = a + 1, table.getn(places) do
 			local p, q = places[a], places[b]
-			local pmx = Share(GetVal(p, "mx", 9, 3))
-			local qmx = Share(GetVal(q, "mx", 9, 3))
-			local pmy = Share(GetVal(p, "my", 10, 4))
-			local qmy = Share(GetVal(q, "my", 10, 4))
-			local px = tonumber(GetVal(p, "x", 6, 1))
-			local qx = tonumber(GetVal(q, "x", 6, 1))
-			local py = tonumber(GetVal(p, "y", 7, 2))
-			local qy = tonumber(GetVal(q, "y", 7, 2))
+			local pmx, qmx, pmy, qmy = Share(p.mx), Share(q.mx), Share(p.my), Share(q.my)
+			local px, qx, py, qy = tonumber(p.x), tonumber(q.x), tonumber(p.y), tonumber(q.y)
 			if pmx and qmx and pmy and qmy and px and qx and py and qy then
 				local dmx, dmy = math.abs(pmx - qmx), math.abs(pmy - qmy)
 				if dmx > known.baseAcross and dmx > NEAREST then
@@ -281,8 +269,8 @@ end)
 -- off and its size, an empty lair dimmed or hidden, a pin out of reach on the
 -- edge or hidden.
 local function Settings()
-	SurvivorUIDB = SurvivorUIDB or {}
-	return SurvivorUIDB
+	BordoUIDB = BordoUIDB or {}
+	return BordoUIDB
 end
 
 -- A kind's pin size, "lair" or "cache": 10 to 28, 16 untouched.
@@ -370,13 +358,13 @@ local function Place(pin, east, south, yardsAcross, size)
 	local reach = math.max(math.abs(px), math.abs(py))
 	local limit = half - edge / 2
 	if reach > limit then
-		if Settings().pinEdge == "hide" and not pin.isBoss then
+		if Settings().pinEdge == "hide" then
 			pin:Hide()
 			return
 		end
 		px, py = px * limit / reach, py * limit / reach
 		size = edge
-		pin:SetAlpha(0.85)
+		pin:SetAlpha(0.7)
 	else
 		pin:SetAlpha(1)
 	end
@@ -390,13 +378,11 @@ end
 -- From the hero to a cache or a lair, east and south in yards: by the world's
 -- yards when the game sends the hero's, else by the map.
 local function WayTo(place, px, py, heroX, heroY, span)
-	local x = tonumber(GetVal(place, "x", 6, 1))
-	local y = tonumber(GetVal(place, "y", 7, 2))
+	local x, y = tonumber(place.x), tonumber(place.y)
 	if px and x and y then
 		return WorldWay(px, py, x, y)
 	end
-	local mx = Share(GetVal(place, "mx", 9, 3))
-	local my = Share(GetVal(place, "my", 10, 4))
+	local mx, my = Share(place.mx), Share(place.my)
 	if heroX and span and mx and my then
 		return (mx - heroX) * span.across, (my - heroY) * span.down
 	end
@@ -430,7 +416,6 @@ local function Update()
 				if east then
 					shown = shown + 1
 					local pin = Pin(shown)
-					pin.isBoss = nil
 					pin.art:SetTexture(ART.."PinCache")
 					pin.art:SetTexCoord(0, 1, 0, 1)
 					pin.art:SetVertexColor(1, 1, 1)
@@ -439,138 +424,43 @@ local function Update()
 					Place(pin, east, south, yardsAcross, cacheSize)
 				end
 			end
-			local lairs = settings.pinLairs ~= false and ((AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {})
+			local lairs = settings.pinLairs ~= false and AZS_GetLairs and AZS_GetLairs() or {}
 			local marks = SurvivorUI_LairMarks and SurvivorUI_LairMarks(lairs) or {}
 			local lairSize = SurvivorUI_PinSize("lair")
 			for index = 1, table.getn(lairs) do
 				local lair = lairs[index]
 				local east, south = WayTo(lair, px, py, heroX, heroY, span)
-				if east then
-					local state = GetVal(lair, "state", 2) or "asleep"
-					local isAlive = (state ~= "empty")
-					local lairName = GetVal(lair, "name", 3) or ""
-					local lairId = tonumber(GetVal(lair, "id", 4))
-					local lairIdx = tonumber(GetVal(lair, "index", 1)) or index
-					local isAwake = (state == "awake")
-
-					-- Check AZS_GetGuardians or AZS_UNITS to see if awake/in combat
-					if not isAwake and AZS_GetGuardians then
-						local gList = AZS_GetGuardians()
-						for _, g in pairs(gList or {}) do
-							if (lairId and g.id == lairId) or (lairName ~= "" and g.name == lairName) then
-								if g.awake then isAwake = true end
-							end
+				if east and (lair.active or settings.pinEmpty ~= "hide") then
+					shown = shown + 1
+					local pin = Pin(shown)
+					-- Its mark, as the guardians' bar and list show it; with the
+					-- marks off, the skull.
+					local mark = marks[tonumber(lair.index) or index]
+					if mark and SurvivorUI_SetLairMark then
+						SurvivorUI_SetLairMark(pin.art, mark, not lair.active)
+					else
+						pin.art:SetTexture(ART.."PinLair")
+						pin.art:SetTexCoord(0, 1, 0, 1)
+						if lair.active then
+							pin.art:SetVertexColor(1, 1, 1)
+						else
+							pin.art:SetVertexColor(0.45, 0.45, 0.45)
 						end
 					end
-					if not isAwake and AZS_UNITS then
-						for _, u in pairs(AZS_UNITS) do
-							local uid = tonumber(GetVal(u, "id", 2))
-							local uname = GetVal(u, "name", 3)
-							if (lairId and uid == lairId) or (lairName ~= "" and uname == lairName) then
-								local hp = tonumber(GetVal(u, "hp", 4)) or 0
-								local hpm = tonumber(GetVal(u, "hpm", 5)) or 0
-								local ustate = tonumber(GetVal(u, "state", 6)) or 0
-								if ustate == 1 or (hpm > 0 and hp > 0 and hp < hpm) then
-									isAwake = true
-								end
-							end
-						end
+					if lair.active then
+						pin.note = "Guardian's lair: "..(lair.name and lair.name ~= "" and lair.name or "a guardian holds it")
+					else
+						pin.note = "Empty lair"
 					end
-
-					-- Show living bosses ALWAYS! Even if settings.pinEmpty == "hide", living bosses MUST show!
-					if isAlive or settings.pinEmpty ~= "hide" then
-						shown = shown + 1
-						local pin = Pin(shown)
-						pin.isBoss = true
-						local mark = marks[lairIdx]
-
-						-- Dynamic size: boost size for awake bosses
-						local thisLairSize = lairSize
-						if isAwake then
-							thisLairSize = math.floor(lairSize * 1.35 + 0.5)
-						end
-
-						if mark and SurvivorUI_SetLairMark then
-							SurvivorUI_SetLairMark(pin.art, mark, not isAlive)
-						else
-							pin.art:SetTexture(ART.."PinLair")
-							pin.art:SetTexCoord(0, 1, 0, 1)
-							if isAwake then
-								pin.art:SetVertexColor(1, 0.25, 0.25)
-							elseif isAlive then
-								pin.art:SetVertexColor(1, 0.85, 0.20)
-							else
-								pin.art:SetVertexColor(0.40, 0.40, 0.40)
-							end
-						end
-
-						local bossDisplayName = (lairName ~= "" and lairName) or ("Guardian #"..lairIdx)
-						local markName = SurvivorUI_LairMarkName and SurvivorUI_LairMarkName(mark)
-						if markName then
-							pin.title = "|cffffcc00★ BOSS: " .. bossDisplayName .. " ("..markName..") ★|r"
-						else
-							pin.title = "|cffffcc00★ BOSS: " .. bossDisplayName .. " ★|r"
-						end
-
-						if isAwake then
-							pin.note = "|cffff3333⚠ AWAKE & FIGHTING!|r"
-						elseif isAlive then
-							pin.note = "|cff55ff55● Waiting in Lair|r"
-						else
-							local left = tonumber(GetVal(lair, "left", 5))
-							if left and left > 0 then
-								pin.note = string.format("|cff888888○ Slain (Respawning in %ds)|r", left)
-							else
-								pin.note = "|cff888888○ Empty Lair (Slain)|r"
-							end
-							pin.title = "|cff888888[Slain] " .. bossDisplayName .. "|r"
-						end
-
-						pin.flagged = tonumber(GetVal(lair, "flag", 11)) == 1 or nil
-
-						if isAwake then
-							pin.glow:SetVertexColor(1, 0.3, 0.1)
-							pin.glow:SetWidth(thisLairSize * 2.2)
-							pin.glow:SetHeight(thisLairSize * 2.2)
-							pin.glow:Show()
-						elseif pin.flagged and FlagChoice() == "ours" then
-							flaggedPin = pin
-							pin.glow:SetVertexColor(1, 0.82, 0.2)
-							pin.glow:SetWidth(thisLairSize * 2.2)
-							pin.glow:SetHeight(thisLairSize * 2.2)
-							pin.glow:Show()
-						else
-							pin.glow:Hide()
-						end
-
-						Place(pin, east, south, yardsAcross, thisLairSize)
+					local markName = SurvivorUI_LairMarkName and SurvivorUI_LairMarkName(mark)
+					pin.title = markName and (markName.." lair") or "Lair"
+					pin.flagged = tonumber(lair.flag) == 1 or nil
+					if pin.flagged and FlagChoice() == "ours" then
+						flaggedPin = pin
+					else
+						pin.glow:Hide()
 					end
-				end
-			end
-			-- Also check active Bosses from AZS_UNITS that have world coordinates
-			if AZS_UNITS then
-				for index = 1, table.getn(AZS_UNITS) do
-					local unit = AZS_UNITS[index]
-					local kind = GetVal(unit, "kind", 1)
-					if kind == "boss" or kind == "final" then
-						local east, south = WayTo(unit, px, py, heroX, heroY, span)
-						if east then
-							shown = shown + 1
-							local pin = Pin(shown)
-							pin.isBoss = true
-							local bName = GetVal(unit, "name", 3) or "Boss"
-							pin.art:SetTexture(ART.."PinLair")
-							pin.art:SetTexCoord(0, 1, 0, 1)
-							pin.art:SetVertexColor(1, 0.15, 0.15)
-							pin.glow:SetVertexColor(1, 0.2, 0.1)
-							pin.glow:SetWidth(lairSize * 2.3)
-							pin.glow:SetHeight(lairSize * 2.3)
-							pin.glow:Show()
-							pin.title = "|cffff2020★ BOSS: " .. bName .. " ★|r"
-							pin.note = "|cffff5533⚠ Active Boss!|r"
-							Place(pin, east, south, yardsAcross, math.floor(lairSize * 1.35 + 0.5))
-						end
-					end
+					Place(pin, east, south, yardsAcross, lairSize)
 				end
 			end
 		end
@@ -589,23 +479,14 @@ watcher:SetScript("OnUpdate", function()
 		elapsed = 0
 		Update()
 	end
-	-- Glowing pins breathe every frame
+	-- The flagged lair's glow breathes, every frame.
 	breath = breath + arg1
-	local pulse = 0.55 + 0.35 * math.sin(breath * 4)
-	if flaggedPin and flaggedPin:IsShown() and flaggedPin.glow then
-		local size = flaggedPin:GetWidth() * (2.2 + 0.35 * math.sin(breath * 4))
+	if flaggedPin and flaggedPin:IsShown() then
+		local size = flaggedPin:GetWidth() * (2.4 + 0.35 * math.sin(breath * 4))
 		flaggedPin.glow:SetWidth(size)
 		flaggedPin.glow:SetHeight(size)
-		flaggedPin.glow:SetAlpha(pulse)
-	end
-	for i = 1, table.getn(pins) do
-		local p = pins[i]
-		if p and p:IsShown() and p.glow and p.glow:IsShown() and p ~= flaggedPin then
-			local bSize = p:GetWidth() * (2.0 + 0.3 * math.sin(breath * 4))
-			p.glow:SetWidth(bSize)
-			p.glow:SetHeight(bSize)
-			p.glow:SetAlpha(pulse)
-		end
+		flaggedPin.glow:SetAlpha(0.6 + 0.3 * math.sin(breath * 4))
+		flaggedPin.glow:Show()
 	end
 end)
 
@@ -614,8 +495,7 @@ end)
 local function Nearest(list, px, py)
 	local best, bestEast, bestSouth
 	for index = 1, table.getn(list) do
-		local x = tonumber(GetVal(list[index], "x", 6, 1))
-		local y = tonumber(GetVal(list[index], "y", 7, 2))
+		local x, y = tonumber(list[index].x), tonumber(list[index].y)
 		if x and y then
 			local east, south = WorldWay(px, py, x, y)
 			local yards = math.sqrt(east * east + south * south)
@@ -640,14 +520,14 @@ function SurvivorUI_PinsReport()
 	say("zone: "..tostring(AZS_ZONE and AZS_ZONE.zone).." (map "..tostring(AZS_ZONE and AZS_ZONE.map)
 		.."); the client's: "..tostring(GetRealZoneText and GetRealZoneText()))
 	local chests = AZS_CHESTS or {}
-	local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {}
+	local lairs = AZS_GetLairs and AZS_GetLairs() or {}
 	say("caches: "..table.getn(chests)..", lairs: "..table.getn(lairs))
 	local px, py, facing = HeroWorld()
 	if px then
 		-- The way faced, as a compass reads it: 0 north, 90 east.
 		local degrees = facing and math.mod(math.floor(facing * 180 / math.pi + 0.5) + 720, 360)
 		say(string.format("hero in the world: x %.1f, y %.1f; facing %s", px, py,
-			degrees and (degrees.."° (0 north, 90 east)") or "not sent"))
+			degrees and (degrees.."Â° (0 north, 90 east)") or "not sent"))
 		local yards, east, south = Nearest(chests, px, py)
 		if yards then
 			say(string.format("nearest cache: %d yards %s", math.floor(yards + 0.5), Compass(east, south)))
@@ -672,3 +552,4 @@ function SurvivorUI_PinsReport()
 		Indoors() and "indoors" or "outdoors", zoom, math.floor(yardsAcross + 0.5),
 		tostring(Setting("minimapZoom")), tostring(Setting("minimapInsideZoom"))))
 end
+
