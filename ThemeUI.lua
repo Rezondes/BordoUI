@@ -202,6 +202,9 @@ for position = 1, table.getn(BAR_BUTTONS) do
 	slot:SetWidth(BUTTON_SIZE)
 	slot:SetHeight(BUTTON_SIZE)
 	slot:SetPoint("LEFT", row, "LEFT", (position - 1) * (BUTTON_SIZE + BUTTON_GAP), 0)
+	slot:SetFrameStrata("LOW")
+	slot:SetFrameLevel(1)
+	slot:EnableMouse(false)
 	AddBorder(slot)
 	AddBacking(slot)
 end
@@ -211,19 +214,74 @@ local function StyleButton(button)
 	local name = button:GetName()
 	if not name then return end
 
+	button:SetFrameStrata("MEDIUM")
+	button:SetFrameLevel(row:GetFrameLevel() + 10)
+
 	local normal = getglobal(name.."NormalTexture")
-	if normal then normal:SetAlpha(0) end
+	if normal then
+		normal:SetAlpha(0)
+		normal:Hide()
+	end
 
 	local icon = getglobal(name.."Icon")
 	if icon then
+		icon:SetDrawLayer("ARTWORK")
 		icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+		icon:SetAlpha(1)
 	end
 
 	local border = getglobal(name.."Border")
-	if border then border:Hide() border.Show = function() end end
+	if border then
+		border:Hide()
+		border.Show = function() end
+	end
 
 	local hotkey = getglobal(name.."HotKey")
-	if hotkey then hotkey:SetAlpha(0) end
+	if hotkey then
+		hotkey:SetAlpha(0)
+		hotkey:Hide()
+	end
+end
+
+-- Synchronize skill icons and ensure buttons are always bright and in front
+local function UpdateSkills()
+	for position = 1, table.getn(BAR_BUTTONS) do
+		local id = BAR_BUTTONS[position]
+		local button = getglobal("ActionButton"..id)
+		if button then
+			button:SetParent(row)
+			button:ClearAllPoints()
+			button:SetPoint("LEFT", row, "LEFT", (position - 1) * (BUTTON_SIZE + BUTTON_GAP), 0)
+			button:SetWidth(BUTTON_SIZE)
+			button:SetHeight(BUTTON_SIZE)
+			button:SetFrameStrata("MEDIUM")
+			button:SetFrameLevel(row:GetFrameLevel() + 10)
+			button.survivorKept = true
+			button:Show()
+			StyleButton(button)
+
+			local icon = getglobal("ActionButton"..id.."Icon")
+			if icon then
+				local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
+				local texture = GetActionTexture(pagedID)
+				if (not texture or texture == "") and AZS_SPELLS then
+					local total = table.getn(AZS_SPELLS)
+					local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
+					if entry and (entry.icon or entry[2]) then
+						texture = entry.icon or entry[2]
+					end
+				end
+
+				if texture and texture ~= "" then
+					icon:SetTexture(texture)
+					icon:SetDrawLayer("ARTWORK")
+					icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+					icon:SetAlpha(1)
+					icon:Show()
+				end
+			end
+		end
+	end
 end
 
 -- Keep flat style whenever stock action button updates
@@ -233,6 +291,27 @@ if stockActionButtonUpdate then
 		stockActionButtonUpdate()
 		if this and this.survivorKept then
 			StyleButton(this)
+			local name = this:GetName()
+			local icon = name and getglobal(name.."Icon")
+			if icon then
+				local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(this) or this:GetID()
+				local texture = GetActionTexture(pagedID)
+				if (not texture or texture == "") and AZS_SPELLS then
+					local id = this:GetID()
+					local total = table.getn(AZS_SPELLS)
+					local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
+					if entry and (entry.icon or entry[2]) then
+						texture = entry.icon or entry[2]
+					end
+				end
+				if texture and texture ~= "" then
+					icon:SetTexture(texture)
+					icon:SetDrawLayer("ARTWORK")
+					icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+					icon:SetAlpha(1)
+					icon:Show()
+				end
+			end
 		end
 	end
 end
@@ -242,15 +321,20 @@ local function PlaceButton(prefix, id, position)
 	if not button then return end
 
 	button:ClearAllPoints()
-	if position then
+	if prefix == "ActionButton" and position then
 		button:SetParent(row)
 		button:SetPoint("LEFT", row, "LEFT", (position - 1) * (BUTTON_SIZE + BUTTON_GAP), 0)
 		button:SetWidth(BUTTON_SIZE)
 		button:SetHeight(BUTTON_SIZE)
+		button:SetFrameStrata("MEDIUM")
+		button:SetFrameLevel(row:GetFrameLevel() + 10)
 		button.survivorKept = true
+		button:Show()
 		StyleButton(button)
 	else
 		button:SetPoint("TOP", UIParent, "BOTTOM", 0, -600)
+		button:Hide()
+		button.Show = function() end
 	end
 end
 
@@ -261,6 +345,8 @@ local function LayoutBar()
 		end
 	end
 
+	CURRENT_ACTIONBAR_PAGE = 1
+
 	local positions = {}
 	for position = 1, table.getn(BAR_BUTTONS) do
 		positions[BAR_BUTTONS[position]] = position
@@ -268,7 +354,17 @@ local function LayoutBar()
 
 	for id = 1, 12 do
 		PlaceButton("ActionButton", id, positions[id])
-		PlaceButton("BonusActionButton", id, positions[id])
+		PlaceButton("BonusActionButton", id, nil)
+	end
+
+	if BonusActionBarFrame then
+		BonusActionBarFrame:Hide()
+		BonusActionBarFrame.Show = function() end
+	end
+	if ShowBonusActionBar then
+		ShowBonusActionBar = function()
+			if BonusActionBarFrame then BonusActionBarFrame:Hide() end
+		end
 	end
 
 	for _, name in pairs({
@@ -303,19 +399,15 @@ local function LayoutBar()
 		expBar.Show = function() end
 	end
 
-	local expBar = getglobal("MainMenuExpBar")
-	if expBar then
-		expBar:Hide()
-		expBar.Show = function() end
-	end
-
 	for _, name in pairs({ "MainMenuBarMaxLevelBar", "ReputationWatchBar" }) do
 		local frame = getglobal(name)
 		if frame then
 			frame:Hide()
 			frame.Show = function() end
-		end
 	end
+	end
+
+	UpdateSkills()
 end
 
 -- =========================================================================
@@ -1043,6 +1135,7 @@ end
 local unitElapsed = 0
 local auraElapsed = 0
 local tallyElapsed = 0
+local skillElapsed = 0
 
 local mainWatcher = CreateFrame("Frame")
 mainWatcher:SetScript("OnUpdate", function()
@@ -1068,6 +1161,12 @@ mainWatcher:SetScript("OnUpdate", function()
 		UpdateBottomBar()
 		UpdateEncounterBars()
 	end
+
+	skillElapsed = skillElapsed + arg1
+	if skillElapsed >= 0.2 then
+		skillElapsed = 0
+		UpdateSkills()
+	end
 end)
 
 local eventHandler = CreateFrame("Frame")
@@ -1075,6 +1174,12 @@ eventHandler:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventHandler:RegisterEvent("PLAYER_TARGET_CHANGED")
 eventHandler:RegisterEvent("UNIT_PORTRAIT_UPDATE")
 eventHandler:RegisterEvent("VARIABLES_LOADED")
+eventHandler:RegisterEvent("ACTIONBAR_SLOT_CHANGED")
+eventHandler:RegisterEvent("ACTIONBAR_PAGE_CHANGED")
+eventHandler:RegisterEvent("ACTIONBAR_UPDATE_STATE")
+eventHandler:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
+eventHandler:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
+eventHandler:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
 
 eventHandler:SetScript("OnEvent", function()
 	if event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
@@ -1096,6 +1201,16 @@ eventHandler:SetScript("OnEvent", function()
 		end
 		UI.bottomBar:ClearAllPoints()
 		UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
+	elseif event == "ACTIONBAR_PAGE_CHANGED" then
+		if CURRENT_ACTIONBAR_PAGE ~= 1 then
+			CURRENT_ACTIONBAR_PAGE = 1
+			if ChangeActionBarPage then ChangeActionBarPage(1) end
+		end
+		UpdateSkills()
+	elseif event == "ACTIONBAR_SLOT_CHANGED" or event == "ACTIONBAR_UPDATE_STATE"
+		or event == "ACTIONBAR_UPDATE_USABLE" or event == "UPDATE_BONUS_ACTIONBAR"
+		or event == "UPDATE_SHAPESHIFT_FORMS" then
+		UpdateSkills()
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		UpdatePortrait(target)
 		UpdateUnitFrame(target)
