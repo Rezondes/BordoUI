@@ -11,6 +11,7 @@ StatsTable.lua
 AbilityTooltip.lua
 ThemeUI.lua
 StatsWindow.lua
+CharacterPane.lua
 BossTracker.lua
 BuildList.lua
 PartyFrames.lua
