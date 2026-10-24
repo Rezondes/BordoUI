@@ -189,10 +189,34 @@ end
 -- =========================================================================
 -- Cooldown Countdown Overlays & Spiral Sweep (SurvivorUI 1:1 Architecture)
 -- =========================================================================
+local function IsRunActive()
+	if AZS_GetPhase then
+		local phase = AZS_GetPhase()
+		return phase == "playing" or phase == "choosing" or phase == "paused"
+	end
+	return true
+end
+
 local function CounterUpdate()
+	if not IsRunActive() then
+		this:Hide()
+		local parent = this:GetParent()
+		if parent then
+			parent.lastCdStart = nil
+			parent.lastCdMax = nil
+			if parent.cooldown then parent.cooldown:Hide() end
+		end
+		return
+	end
 	local left = this.start + this.duration - GetTime()
 	if left <= 0 then
 		this:Hide()
+		local parent = this:GetParent()
+		if parent then
+			parent.lastCdStart = nil
+			parent.lastCdMax = nil
+			if parent.cooldown then parent.cooldown:Hide() end
+		end
 		return
 	end
 	this.text:SetText(TimeText(left))
@@ -215,7 +239,7 @@ if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
 		-- Guard AZS_SPELLS live cooldown from native empty action slot updates (start=0)
 		if (not (start and start > 0 and duration and duration > 0.5 and enable and enable > 0)) and parent and parent.lastCdStart and parent.lastCdMax then
 			local remaining = (parent.lastCdStart + parent.lastCdMax) - GetTime()
-			if remaining > 0 then
+			if remaining > 0.5 and IsRunActive() then
 				return
 			end
 		end
@@ -257,6 +281,7 @@ if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
 			cooldown:Show()
 		else
 			counter:Hide()
+			cooldown:Hide()
 		end
 	end
 end
@@ -360,27 +385,32 @@ local function UpdateSkills()
 				if cooldown and CooldownFrame_SetTimer then
 					CooldownFrame_SetTimer(cooldown, bStart, bDuration, bEnable)
 				end
-			elseif entry then
-				-- Fallback to AZS_SPELLS engine cooldown data
+			elseif entry and IsRunActive() then
+				-- Fallback to AZS_SPELLS engine cooldown data only while in an active run and spell was actually cast
 				local cd = tonumber(entry.cd or entry[4]) or 0
 				local cdmax = tonumber(entry.cdmax or entry[5]) or 0
-				if cd > 0.1 and cdmax > 0.5 then
+				if cd > 0.5 and cdmax > 0.5 and cd <= cdmax + 0.1 then
 					local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
-					if not button.lastCdStart or math.abs(startTime - button.lastCdStart) > 0.4 or button.lastCdMax ~= cdmax then
+					if not button.lastCdStart or math.abs(startTime - button.lastCdStart) > 0.6 or button.lastCdMax ~= cdmax then
 						button.lastCdStart = startTime
 						button.lastCdMax = cdmax
 						if cooldown and CooldownFrame_SetTimer then
 							CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
 						end
 					end
-				elseif button.lastCdStart then
-					button.lastCdStart = nil
-					button.lastCdMax = nil
-					if cooldown and CooldownFrame_SetTimer then
-						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+				else
+					if button.lastCdStart then
+						button.lastCdStart = nil
+						button.lastCdMax = nil
+						if cooldown and CooldownFrame_SetTimer then
+							CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+						end
 					end
 					if button.survivorCounter then
 						button.survivorCounter:Hide()
+					end
+					if cooldown then
+						cooldown:Hide()
 					end
 				end
 			else
@@ -390,9 +420,12 @@ local function UpdateSkills()
 					if cooldown and CooldownFrame_SetTimer then
 						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
 					end
-					if button.survivorCounter then
-						button.survivorCounter:Hide()
-					end
+				end
+				if button.survivorCounter then
+					button.survivorCounter:Hide()
+				end
+				if cooldown then
+					cooldown:Hide()
 				end
 			end
 		end
@@ -409,21 +442,47 @@ if stockActionButtonUpdateCooldown then
 			local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
 			local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
 			local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
-			if not hasBlizzCd and AZS_SPELLS then
+			local cooldown = button.cooldown or getglobal(button:GetName().."Cooldown")
+			if not hasBlizzCd and AZS_SPELLS and IsRunActive() then
 				local total = table.getn(AZS_SPELLS)
 				local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
 				if entry then
 					local cd = tonumber(entry.cd or entry[4]) or 0
 					local cdmax = tonumber(entry.cdmax or entry[5]) or 0
-					if cd > 0.1 and cdmax > 0.5 then
+					if cd > 0.5 and cdmax > 0.5 and cd <= cdmax + 0.1 then
 						local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
-						local cooldown = button.cooldown or getglobal(button:GetName().."Cooldown")
 						if cooldown and CooldownFrame_SetTimer then
 							button.lastCdStart = startTime
 							button.lastCdMax = cdmax
 							CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
 						end
+					elseif button.lastCdStart then
+						button.lastCdStart = nil
+						button.lastCdMax = nil
+						if cooldown and CooldownFrame_SetTimer then
+							CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+						end
+						if button.survivorCounter then
+							button.survivorCounter:Hide()
+						end
+						if cooldown then
+							cooldown:Hide()
+						end
 					end
+				end
+			elseif not hasBlizzCd and not IsRunActive() then
+				if button.lastCdStart then
+					button.lastCdStart = nil
+					button.lastCdMax = nil
+					if cooldown and CooldownFrame_SetTimer then
+						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+					end
+				end
+				if button.survivorCounter then
+					button.survivorCounter:Hide()
+				end
+				if cooldown then
+					cooldown:Hide()
 				end
 			end
 		end
