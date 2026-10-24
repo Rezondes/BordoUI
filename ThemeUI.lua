@@ -186,6 +186,81 @@ for position = 1, table.getn(BAR_BUTTONS) do
 	AddBorder(slot)
 	AddBacking(slot)
 end
+-- =========================================================================
+-- Cooldown Countdown Overlays & Spiral Sweep (SurvivorUI 1:1 Architecture)
+-- =========================================================================
+local function CounterUpdate()
+	local left = this.start + this.duration - GetTime()
+	if left <= 0 then
+		this:Hide()
+		return
+	end
+	this.text:SetText(TimeText(left))
+	local soon = left <= 2 and this.duration > 1.5
+	if soon ~= this.soon then
+		this.soon = soon
+		if soon then
+			this.text:SetTextColor(1, 0.25, 0.25)
+		else
+			this.text:SetTextColor(1, 0.95, 0.6)
+		end
+	end
+end
+
+if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
+	local stockSetTimer = CooldownFrame_SetTimer
+	CooldownFrame_SetTimer = function(cooldown, start, duration, enable)
+		local parent = cooldown and cooldown:GetParent()
+
+		-- Guard AZS_SPELLS live cooldown from native empty action slot updates (start=0)
+		if (not (start and start > 0 and duration and duration > 0.5 and enable and enable > 0)) and parent and parent.lastCdStart and parent.lastCdMax then
+			local remaining = (parent.lastCdStart + parent.lastCdMax) - GetTime()
+			if remaining > 0 then
+				return
+			end
+		end
+
+		stockSetTimer(cooldown, start, duration, enable)
+		if not parent then return end
+
+		-- Ensure cooldown model is properly layered right above button icon
+		cooldown:ClearAllPoints()
+		cooldown:SetAllPoints(parent)
+		cooldown:SetFrameStrata(parent:GetFrameStrata())
+		cooldown:SetFrameLevel(parent:GetFrameLevel() + 1)
+
+		local counter = parent.survivorCounter
+		if not counter then
+			counter = CreateFrame("Frame", nil, parent)
+			counter:ClearAllPoints()
+			counter:SetAllPoints(parent)
+			counter:SetFrameStrata(parent:GetFrameStrata())
+			counter:SetFrameLevel(parent:GetFrameLevel() + 2)
+			counter.dim = counter:CreateTexture(nil, "BACKGROUND")
+			counter.dim:SetTexture(FLAT)
+			counter.dim:SetVertexColor(0, 0, 0, 0.45)
+			counter.dim:SetAllPoints(counter)
+			counter.text = Text(counter, 14, "CENTER", 0, 0)
+			counter.text:SetTextColor(1, 0.95, 0.6)
+			counter:SetScript("OnUpdate", CounterUpdate)
+			parent.survivorCounter = counter
+		else
+			counter:ClearAllPoints()
+			counter:SetAllPoints(parent)
+			counter:SetFrameStrata(parent:GetFrameStrata())
+			counter:SetFrameLevel(parent:GetFrameLevel() + 2)
+		end
+
+		if start and start > 0 and duration and duration > 0.5 and enable and enable > 0 then
+			counter.start, counter.duration = start, duration
+			counter:Show()
+			cooldown:Show()
+		else
+			counter:Hide()
+		end
+	end
+end
+
 -- Style an Action Button into the flat dark slot look
 local function StyleButton(button)
 	local name = button:GetName()
@@ -213,8 +288,31 @@ local function StyleButton(button)
 		hotkey:SetAlpha(0)
 		hotkey:Hide()
 	end
+
+	-- Cooldown Model Frame
+	local cooldown = getglobal(name.."Cooldown")
+	if not cooldown and CooldownFrame_SetTimer then
+		cooldown = CreateFrame("Model", name.."Cooldown", button, "CooldownFrameTemplate")
+	end
+	if cooldown then
+		cooldown:ClearAllPoints()
+		cooldown:SetAllPoints(button)
+		cooldown:SetFrameStrata(button:GetFrameStrata())
+		cooldown:SetFrameLevel(button:GetFrameLevel() + 1)
+	end
+	button.cooldown = cooldown
+
+	-- Cooldown Counter Frame
+	local counter = button.survivorCounter
+	if counter then
+		counter:ClearAllPoints()
+		counter:SetAllPoints(button)
+		counter:SetFrameStrata(button:GetFrameStrata())
+		counter:SetFrameLevel(button:GetFrameLevel() + 2)
+	end
 end
--- Synchronize skill icons and ensure buttons are always bright and in front
+
+-- Synchronize skill icons, textures and cooldown timers (from Blizzard or AZS_SPELLS)
 local function UpdateSkills()
 	for position = 1, table.getn(BAR_BUTTONS) do
 		local id = BAR_BUTTONS[position]
@@ -230,16 +328,17 @@ local function UpdateSkills()
 			button.survivorKept = true
 			button:Show()
 			StyleButton(button)
+
+			local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
 			local icon = getglobal("ActionButton"..id.."Icon")
+			local total = (AZS_SPELLS and table.getn(AZS_SPELLS)) or 0
+			local entry = AZS_SPELLS and ((id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id])
+
+			-- Update Icon Texture
 			if icon then
-				local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
 				local texture = GetActionTexture(pagedID)
-				if (not texture or texture == "") and AZS_SPELLS then
-					local total = table.getn(AZS_SPELLS)
-					local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
-					if entry and (entry.icon or entry[2]) then
-						texture = entry.icon or entry[2]
-					end
+				if (not texture or texture == "") and entry then
+					texture = entry.icon or entry[2]
 				end
 				if texture and texture ~= "" then
 					icon:SetTexture(texture)
@@ -247,6 +346,84 @@ local function UpdateSkills()
 					icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 					icon:SetAlpha(1)
 					icon:Show()
+				end
+			end
+
+			-- Check native Blizzard action cooldown
+			local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
+			local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
+			local cooldown = button.cooldown or getglobal("ActionButton"..id.."Cooldown")
+
+			if hasBlizzCd then
+				button.lastCdStart = nil
+				button.lastCdMax = nil
+				if cooldown and CooldownFrame_SetTimer then
+					CooldownFrame_SetTimer(cooldown, bStart, bDuration, bEnable)
+				end
+			elseif entry then
+				-- Fallback to AZS_SPELLS engine cooldown data
+				local cd = tonumber(entry.cd or entry[4]) or 0
+				local cdmax = tonumber(entry.cdmax or entry[5]) or 0
+				if cd > 0.1 and cdmax > 0.5 then
+					local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
+					if not button.lastCdStart or math.abs(startTime - button.lastCdStart) > 0.4 or button.lastCdMax ~= cdmax then
+						button.lastCdStart = startTime
+						button.lastCdMax = cdmax
+						if cooldown and CooldownFrame_SetTimer then
+							CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
+						end
+					end
+				elseif button.lastCdStart then
+					button.lastCdStart = nil
+					button.lastCdMax = nil
+					if cooldown and CooldownFrame_SetTimer then
+						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+					end
+					if button.survivorCounter then
+						button.survivorCounter:Hide()
+					end
+				end
+			else
+				if button.lastCdStart then
+					button.lastCdStart = nil
+					button.lastCdMax = nil
+					if cooldown and CooldownFrame_SetTimer then
+						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+					end
+					if button.survivorCounter then
+						button.survivorCounter:Hide()
+					end
+				end
+			end
+		end
+	end
+end
+
+-- Hook ActionButton_UpdateCooldown to reinforce AZS_SPELLS live cooldowns
+local stockActionButtonUpdateCooldown = ActionButton_UpdateCooldown
+if stockActionButtonUpdateCooldown then
+	ActionButton_UpdateCooldown = function(button)
+		stockActionButtonUpdateCooldown(button)
+		if button and button.survivorKept then
+			local id = button:GetID()
+			local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
+			local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
+			local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
+			if not hasBlizzCd and AZS_SPELLS then
+				local total = table.getn(AZS_SPELLS)
+				local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
+				if entry then
+					local cd = tonumber(entry.cd or entry[4]) or 0
+					local cdmax = tonumber(entry.cdmax or entry[5]) or 0
+					if cd > 0.1 and cdmax > 0.5 then
+						local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
+						local cooldown = button.cooldown or getglobal(button:GetName().."Cooldown")
+						if cooldown and CooldownFrame_SetTimer then
+							button.lastCdStart = startTime
+							button.lastCdMax = cdmax
+							CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
+						end
+					end
 				end
 			end
 		end
@@ -375,54 +552,6 @@ local function LayoutBar()
 	end
 	if PositionMicroButtons then PositionMicroButtons() end
 	UpdateSkills()
-end
--- =========================================================================
--- Cooldown Countdown Overlays
--- =========================================================================
-local function CounterUpdate()
-	local left = this.start + this.duration - GetTime()
-	if left <= 0 then
-		this:Hide()
-		return
-	end
-	this.text:SetText(TimeText(left))
-	local soon = left <= 2 and this.duration > 1.5
-	if soon ~= this.soon then
-		this.soon = soon
-		if soon then
-			this.text:SetTextColor(1, 0.25, 0.25)
-		else
-			this.text:SetTextColor(1, 0.95, 0.6)
-		end
-	end
-end
-if CooldownFrame_SetTimer and not OmniCC_OnUpdate then
-	local stockSetTimer = CooldownFrame_SetTimer
-	CooldownFrame_SetTimer = function(cooldown, start, duration, enable)
-		stockSetTimer(cooldown, start, duration, enable)
-		local parent = cooldown and cooldown:GetParent()
-		if not parent then return end
-		local counter = parent.survivorCounter
-		if not counter then
-			counter = CreateFrame("Frame", nil, parent)
-			counter:SetAllPoints(parent)
-			counter:SetFrameLevel(cooldown:GetFrameLevel() + 3)
-			counter.dim = counter:CreateTexture(nil, "BACKGROUND")
-			counter.dim:SetTexture(FLAT)
-			counter.dim:SetVertexColor(0, 0, 0, 0.45)
-			counter.dim:SetAllPoints(counter)
-			counter.text = Text(counter, 14, "CENTER", 0, 0)
-			counter.text:SetTextColor(1, 0.95, 0.6)
-			counter:SetScript("OnUpdate", CounterUpdate)
-			parent.survivorCounter = counter
-		end
-		if start and start > 0 and duration and duration > 0 and enable and enable > 0 then
-			counter.start, counter.duration = start, duration
-			counter:Show()
-		else
-			counter:Hide()
-		end
-	end
 end
 -- =========================================================================
 -- 2. UNIT FRAMES (Player & Target)
@@ -1374,7 +1503,7 @@ mainWatcher:SetScript("OnUpdate", function()
 		UpdateEncounterBars()
 	end
 	skillElapsed = skillElapsed + arg1
-	if skillElapsed >= 0.2 then
+	if skillElapsed >= 0.1 then
 		skillElapsed = 0
 		UpdateSkills()
 	end
@@ -1390,6 +1519,7 @@ eventHandler:RegisterEvent("ACTIONBAR_UPDATE_STATE")
 eventHandler:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
 eventHandler:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
 eventHandler:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
+eventHandler:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
 eventHandler:SetScript("OnEvent", function()
 	if event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
 		LayoutBar()
@@ -1437,7 +1567,7 @@ eventHandler:SetScript("OnEvent", function()
 		UpdateSkills()
 	elseif event == "ACTIONBAR_SLOT_CHANGED" or event == "ACTIONBAR_UPDATE_STATE"
 		or event == "ACTIONBAR_UPDATE_USABLE" or event == "UPDATE_BONUS_ACTIONBAR"
-		or event == "UPDATE_SHAPESHIFT_FORMS" then
+		or event == "UPDATE_SHAPESHIFT_FORMS" or event == "ACTIONBAR_UPDATE_COOLDOWN" then
 		UpdateSkills()
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		UpdatePortrait(target)
