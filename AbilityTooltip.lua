@@ -101,6 +101,24 @@ local function HideRules()
 	rulesUsed = 0
 end
 
+local function StyleTooltip(tip)
+	if not tip then return end
+	tip:SetScale(0.80)
+	tip:SetBackdrop({
+		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile     = true,
+		tileSize = 16,
+		edgeSize = 10,
+		insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+	})
+	tip:SetBackdropColor(0.04, 0.04, 0.06, 0.92)
+	tip:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
+	if tip.SetClampedToScreen then
+		tip:SetClampedToScreen(true)
+	end
+end
+
 local function Rule(line, color)
 	rulesUsed = rulesUsed + 1
 	local rule = rules[rulesUsed]
@@ -111,6 +129,9 @@ local function Rule(line, color)
 		rules[rulesUsed] = rule
 	end
 	local text = getglobal("GameTooltipTextLeft"..line)
+	if text then
+		text:SetHeight(6)
+	end
 	rule:ClearAllPoints()
 	rule:SetPoint("LEFT", text, "LEFT", 0, 0)
 	rule:SetPoint("RIGHT", GameTooltip, "RIGHT", -10, 0)
@@ -305,6 +326,7 @@ local function Spacer(color)
 end
 
 local function Write(ability)
+	StyleTooltip(GameTooltip)
 	HideRules()
 	GameTooltip:ClearLines()
 	local what, tint, school = What(ability)
@@ -454,6 +476,7 @@ local function ItemLine(entry, first)
 end
 
 local function WriteItem(item)
+	StyleTooltip(GameTooltip)
 	HideRules()
 	GameTooltip:ClearLines()
 	for index = 1, table.getn(item.before) do
@@ -573,3 +596,21 @@ GameTooltip:SetScript("OnHide", function()
 		stockHide()
 	end
 end)
+
+local stockGameTooltipShow = GameTooltip:GetScript("OnShow")
+GameTooltip:SetScript("OnShow", function()
+	if stockGameTooltipShow then
+		stockGameTooltipShow()
+	end
+	StyleTooltip(GameTooltip)
+end)
+
+if ItemRefTooltip then
+	local stockItemRefShow = ItemRefTooltip:GetScript("OnShow")
+	ItemRefTooltip:SetScript("OnShow", function()
+		if stockItemRefShow then
+			stockItemRefShow()
+		end
+		StyleTooltip(ItemRefTooltip)
+	end)
+end
