@@ -37,6 +37,6 @@ Confirm.lua
 Options.lua
 EditCard.lua
 MinimapButton.lua
-SurvivorPlates.lua
+Nameplates.lua
 Core.lua
 DeathRecap.lua
