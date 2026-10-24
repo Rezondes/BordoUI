@@ -1140,10 +1140,56 @@ function AZSHelper:ApplySquareMinimapStyle()
 		end
 	end)
 end
+local function SkinChatButton(btn, symbol)
+	if not btn then return end
+	btn:SetWidth(16)
+	btn:SetHeight(16)
+	btn:SetNormalTexture("")
+	btn:SetPushedTexture("")
+	btn:SetDisabledTexture("")
+	btn:SetHighlightTexture("")
+	if btn.GetNormalTexture and btn:GetNormalTexture() then btn:GetNormalTexture():SetAlpha(0) end
+	if btn.GetPushedTexture and btn:GetPushedTexture() then btn:GetPushedTexture():SetAlpha(0) end
+	if btn.GetDisabledTexture and btn:GetDisabledTexture() then btn:GetDisabledTexture():SetAlpha(0) end
+	if btn.GetHighlightTexture and btn:GetHighlightTexture() then btn:GetHighlightTexture():SetAlpha(0) end
+
+	btn:SetBackdrop({
+		bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+		tile     = true,
+		tileSize = 8,
+		edgeSize = 8,
+		insets   = { left = 1, right = 1, top = 1, bottom = 1 }
+	})
+	btn:SetBackdropColor(0.06, 0.06, 0.09, 0.90)
+	btn:SetBackdropBorderColor(0.20, 0.20, 0.26, 0.95)
+
+	if not btn.sText then
+		local txt = btn:CreateFontString(nil, "OVERLAY")
+		txt:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
+		txt:SetPoint("CENTER", btn, "CENTER", 0, 0)
+		txt:SetTextColor(0.85, 0.85, 0.90)
+		txt:SetText(symbol)
+		btn.sText = txt
+	else
+		btn.sText:SetText(symbol)
+	end
+
+	btn:SetScript("OnEnter", function()
+		this:SetBackdropBorderColor(1, 0.82, 0, 1)
+		if this.sText then this.sText:SetTextColor(1, 0.82, 0) end
+	end)
+	btn:SetScript("OnLeave", function()
+		this:SetBackdropBorderColor(0.20, 0.20, 0.26, 0.95)
+		if this.sText then this.sText:SetTextColor(0.85, 0.85, 0.90) end
+	end)
+end
+
 function AZSHelper:SkinChatWindow()
 	local chat = ChatFrame1
-	if not chat then return end
-	-- Modern Styled Container Box
+	if not chat or BordoUI_ChatBox then return end
+
+	-- Modern Styled Container Box (Single Singleton Instance)
 	local chatBox = CreateFrame("Frame", "BordoUI_ChatBox", UIParent)
 	chatBox:SetWidth(380)
 	chatBox:SetHeight(145)
@@ -1164,6 +1210,7 @@ function AZSHelper:SkinChatWindow()
 	})
 	chatBox:SetBackdropColor(0.04, 0.04, 0.06, 0.75) -- Translucent modern dark box
 	chatBox:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
+
 	-- Header Bar with Title, Drag Handle & Lock Button
 	local chatHeader = CreateFrame("Frame", nil, chatBox)
 	chatHeader:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 0, 0)
@@ -1171,11 +1218,19 @@ function AZSHelper:SkinChatWindow()
 	chatHeader:SetHeight(22)
 	chatHeader:EnableMouse(true)
 	chatHeader:RegisterForDrag("LeftButton")
+
 	local chatTitle = chatHeader:CreateFontString(nil, "OVERLAY")
 	chatTitle:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
 	chatTitle:SetPoint("LEFT", chatHeader, "LEFT", 8, 0)
 	chatTitle:SetTextColor(0.85, 0.85, 0.88)
 	chatTitle:SetText("Chat")
+
+	local function SaveChatPos()
+		local pt, _, relPt, x, y = chatBox:GetPoint()
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.chatPos = { point = pt, relativePoint = relPt, x = x, y = y }
+	end
+
 	chatHeader:SetScript("OnDragStart", function()
 		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 			chatBox:StartMoving()
@@ -1183,13 +1238,9 @@ function AZSHelper:SkinChatWindow()
 	end)
 	chatHeader:SetScript("OnDragStop", function()
 		chatBox:StopMovingOrSizing()
-		local pt, _, relPt, x, y = chatBox:GetPoint()
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.chatPos = { point = pt, relativePoint = relPt, x = x, y = y }
-		chat:ClearAllPoints()
-		chat:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 6, -24)
-		chat:SetPoint("BOTTOMRIGHT", chatBox, "BOTTOMRIGHT", -6, 6)
+		SaveChatPos()
 	end)
+
 	chatBox:SetScript("OnDragStart", function()
 		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 			chatBox:StartMoving()
@@ -1197,30 +1248,60 @@ function AZSHelper:SkinChatWindow()
 	end)
 	chatBox:SetScript("OnDragStop", function()
 		chatBox:StopMovingOrSizing()
-		local pt, _, relPt, x, y = chatBox:GetPoint()
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.chatPos = { point = pt, relativePoint = relPt, x = x, y = y }
-		chat:ClearAllPoints()
-		chat:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 6, -24)
-		chat:SetPoint("BOTTOMRIGHT", chatBox, "BOTTOMRIGHT", -6, 6)
+		SaveChatPos()
 	end)
+
 	if ( BordoUI and BordoUI.AttachLockButton ) then
 		BordoUI:AttachLockButton(chatBox, "TOPRIGHT", chatHeader, "TOPRIGHT", -4, -3)
 	end
+
 	-- Restore Saved Position
 	if BordoUIDB and BordoUIDB.chatPos and BordoUIDB.chatPos.point then
 		AZSHelper:RestorePosition(chatBox, BordoUIDB.chatPos)
 	end
-	-- Bind ChatFrame1 inside chatBox
-	chat:SetParent(UIParent)
-	chat:SetMovable(true)
+
+	-- Bind ChatFrame1 cleanly inside chatBox
+	chat:SetParent(chatBox)
+	chat:SetFrameLevel(chatBox:GetFrameLevel() + 2)
+	chat:SetMovable(false)
 	chat:SetClampedToScreen(true)
 	chat:ClearAllPoints()
-	chat:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 6, -24)
+	chat:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 28, -24)
 	chat:SetPoint("BOTTOMRIGHT", chatBox, "BOTTOMRIGHT", -6, 6)
+
 	if FCF_SetLocked then
 		FCF_SetLocked(chat, nil)
 	end
+
+	-- Modern Scroll Buttons docked inside left margin of chatBox
+	local upBtn = getglobal("ChatFrame1UpButton")
+	local downBtn = getglobal("ChatFrame1DownButton")
+	local bottomBtn = getglobal("ChatFrame1BottomButton")
+	local menuBtn = getglobal("ChatFrameMenuButton")
+	if menuBtn then menuBtn:Hide() end
+
+	if upBtn then
+		SkinChatButton(upBtn, "^")
+		upBtn:SetParent(chatBox)
+		upBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
+		upBtn:ClearAllPoints()
+		upBtn:SetPoint("TOPLEFT", chatBox, "TOPLEFT", 6, -26)
+	end
+	if downBtn then
+		SkinChatButton(downBtn, "v")
+		downBtn:SetParent(chatBox)
+		downBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
+		downBtn:ClearAllPoints()
+		downBtn:SetPoint("TOP", upBtn or chatBox, upBtn and "BOTTOM" or "TOPLEFT", 0, upBtn and -3 or -45)
+	end
+	if bottomBtn then
+		SkinChatButton(bottomBtn, ">>")
+		bottomBtn:SetParent(chatBox)
+		bottomBtn:SetFrameLevel(chatBox:GetFrameLevel() + 5)
+		bottomBtn:ClearAllPoints()
+		bottomBtn:SetPoint("TOP", downBtn or chatBox, downBtn and "BOTTOM" or "TOPLEFT", 0, downBtn and -3 or -64)
+	end
+
 	-- Flatten and Style Tabs
 	for i = 1, 7 do
 		local tab = getglobal("ChatFrame"..i.."Tab")
@@ -1237,6 +1318,7 @@ function AZSHelper:SkinChatWindow()
 		ChatFrame1Tab:ClearAllPoints()
 		ChatFrame1Tab:SetPoint("LEFT", chatTitle, "RIGHT", 8, 0)
 	end
+
 	for i = 1, 7 do
 		local cf = getglobal("ChatFrame"..i)
 		if cf then

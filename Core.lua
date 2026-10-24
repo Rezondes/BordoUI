@@ -216,8 +216,9 @@ eventFrame:SetScript("OnEvent", function()
             if ( BordoUI.UpdateLockState ) then
                 BordoUI:UpdateLockState();
             end
-            if ( ChatFrame1 and BordoUIDB and BordoUIDB.chatPos ) then
-                BordoUI:RestorePosition(ChatFrame1, BordoUIDB.chatPos);
+            local targetChat = BordoUI_ChatBox or ChatFrame1;
+            if ( targetChat and BordoUIDB and BordoUIDB.chatPos ) then
+                BordoUI:RestorePosition(targetChat, BordoUIDB.chatPos);
             end
         end
     end
@@ -563,9 +564,12 @@ function BordoUI:ResetToDefaultLayout()
     if ( TrackerUI and TrackerUI.ResetPosition ) then TrackerUI:ResetPosition(); end
     if ( BordoUI_ResetBuildPosition ) then BordoUI_ResetBuildPosition(); end
     if ( BordoUI_ResetPartyPosition ) then BordoUI_ResetPartyPosition(); end
-    if ( ChatFrame1 ) then
+    if ( BordoUI_ChatBox ) then
+        BordoUI_ChatBox:ClearAllPoints();
+        BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
+    elseif ( ChatFrame1 ) then
         ChatFrame1:ClearAllPoints();
-        ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 12, 16);
+        ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
     end
     if ( Minimap ) then
         Minimap:ClearAllPoints();
