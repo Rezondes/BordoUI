@@ -495,7 +495,6 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos" },
         { frame = BordoUI_MinimapDock, name = "Minimap Action Buttons (Drag Me)", key = "minimapDockPos" },
         { frame = BordoUI_ChatBox, name = "Chat Box (Drag Me)", key = "chatPos" },
-        { frame = AZSHelper_StatsTableFrame, name = "Damage Meter (Drag Me)", key = "statsPos" },
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
     };
     for i = 1, table.getn(targets) do

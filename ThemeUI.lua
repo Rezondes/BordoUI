@@ -1016,6 +1016,88 @@ UI.goldSlot:SetScript("OnUpdate", function()
 	end
 end)
 -- C) MODERN MINIMAP ACTION DOCK (Character, Talents, Damage Meter)
+local function SuppressBattlefieldMinimapButton()
+	local bf = MiniMapBattlefieldFrame or getglobal("MiniMapBattlefieldFrame")
+	if bf then
+		bf:ClearAllPoints()
+		bf:SetPoint("TOP", UIParent, "BOTTOM", 0, -5000)
+		bf:SetAlpha(0)
+		bf:Hide()
+		bf:EnableMouse(false)
+
+		if not bf.bordoLocked then
+			bf.bordoLocked = true
+			bf.SetPoint = function() end
+			bf:SetScript("OnShow", function()
+				this:Hide()
+				this:SetAlpha(0)
+			end)
+		end
+	end
+
+	local border = MiniMapBattlefieldBorder or getglobal("MiniMapBattlefieldBorder")
+	if border then
+		border:Hide()
+		border:SetAlpha(0)
+		border.Show = function() end
+	end
+
+	local icon = MiniMapBattlefieldIcon or getglobal("MiniMapBattlefieldIcon")
+	if icon then
+		icon:Hide()
+		icon:SetAlpha(0)
+		icon.Show = function() end
+	end
+end
+
+local function ToggleOriginalDamageMeter()
+	-- 1. Invoke MiniMapBattlefieldFrame's native click handler (toggles game's built-in damage meter/score frame)
+	if MiniMapBattlefieldFrame then
+		local clickFunc = MiniMapBattlefieldFrame:GetScript("OnClick")
+		if clickFunc then
+			local oldThis, oldArg1 = this, arg1
+			this = MiniMapBattlefieldFrame
+			arg1 = "LeftButton"
+			local ok = pcall(clickFunc)
+			this = oldThis
+			arg1 = oldArg1
+			if ok then return end
+		end
+	end
+	if MiniMapBattlefieldFrame_OnClick then
+		local oldThis, oldArg1 = this, arg1
+		this = MiniMapBattlefieldFrame or UIParent
+		arg1 = "LeftButton"
+		local ok = pcall(MiniMapBattlefieldFrame_OnClick)
+		this = oldThis
+		arg1 = oldArg1
+		if ok then return end
+	end
+	-- 2. ToggleWorldStateScoreFrame fallback
+	if ToggleWorldStateScoreFrame then
+		ToggleWorldStateScoreFrame()
+		return
+	end
+	-- 3. Azeroth Survivors HUD Meter toggle API
+	if AZS_IsHudShown and AZS_SetHudShown then
+		AZS_SetHudShown("meter", not AZS_IsHudShown("meter"))
+		return
+	end
+	-- 4. SurvivorUI toggle fallback
+	if SurvivorUI_ToggleMeter then
+		SurvivorUI_ToggleMeter()
+		return
+	end
+	-- 5. Direct frame toggle fallback
+	if WorldStateScoreFrame then
+		if WorldStateScoreFrame:IsShown() then
+			WorldStateScoreFrame:Hide()
+		else
+			WorldStateScoreFrame:Show()
+		end
+	end
+end
+
 PositionMicroButtons = function()
 	for _, name in pairs({
 		"CharacterMicroButton", "TalentMicroButton", "SpellbookMicroButton",
@@ -1030,8 +1112,11 @@ PositionMicroButtons = function()
 			btn.Show = function() end
 		end
 	end
+	SuppressBattlefieldMinimapButton()
 end
 PositionMicroButtons()
+SuppressBattlefieldMinimapButton()
+
 local minimapDock = CreateFrame("Frame", "BordoUI_MinimapDock", UIParent)
 minimapDock:SetWidth(28)
 minimapDock:SetHeight(88)
@@ -1136,21 +1221,15 @@ CreateSquareDockButton(
 		end
 	end
 )
--- 3. Damage & DPS Meter Button
+-- 3. Original Damage Meter Button (Toggles game's built-in damage meter, suppressing round minimap icon)
 CreateSquareDockButton(
 	minimapDock, 3, "Interface\\Icons\\INV_Sword_27",
-	"Damage & DPS Meter", "Left-Click: Toggle Damage Statistics",
+	"Damage Meter", "Left-Click: Toggle Original Damage Meter",
 	function()
 		if AZSHelper_StatsTableFrame then
-			if AZSHelper_StatsTableFrame:IsShown() then
-				AZSHelper_StatsTableFrame:Hide()
-			else
-				if AZSHelper.AnchorStatsTableToMultipliers then
-					AZSHelper:AnchorStatsTableToMultipliers()
-				end
-				AZSHelper_StatsTableFrame:Show()
-			end
+			AZSHelper_StatsTableFrame:Hide()
 		end
+		ToggleOriginalDamageMeter()
 	end
 )
 if ( BordoUI and BordoUI.AttachLockButton ) then
@@ -1315,10 +1394,12 @@ function AZSHelper:ApplySquareMinimapStyle()
 	border:SetBackdropBorderColor(0.20, 0.20, 0.25, 0.95)
 	for _, name in pairs({
 		"MinimapBorder", "MinimapBorderTop", "MinimapZoneTextButton",
-		"MinimapZoomIn", "MinimapZoomOut", "GameTimeFrame", "MinimapToggleButton"
+		"MinimapZoomIn", "MinimapZoomOut", "GameTimeFrame", "MinimapToggleButton",
+		"MiniMapBattlefieldFrame", "MiniMapBattlefieldBorder", "MiniMapBattlefieldIcon"
 	}) do
 		SafeHide(name)
 	end
+	SuppressBattlefieldMinimapButton()
 	mm:EnableMouseWheel(true)
 	mm:SetScript("OnMouseWheel", function()
 		if arg1 > 0 then
@@ -1579,6 +1660,7 @@ eventHandler:RegisterEvent("ACTIONBAR_UPDATE_USABLE")
 eventHandler:RegisterEvent("UPDATE_BONUS_ACTIONBAR")
 eventHandler:RegisterEvent("UPDATE_SHAPESHIFT_FORMS")
 eventHandler:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
+eventHandler:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
 eventHandler:SetScript("OnEvent", function()
 	if event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
 		LayoutBar()
@@ -1628,6 +1710,8 @@ eventHandler:SetScript("OnEvent", function()
 		or event == "ACTIONBAR_UPDATE_USABLE" or event == "UPDATE_BONUS_ACTIONBAR"
 		or event == "UPDATE_SHAPESHIFT_FORMS" or event == "ACTIONBAR_UPDATE_COOLDOWN" then
 		UpdateSkills()
+	elseif event == "UPDATE_BATTLEFIELD_STATUS" then
+		SuppressBattlefieldMinimapButton()
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		UpdatePortrait(target)
 		UpdateUnitFrame(target)
