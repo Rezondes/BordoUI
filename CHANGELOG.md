@@ -4,6 +4,28 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [3.0.0] - 2026-10-24
+
+### Added & Merged
+- **Complete Survivor UI Suite Integration:**
+  - Integrated the full, modern Azeroth Survivors interface suite: centered unit frames, action bar (buttons 1–6 and =), square minimap, career tracking, run panel, build list, jewelry crafting, pace tracker, boss encounter bars, loot logger, and in-game settings panel (`/sui opt` or `/bordo opt`).
+  - Integrated high-performance Plater-style nameplates (`SurvivorPlates.lua`) featuring execute range markers (30% HP), boss tiers, and target debuffs.
+- **Preserved Death Recap System (`DeathRecap.lua`):**
+  - Retained our signature, fully translated Death Recap tracking lethal overkill, attacker, ability, and last incoming hits. Toggle with `/bordo`, `/bordo recap`, or `/recap`.
+- **Integrated High-Visibility Green Teammate Health Bars:**
+  - Embedded vibrant lime-green teammate nameplates (`130x14px`, color `0.12, 0.95, 0.22`) with emerald green borders and `🛡️ Teammate` / `👑 Leader` badges directly into the Plater nameplate engine.
+  - Teammates always remain visible regardless of mob filtering settings.
+  - Automatically activates native WoW 1.12 friendly nameplates (`ShowFriendNameplates()`) upon login and joining parties.
+  - Matching lime-green health bars applied to party unit cards in `Party.lua`.
+- **Core Slash Commands & Camera Zoom:**
+  - Retained `/bordo zoom` for maximum 50-yard camera distance, `/bordo plates` / `/plates` for force-enabling nameplates, and `/bordo` for instant Death Recap toggle.
+
+### Removed
+- **Obsolete Custom UI Modules:**
+  - Cleaned up redundant legacy files (`ThemeUI.lua`, `StatsTable.lua`, `PartyFrames.lua`, `DamageFont.lua`) replaced by the official Survivor UI architecture.
+
+---
+
 ## [2.5.0] - 2026-10-23
 
 ### Added
