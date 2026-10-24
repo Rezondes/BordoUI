@@ -346,6 +346,9 @@ local function Migrate()
 		db.statsMode = nil
 		db.statsWindowSize = nil
 	end
+	if db.statsPanel == nil then
+		db.statsPanel = true
+	end
 end
 
 local function StatsInPane()
@@ -353,7 +356,7 @@ local function StatsInPane()
 end
 
 local function PanelOn()
-	return DB().statsPanel == true
+	return DB().statsPanel ~= false
 end
 
 ------------------------------------------------------------------------------
@@ -984,8 +987,8 @@ local function MakeView(alone)
 			if DB().statsLeft and DB().statsTop then
 				stats:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", DB().statsLeft, DB().statsTop)
 			else
-				-- First at the top of the screen, right of This Run.
-				stats:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 256, -13)
+				-- Top left of screen (in place of This Run)
+				stats:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 16, -14)
 			end
 		end
 

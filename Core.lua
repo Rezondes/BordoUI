@@ -6,7 +6,7 @@
 
 BordoUI = BordoUI or {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "3.1.0";
+BordoUI.version = "3.2.0";
 
 -- Default Settings
 local defaults = {
@@ -30,6 +30,13 @@ local function InitDB()
     end
     if ( not BordoUIDB.goldPos ) then
         BordoUIDB.goldPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 };
+    end
+    SurvivorUIDB = SurvivorUIDB or {};
+    if ( SurvivorUIDB.statsPanel == nil ) then
+        SurvivorUIDB.statsPanel = true;
+    end
+    if ( SurvivorUIDB.runPanel == nil ) then
+        SurvivorUIDB.runPanel = false;
     end
 end
 
@@ -243,6 +250,14 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( BordoUI.ShowDeathRecap ) then
             BordoUI:ShowDeathRecap();
         end
+    elseif ( cmd == "crit" or cmd == "crits" or cmd == "table" ) then
+        if ( BordoUI.ToggleStatsTable ) then
+            BordoUI:ToggleStatsTable();
+        end
+    elseif ( cmd == "stat" or cmd == "stats" ) then
+        if ( SurvivorUI_ToggleStatsPanel ) then
+            SurvivorUI_ToggleStatsPanel();
+        end
     elseif ( cmd == "gold" ) then
         if ( val == "reset" ) then
             BordoUIDB.goldPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 185 };
@@ -279,15 +294,37 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( goldTracker ) then
             BordoUI:RestorePosition(goldTracker, BordoUIDB.goldPos);
         end
+        if ( AZSHelper_StatsTableFrame ) then
+            AZSHelper_StatsTableFrame:ClearAllPoints();
+            AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 18, -60);
+            if ( BordoUIDB ) then BordoUIDB.statsPos = nil; end
+        end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Positions reset to default.");
     else
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r or |cffffd100/recap|r - Toggle Death Recap & Lethal Hits Window");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo crit|r or |cffffd100/crit|r - Toggle Attack & Highest Crit Statistics Table");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo stats|r or |cffffd100/stats|r - Toggle On-Screen Stats HUD Window (No need to press C)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo gold|r or |cffffd100/gold|r - Toggle Gold & Chest Tracker test preview or reset position");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r or |cffffd100/plates|r - Toggle Teammate (vibrant green) & Enemy nameplates");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance (50 yards)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo opt|r or |cffffd100/sui opt|r - Open Survivor UI Settings Panel");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset Death Recap & Gold frame positions");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset Death Recap, Crit Table & Gold frame positions");
+    end
+end;
+
+SLASH_BORDOCRIT1 = "/crit";
+SLASH_BORDOCRIT2 = "/crits";
+SlashCmdList["BORDOCRIT"] = function()
+    if ( BordoUI.ToggleStatsTable ) then
+        BordoUI:ToggleStatsTable();
+    end
+end;
+
+SLASH_BORDOSTATS1 = "/stats";
+SlashCmdList["BORDOSTATS"] = function()
+    if ( SurvivorUI_ToggleStatsPanel ) then
+        SurvivorUI_ToggleStatsPanel();
     end
 end;
 

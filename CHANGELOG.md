@@ -4,6 +4,30 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [3.2.0] - 2026-10-24
+
+### Added
+- **Modern Floating Damage Numbers & Combat Text Font (`DamageFont.lua`):**
+  - Restored our crisp, modern sans-serif floating combat font (`Interface\AddOns\BordoUI\Media\modern.ttf`).
+  - Sets `DAMAGE_TEXT_FONT` and compact 75% combat text scale so damage numbers stay ultra-crisp without cluttering screen view.
+- **Attack & Highest Crit Statistics Window (`StatsTable.lua`):**
+  - Restored the comprehensive Attack & Highest Crit table window!
+  - **Overview Header:** Shows the run's **★ Highest Crit / Bester Krit** with ability name and spell icon, your character sheet crit rate vs. real measured crit rate (`Char Crit: X% | Actual: Y%`), and live DPS.
+  - **Per-Attack Breakdown:** Displays every ability used, spell icon, Max Crit (highlighted in gold), measured Crit Rate (% and count), and DPS.
+  - **Interactivity:** Scalable (`[-]` / `[+]` or mousewheel), collapsible, draggable anywhere on screen, close button `[X]`.
+  - Slash commands: `/crit` or `/crits` or `/bordo crit`.
+- **Always-Visible On-Screen Stats HUD Window (`CharacterPane.lua`):**
+  - Permanently enables the standalone Stats HUD panel on screen so you never need to press 'C' to check your build!
+  - Displays all 4 character attribute categories in real time: Offense (Crit, Crit Dmg, Haste, Echo), Defense (Health, Regen, Lifesteal, Armor, Thorns, Lives), Reach (Area, Targets, Pickup), and Utility (Speed, XP, Gold, Luck, Buff Power).
+  - Positioned at the top-left of the screen (`16, -14`), movable with Alt-drag and resizable via the corner grip.
+  - Slash command: `/stats` or `/bordo stats` to toggle.
+
+### Removed / Hidden
+- **Removed "This Run" Overview Panel (`RunPanel.lua`):**
+  - Disabled and hid the bulky "This Run" window by default (`runPanel = false`) to free up valuable screen real estate for the Stats HUD and Crit Table.
+
+---
+
 ## [3.1.0] - 2026-10-24
 
 ### Added

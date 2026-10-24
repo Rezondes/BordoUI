@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-3.1.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-3.2.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -44,6 +44,23 @@
 - **Edge Direction Clamping:** Boss pins stay clamped to the minimap boundary when distant, ensuring you always know the exact direction to the nearest boss.
 - **Detailed Tooltips:** Displays boss name, combat status (`AWAKE & FIGHTING!`, `Waiting in Lair`, or `Slain (Respawning)`), and exact yard distance.
 
+### 7. 🎯 Attack & Highest Crit Statistics Table (`StatsTable.lua`)
+- **Highest Crit Record Tracker:** Displays your run's **★ Highest Crit / Bester Krit** with ability name and spell icon.
+- **Per-Attack Breakdown:** Tracks every ability used, spell icon, Max Crit (highlighted in gold), measured Crit Rate (% and count), and live DPS.
+- **Crit Rate Comparison:** Displays your character sheet crit chance vs. measured actual combat crit rate (`Char Crit: X% | Actual: Y%`).
+- **Scalable & Movable:** Scalable with `[-]` / `[+]` buttons or mousewheel over header, collapsible, draggable anywhere on screen.
+- **Quick Slash Command:** Toggle with `/crit`, `/crits`, or `/bordo crit`.
+
+### 8. 📋 Always-On Stats HUD Window (`CharacterPane.lua`)
+- **No Need to Press 'C':** The full Azeroth Survivors character attribute window is permanently embedded on-screen.
+- **Real-Time Attributes:** Displays all 4 categories live: Offense (Crit, Crit Dmg, Haste, Echo), Defense (Health, Regen, Lifesteal, Armor, Thorns, Lives), Reach (Area, Targets, Pickup), and Utility (Speed, XP, Gold, Luck, Buff Power).
+- **Movable & Resizable:** Drag by its top grip or hold Alt and drag. Resize via bottom-right corner grip.
+- **Quick Slash Command:** Toggle with `/stats` or `/bordo stats`.
+
+### 9. 💥 Modern Floating Combat Text Font (`DamageFont.lua`)
+- **Crisp Damage Font:** Replaces default Blizzard damage font with modern sans-serif font (`Media\modern.ttf`).
+- **Compact 75% Scale:** Streamlines floating damage numbers so they remain readable in 50+ mob swarms without cluttering the screen.
+
 ---
 
 ## ⌨️ Slash Commands
@@ -51,10 +68,13 @@
 | Command | Description |
 | :--- | :--- |
 | `/bordo` or `/recap` | Open the Death Recap & Lethal Hits breakdown |
+| `/crit` or `/crits` | Toggle Attack & Highest Crit Statistics Table |
+| `/stats` or `/bordo stats` | Toggle On-Screen Stats HUD Window (No need to press C) |
 | `/gold` or `/bordo gold` | Gold & Chest Tracker options (`/gold reset` to center) |
 | `/bordo opt` or `/sui opt` | Open the Survivor UI Settings Panel |
 | `/bordo plates` or `/plates` | Force-enable Teammate (green) & Enemy nameplates |
 | `/bordo zoom` | Unlock maximum camera distance (50 yards / 4x zoom) |
+| `/bordo reset` | Reset Death Recap, Crit Table & Gold tracker positions |
 | `/splates` | Configure Plater-style nameplate tiers and scaling |
 | `/sui` | Survivor UI core commands (`/sui help` for details) |
 

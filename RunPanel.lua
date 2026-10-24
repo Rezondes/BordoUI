@@ -1,4 +1,4 @@
-﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the run so far, in one small panel.
 --
 -- This Run: a running count of what the game totals up on the screen that
@@ -851,7 +851,7 @@ function SurvivorUI_CritList(most)
 end
 
 local function Shown()
-	return not SurvivorUIDB or SurvivorUIDB.runPanel ~= false
+	return SurvivorUIDB and SurvivorUIDB.runPanel == true
 end
 
 -- Lays the rows out top to bottom and sizes the panel to them.
