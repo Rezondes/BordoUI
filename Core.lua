@@ -8,25 +8,42 @@ BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
 BordoUI.version = "2.3.0";
 
--- Unit & Mob Tooltip Relocation: Anchor world/unit tooltips to middle-right
--- (Keeps bottom-right corner clear for damage meters / DPS addons)
+-- Unit & Mob Tooltip Relocation: Anchor world/unit/add tooltips to bottom-left next to ChatFrame1
+local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
+tipAnchor:SetWidth(200);
+tipAnchor:SetHeight(80);
+tipAnchor:SetPoint("BOTTOMLEFT", ChatFrame1 or UIParent, "BOTTOMRIGHT", 12, 0);
+tipAnchor:SetMovable(true);
+tipAnchor:SetClampedToScreen(true);
+tipAnchor:EnableMouse(false);
+BordoUI.tipAnchor = tipAnchor;
+
+local function PlaceTooltip(tooltip)
+	tooltip:ClearAllPoints();
+	if ( BordoUIDB and BordoUIDB.tooltipPos and BordoUIDB.tooltipPos.point ) then
+		BordoUI:RestorePosition(tooltip, BordoUIDB.tooltipPos);
+	elseif ( ChatFrame1 ) then
+		tooltip:SetPoint("BOTTOMLEFT", ChatFrame1, "BOTTOMRIGHT", 12, 0);
+	else
+		tooltip:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
+	end
+end
+
 local orig_GameTooltip_SetDefaultAnchor = GameTooltip_SetDefaultAnchor;
 function GameTooltip_SetDefaultAnchor(tooltip, parent)
-    tooltip:SetOwner(parent, "ANCHOR_NONE");
-    tooltip:ClearAllPoints();
-    tooltip:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0);
-    tooltip.default = 1;
+	tooltip:SetOwner(parent, "ANCHOR_NONE");
+	PlaceTooltip(tooltip);
+	tooltip.default = 1;
 end
 
 if ( updateContainerFrameAnchors ) then
-    local orig_updateContainerFrameAnchors = updateContainerFrameAnchors;
-    updateContainerFrameAnchors = function()
-        orig_updateContainerFrameAnchors();
-        if ( GameTooltip:IsShown() and GameTooltip.default ) then
-            GameTooltip:ClearAllPoints();
-            GameTooltip:SetPoint("RIGHT", UIParent, "RIGHT", -20, 0);
-        end
-    end
+	local orig_updateContainerFrameAnchors = updateContainerFrameAnchors;
+	updateContainerFrameAnchors = function()
+		orig_updateContainerFrameAnchors();
+		if ( GameTooltip:IsShown() and GameTooltip.default ) then
+			PlaceTooltip(GameTooltip);
+		end
+	end
 end
 
 -- Default Settings
@@ -465,6 +482,7 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = SurvivorUIParty, name = "Party Frames (Drag Me)", key = "partyPos" },
         { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos" },
         { frame = BordoUI_MicroDock, name = "Micro Buttons (Drag Me)", key = "microDockPos" },
+		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
     };
 
     for i = 1, table.getn(targets) do
@@ -511,6 +529,7 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.bottomBarPos = nil;
     BordoUIDB.tallyPos = nil;
     BordoUIDB.microDockPos = nil;
+	BordoUIDB.tooltipPos = nil;
     BordoUIDB.centerHudPos = nil;
     BordoUIDB.multPanelPos = nil;
     if ( AZSHelperDB ) then
@@ -518,8 +537,17 @@ function BordoUI:ResetToDefaultLayout()
         AZSHelperDB.bottomBarPos = nil;
         AZSHelperDB.tallyPos = nil;
         AZSHelperDB.microDockPos = nil;
+		AZSHelperDB.tooltipPos = nil;
         AZSHelperDB.centerHudPos = nil;
     end
+	if ( BordoUI_TooltipAnchor ) then
+		BordoUI_TooltipAnchor:ClearAllPoints();
+		if ( ChatFrame1 ) then
+			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", ChatFrame1, "BOTTOMRIGHT", 12, 0);
+		else
+			BordoUI_TooltipAnchor:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 406, 26);
+		end
+	end
 
     if ( BordoUI_ResetThemeUI ) then BordoUI_ResetThemeUI(); end
     if ( StatsUI and StatsUI.ResetPosition ) then StatsUI:ResetPosition(); end
