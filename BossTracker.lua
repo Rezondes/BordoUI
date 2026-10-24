@@ -1,10 +1,14 @@
 --[[
     Bordo UI - Modern Boss & Miniboss Tracker (BossTracker.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
-    Faithfully reproduces the modern Tracker from reference screenshot:
+    Faithfully reproduces the modern Tracker:
     - 1. Zone Name & Big Run Clock (4:26 / 20:00)
-    - 2. Boss Timeline with Progress Bar & Tick Marks (3:33, 7:33, 11:33, 15:33)
-    - 3. Scheduled Boss List with color coding (Green: spawned/slain, Yellow: upcoming countdown, Grey: future)
+    - 2. Boss Timeline with Progress Bar & Tick Marks (3:33, 7:33, 11:33, 15:33, 20:00)
+    - 3. Scheduled Boss List with color coding:
+         - Green: Slain / Defeated (with spawn & death time)
+         - Orange: Currently Alive & Fighting (with live HP% / FIGHT)
+         - White / Yellow: Next Upcoming Boss with live active countdown ("in 1:10  3:33")
+         - Grey: Future scheduled boss
     - 4. Guardians Bar with Lair Heraldic Marks:
          - When Dead: Red bar with countdown timer (0:39, 1:51)
          - When Alive: Green/Gold bar with live Rotational Directional Arrow (GuardianArrow.tga) pointing to boss in 3D world
@@ -12,19 +16,154 @@
     - 5. Elites counter
     Movable, scalable with mouse wheel, saved position.
 ]]--
+
 BordoUI = BordoUI or {};
 local TrackerUI = {};
 BordoUI.BossTracker = TrackerUI;
+
 local ART = "Interface\\AddOns\\BordoUI\\Art\\";
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground";
 local FONT_PATH = "Fonts\\ARIALN.TTF";
 local CELLS = 8; -- 8x8 arrow sheet = 64 angles
 local WIDTH = 220;
+
 local function FormatClock(sec)
     sec = math.max(0, math.floor((sec or 0) + 0.5));
     return string.format("%d:%02d", math.floor(sec / 60), math.mod(sec, 60));
 end
--- Main Frame
+
+-- ============================================================================
+-- Zone Boss Data & Fallbacks for Azeroth Survivors (All 9 Zones)
+-- ============================================================================
+local MAP_BOSS_DATA = {
+    ["Elwynn Forest"] = {
+        { name = "Hogger", at = 213 },
+        { name = "Mother Fang", at = 453 },
+        { name = "Rhahk'Zor", at = 693 },
+        { name = "Mr. Smite", at = 933 },
+        { name = "Edwin VanCleef", at = 1200, final = 1 },
+    },
+    ["Duskwood"] = {
+        { name = "Naraxis", at = 213 },
+        { name = "Mor'Ladim", at = 453 },
+        { name = "Stitches", at = 693 },
+        { name = "Lupos", at = 933 },
+        { name = "Morbent Fel", at = 1200, final = 1 },
+    },
+    ["Warsong Gulch"] = {
+        { name = "Doomguard Commander", at = 213 },
+        { name = "Mannoroth's Herald", at = 453 },
+        { name = "Varimathras", at = 693 },
+        { name = "Lord Hel'nurath", at = 933 },
+        { name = "Lord Kazzak", at = 1200, final = 1 },
+    },
+    ["Arathi Basin"] = {
+        { name = "Patchwerk", at = 213 },
+        { name = "Lord Blackwood", at = 453 },
+        { name = "Baron Rivendare", at = 693 },
+        { name = "Anub'Rekhan", at = 933 },
+        { name = "Kel'Thuzad", at = 1200, final = 1 },
+    },
+    ["Feralas"] = {
+        { name = "Zevrim Thornhoof", at = 213 },
+        { name = "Alzzin the Wildshaper", at = 453 },
+        { name = "Tendris Warpwood", at = 693 },
+        { name = "Immol'thar", at = 933 },
+        { name = "King Gordok", at = 1200, final = 1 },
+    },
+    ["Gurubashi Arena"] = {
+        { name = "High Priestess Jeklik", at = 213 },
+        { name = "High Priest Venoxis", at = 453 },
+        { name = "Bloodlord Mandokir", at = 693 },
+        { name = "Jin'do the Hexxer", at = 933 },
+        { name = "Hakkar the Soulflayer", at = 1200, final = 1 },
+    },
+    ["Alterac Valley"] = {
+        { name = "Korrak the Bloodrager", at = 213 },
+        { name = "Ivus the Forest Lord", at = 453 },
+        { name = "Lokholar the Ice Lord", at = 693 },
+        { name = "Glacius the Frozen Titan", at = 933 },
+        { name = "Azuregos", at = 1200, final = 1 },
+    },
+    ["Blackrock Mountain"] = {
+        { name = "General Angerforge", at = 213 },
+        { name = "Warchief Rend Blackhand", at = 453 },
+        { name = "Emperor Dagran Thaurissan", at = 693 },
+        { name = "Majordomo Executus", at = 933 },
+        { name = "Nefarian", at = 1200, final = 1 },
+    },
+    ["Gates of Ahn'Qiraj"] = {
+        { name = "Kurinnaxx", at = 213 },
+        { name = "General Rajaxx", at = 453 },
+        { name = "Princess Huhuran", at = 693 },
+        { name = "Ossirian the Unscarred", at = 933 },
+        { name = "C'Thun", at = 1200, final = 1 },
+    },
+};
+
+local ZONE_ALIASES = {
+    ["elwynn"] = "Elwynn Forest",
+    ["wald von elwynn"] = "Elwynn Forest",
+    ["elwynn forest"] = "Elwynn Forest",
+    ["duskwood"] = "Duskwood",
+    ["dämmerwald"] = "Duskwood",
+    ["daemmerwald"] = "Duskwood",
+    ["wsg"] = "Warsong Gulch",
+    ["warsong gulch"] = "Warsong Gulch",
+    ["kriegshymnenschlucht"] = "Warsong Gulch",
+    ["ab"] = "Arathi Basin",
+    ["arathi basin"] = "Arathi Basin",
+    ["arathibecken"] = "Arathi Basin",
+    ["feralas"] = "Feralas",
+    ["arena"] = "Gurubashi Arena",
+    ["gurubashi arena"] = "Gurubashi Arena",
+    ["gurubashi"] = "Gurubashi Arena",
+    ["av"] = "Alterac Valley",
+    ["alterac valley"] = "Alterac Valley",
+    ["alteractal"] = "Alterac Valley",
+    ["brm"] = "Blackrock Mountain",
+    ["blackrock mountain"] = "Blackrock Mountain",
+    ["der schwarzfels"] = "Blackrock Mountain",
+    ["schwarzfels"] = "Blackrock Mountain",
+    ["aq"] = "Gates of Ahn'Qiraj",
+    ["ahn'qiraj"] = "Gates of Ahn'Qiraj",
+    ["tore von ahn'qiraj"] = "Gates of Ahn'Qiraj",
+    ["gates of ahn'qiraj"] = "Gates of Ahn'Qiraj",
+};
+
+local BOSS_DEFAULT_TIMES = {};
+for _, bList in pairs(MAP_BOSS_DATA) do
+    for _, bInfo in ipairs(bList) do
+        BOSS_DEFAULT_TIMES[bInfo.name] = bInfo.at;
+    end
+end
+
+local function GetBossField(b, key, index)
+    if type(b) ~= "table" then return nil; end
+    if b[key] ~= nil then return b[key]; end
+    if index and b[index] ~= nil then return b[index]; end
+    return nil;
+end
+
+local function LiveBoss(name)
+    if not AZS_UNITS or not name then return nil; end
+    local count = table.getn(AZS_UNITS);
+    for idx = 1, count do
+        local u = AZS_UNITS[idx];
+        if u then
+            local kind = u.kind or u[1];
+            local uName = u.name or u[3];
+            if (kind == "boss" or kind == "final") and uName == name then
+                return u;
+            end
+        end
+    end
+    return nil;
+end
+
+-- ============================================================================
+-- Frame Creation
+-- ============================================================================
 local frame = CreateFrame("Frame", "BordoUI_BossTrackerFrame", UIParent);
 TrackerUI.frame = frame;
 SurvivorUITracker = frame;
@@ -63,6 +202,7 @@ frame:SetBackdrop({
 });
 frame:SetBackdropColor(0.04, 0.04, 0.06, 0.88);
 frame:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95);
+
 -- Header Dragging & Scaling
 local headerBar = CreateFrame("Frame", nil, frame);
 headerBar:SetPoint("TOPLEFT", frame, "TOPLEFT", 0, 0);
@@ -93,9 +233,11 @@ headerBar:SetScript("OnMouseWheel", function()
     BordoUIDB.bossScale = cur;
     frame:SetScale(cur);
 end);
+
 if ( BordoUI and BordoUI.AttachLockButton ) then
     BordoUI:AttachLockButton(frame, "TOPRIGHT", headerBar, "TOPRIGHT", -6, -4);
 end
+
 -- 1. Zone Name (Yellow)
 local zoneText = headerBar:CreateFontString(nil, "OVERLAY");
 zoneText:SetFont(FONT_PATH, 11, "OUTLINE");
@@ -103,6 +245,7 @@ zoneText:SetPoint("TOPLEFT", headerBar, "TOPLEFT", 8, -5);
 zoneText:SetTextColor(1, 0.82, 0);
 zoneText:SetText("Azeroth");
 TrackerUI.zoneText = zoneText;
+
 -- 2. Big Run Clock (4:26 / 20:00)
 local clockText = headerBar:CreateFontString(nil, "OVERLAY");
 clockText:SetFont(FONT_PATH, 18, "OUTLINE");
@@ -110,11 +253,13 @@ clockText:SetPoint("TOP", headerBar, "TOP", 0, -16);
 clockText:SetTextColor(1, 1, 1);
 clockText:SetText("0:00 / 20:00");
 TrackerUI.clockText = clockText;
+
 -- 3. Timeline Bar
 local timelineContainer = CreateFrame("Frame", nil, frame);
 timelineContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -48);
 timelineContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -48);
 timelineContainer:SetHeight(18);
+
 local timelineBar = CreateFrame("StatusBar", nil, timelineContainer);
 timelineBar:SetPoint("BOTTOMLEFT", timelineContainer, "BOTTOMLEFT", 0, 2);
 timelineBar:SetPoint("BOTTOMRIGHT", timelineContainer, "BOTTOMRIGHT", 0, 2);
@@ -124,10 +269,12 @@ timelineBar:SetStatusBarColor(0.30, 0.85, 0.35, 1.0);
 timelineBar:SetMinMaxValues(0, 1200);
 timelineBar:SetValue(0);
 TrackerUI.timelineBar = timelineBar;
+
 local timelineBg = timelineBar:CreateTexture(nil, "BACKGROUND");
 timelineBg:SetTexture(FLAT);
 timelineBg:SetVertexColor(0.18, 0.18, 0.22, 0.95);
 timelineBg:SetAllPoints(timelineBar);
+
 -- Up to 5 Boss Ticks on Timeline
 local timelineTicks = {};
 for i = 1, 5 do
@@ -135,70 +282,83 @@ for i = 1, 5 do
     tick:SetWidth(2);
     tick:SetHeight(10);
     tick:SetPoint("BOTTOM", timelineBar, "BOTTOM", 0, 0);
-    
+
     local line = tick:CreateTexture(nil, "OVERLAY");
     line:SetTexture(FLAT);
     line:SetVertexColor(1, 1, 1, 0.95);
     line:SetAllPoints(tick);
-    
+
     local label = tick:CreateFontString(nil, "OVERLAY");
     label:SetFont(FONT_PATH, 8, "OUTLINE");
     label:SetPoint("BOTTOM", tick, "TOP", 0, 1);
     label:SetTextColor(1, 0.82, 0);
     label:SetText("");
-    
+
     tick.line = line;
     tick.label = label;
     tick:Hide();
     timelineTicks[i] = tick;
 end
+
 -- 4. Scheduled Boss Rows (Up to 6 bosses)
 local bossRows = {};
 local startBossY = -70;
 for i = 1, 6 do
-    local row = CreateFrame("Frame", nil, frame);
+    local row = CreateFrame("Button", nil, frame);
     row:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, startBossY - (i - 1) * 14);
     row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, startBossY - (i - 1) * 14);
     row:SetHeight(13);
-    
+    row:EnableMouse(true);
+    row:RegisterForClicks("LeftButtonUp");
+    row:SetScript("OnClick", function()
+        if this.bossTarget and TargetByName then
+            TargetByName(this.bossTarget, true);
+        end
+    end);
+
     local name = row:CreateFontString(nil, "OVERLAY");
     name:SetFont(FONT_PATH, 9, "OUTLINE");
     name:SetPoint("LEFT", row, "LEFT", 2, 0);
     name:SetJustifyH("LEFT");
     name:SetWidth(125);
-    
+
     local timeText = row:CreateFontString(nil, "OVERLAY");
     timeText:SetFont(FONT_PATH, 9, "OUTLINE");
     timeText:SetPoint("RIGHT", row, "RIGHT", -2, 0);
     timeText:SetJustifyH("RIGHT");
-    
+
     row.name = name;
     row.timeText = timeText;
     row:Hide();
     bossRows[i] = row;
 end
+
 -- 5. Guardians Section
 local guardiansHeader = CreateFrame("Frame", nil, frame);
 guardiansHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -158);
 guardiansHeader:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -158);
 guardiansHeader:SetHeight(14);
+
 local gTitle = guardiansHeader:CreateFontString(nil, "OVERLAY");
 gTitle:SetFont(FONT_PATH, 9, "OUTLINE");
 gTitle:SetPoint("LEFT", guardiansHeader, "LEFT", 2, 0);
 gTitle:SetTextColor(0.85, 0.85, 0.85);
 gTitle:SetText("Guardians");
+
 local gGoal = guardiansHeader:CreateFontString(nil, "OVERLAY");
 gGoal:SetFont(FONT_PATH, 9, "OUTLINE");
 gGoal:SetPoint("RIGHT", guardiansHeader, "RIGHT", -2, 0);
 gGoal:SetTextColor(0.35, 0.90, 0.40);
 gGoal:SetText("4/4 by 8:00 \194\183 done");
 TrackerUI.gGoal = gGoal;
+
 -- Guardians Segment Boxes (One per lair, up to 6 lairs)
 local guardianSegments = {};
 local segmentBar = CreateFrame("Frame", nil, frame);
 segmentBar:SetPoint("TOPLEFT", guardiansHeader, "BOTTOMLEFT", 0, -2);
 segmentBar:SetPoint("TOPRIGHT", guardiansHeader, "BOTTOMRIGHT", 0, -2);
 segmentBar:SetHeight(16);
+
 local function PointArrow(texture, angle)
     local cells = CELLS * CELLS;
     local k = math.mod(math.floor(angle / (2 * math.pi) * cells + 0.5), cells);
@@ -207,53 +367,58 @@ local function PointArrow(texture, angle)
     local row = math.floor(k / CELLS);
     texture:SetTexCoord(col / CELLS, (col + 1) / CELLS, row / CELLS, (row + 1) / CELLS);
 end
+
 for i = 1, 6 do
     local seg = CreateFrame("Frame", nil, segmentBar);
     seg:SetHeight(16);
-    
+
     local bg = seg:CreateTexture(nil, "BACKGROUND");
     bg:SetTexture(FLAT);
     bg:SetAllPoints(seg);
     seg.bg = bg;
-    
+
     local mark = seg:CreateTexture(nil, "ARTWORK");
     mark:SetWidth(13);
     mark:SetHeight(13);
     mark:SetPoint("LEFT", seg, "LEFT", 1, 0);
     seg.mark = mark;
-    
+
     local arrow = seg:CreateTexture(nil, "OVERLAY");
     arrow:SetTexture(ART .. "GuardianArrow");
     arrow:SetWidth(13);
     arrow:SetHeight(13);
     arrow:SetPoint("CENTER", seg, "CENTER", 4, 0);
     seg.arrow = arrow;
-    
+
     local timer = seg:CreateFontString(nil, "OVERLAY");
     timer:SetFont(FONT_PATH, 9, "OUTLINE");
     timer:SetPoint("RIGHT", seg, "RIGHT", -2, 0);
     timer:SetTextColor(1, 1, 1);
     seg.timer = timer;
-    
+
     seg:Hide();
     guardianSegments[i] = seg;
 end
+
 -- 6. Elites Line
 local elitesRow = CreateFrame("Frame", nil, frame);
 elitesRow:SetPoint("TOPLEFT", segmentBar, "BOTTOMLEFT", 0, -4);
 elitesRow:SetPoint("TOPRIGHT", segmentBar, "BOTTOMRIGHT", 0, -4);
 elitesRow:SetHeight(14);
+
 local eLabel = elitesRow:CreateFontString(nil, "OVERLAY");
 eLabel:SetFont(FONT_PATH, 9, "OUTLINE");
 eLabel:SetPoint("LEFT", elitesRow, "LEFT", 2, 0);
 eLabel:SetTextColor(0.85, 0.85, 0.85);
 eLabel:SetText("Elites");
+
 local eCount = elitesRow:CreateFontString(nil, "OVERLAY");
 eCount:SetFont(FONT_PATH, 9, "OUTLINE");
 eCount:SetPoint("RIGHT", elitesRow, "RIGHT", -2, 0);
 eCount:SetTextColor(0.65, 0.65, 0.65);
 eCount:SetText("none");
 TrackerUI.eCount = eCount;
+
 -- Dynamic Heading / Facing tracking from map movement
 local lastWalkX, lastWalkY;
 local walkedHeading = 0;
@@ -276,87 +441,224 @@ local function UpdatePlayerHeading()
     end
     return walkedHeading;
 end
+
+-- ============================================================================
 -- Main Update Loop
+-- ============================================================================
+local bossSeenUp = {};
+local bossKilled = {};
+local lastRunSeconds = nil;
+
 function TrackerUI:Update()
     if ( not frame:IsShown() ) then return; end
-    
+
     local run = AZS_RUN;
-    local t = (run and tonumber(run.t)) or 0;
+    local t = (AZS_GetRunTime and AZS_GetRunTime()) or (run and tonumber(run.t)) or 0;
     local zone = (AZS_ZONE and AZS_ZONE.zname) or GetZoneText() or "Azeroth";
     zoneText:SetText(zone);
-    
-    -- Schedule and Total Run Time
-    local sched = AZS_SCHEDULE or {};
-    local totalTime = 1200; -- 20 min default
-    local numSched = table.getn(sched);
-    if ( numSched > 0 and sched[numSched] and sched[numSched].t ) then
-        totalTime = tonumber(sched[numSched].t) or 1200;
+
+    -- Reset state if a new run has started
+    if lastRunSeconds and (t + 3 < lastRunSeconds) then
+        bossSeenUp = {};
+        bossKilled = {};
     end
-    if ( totalTime <= 0 ) then totalTime = 1200; end
-    
+    lastRunSeconds = t;
+
+    -- Resolve Boss Schedule
+    local rawSched = AZS_SCHEDULE;
+    local sched = {};
+    if type(rawSched) == "table" and table.getn(rawSched) > 0 then
+        for i = 1, table.getn(rawSched) do
+            sched[i] = rawSched[i];
+        end
+    else
+        -- Fallback to map-specific schedule
+        local zKey = string.lower(zone or "");
+        local canonicalZone = ZONE_ALIASES[zKey] or zone;
+        local fallbackList = MAP_BOSS_DATA[canonicalZone];
+        if not fallbackList then
+            for k, v in pairs(ZONE_ALIASES) do
+                if string.find(zKey, k) then
+                    fallbackList = MAP_BOSS_DATA[v];
+                    break;
+                end
+            end
+        end
+        if fallbackList then
+            for i = 1, table.getn(fallbackList) do
+                sched[i] = fallbackList[i];
+            end
+        end
+    end
+    local numSched = table.getn(sched);
+
+    -- Total Run Time
+    local totalTime = 1200; -- 20 min default
+    if AZS_GetRunLength then
+        totalTime = tonumber(AZS_GetRunLength()) or 0;
+    end
+    if totalTime <= 0 and AZS_ZONE and AZS_ZONE.len then
+        totalTime = tonumber(AZS_ZONE.len) or 0;
+    end
+    if totalTime <= 0 and run and run.fin then
+        totalTime = tonumber(run.fin) or 0;
+    end
+    if totalTime <= 0 and numSched > 0 then
+        local lastB = sched[numSched];
+        local lastAt = tonumber(GetBossField(lastB, "at", 2) or GetBossField(lastB, "t"));
+        if lastAt and lastAt > 0 then totalTime = lastAt; end
+    end
+    if totalTime <= 0 then totalTime = 1200; end
+
     clockText:SetText(string.format("%s / %s", FormatClock(t), FormatClock(totalTime)));
-    
+
     -- Timeline Bar
     timelineBar:SetMinMaxValues(0, totalTime);
     timelineBar:SetValue(math.min(t, totalTime));
-    
-    -- Timeline Ticks for Scheduled Bosses
-    local tickCount = math.min(5, numSched);
+
+    -- Boss Rows & Timeline Ticks
     local barW = timelineBar:GetWidth() or 204;
-    for i = 1, 5 do
-        local tick = timelineTicks[i];
-        if ( i <= tickCount ) then
-            local b = sched[i];
-            local bTime = tonumber(b.t) or 0;
-            if ( bTime > 0 and totalTime > 0 ) then
-                local pct = bTime / totalTime;
-                tick:ClearAllPoints();
-                tick:SetPoint("BOTTOMLEFT", timelineBar, "BOTTOMLEFT", math.floor(pct * barW), 0);
-                tick.label:SetText(FormatClock(bTime));
-                tick:Show();
-            else
-                tick:Hide();
-            end
-        else
-            tick:Hide();
-        end
-    end
-    
-    -- Scheduled Boss Rows
     local foundNext = false;
+
     for i = 1, 6 do
         local row = bossRows[i];
         if ( i <= numSched ) then
             local b = sched[i];
-            local bTime = tonumber(b.t) or 0;
-            local bName = b.name or ("Boss " .. i);
-            local isSpawned = (t >= bTime);
-            
-            row.name:SetText(bName);
-            if ( isSpawned ) then
-                -- Defeated / Active in green
-                row.name:SetTextColor(0.30, 1.00, 0.40);
-                row.timeText:SetTextColor(0.30, 1.00, 0.40);
-                row.timeText:SetText(string.format("%s / %s", FormatClock(bTime), FormatClock(bTime + 24)));
-            elseif ( not foundNext ) then
-                -- Next upcoming boss with yellow countdown
-                foundNext = true;
-                local diff = bTime - t;
-                row.name:SetTextColor(1, 1, 1);
-                row.timeText:SetTextColor(1, 0.82, 0);
-                row.timeText:SetText(string.format("in %s  %s", FormatClock(diff), FormatClock(bTime)));
+            local bName = GetBossField(b, "name", 3) or ("Boss " .. i);
+            local bAt = tonumber(GetBossField(b, "at", 2) or GetBossField(b, "t"))
+                or BOSS_DEFAULT_TIMES[bName]
+                or (i == 5 and 1200 or (213 + (i - 1) * 240));
+            local bState = GetBossField(b, "state", 5);
+            local bFinal = (GetBossField(b, "final", 4) == 1 or i == numSched);
+
+            -- Determine state
+            local liveUnit = LiveBoss(bName);
+            if bState == "dead" then
+                if not bossKilled[bName] and bossSeenUp[bName] then
+                    bossKilled[bName] = t;
+                end
+            elseif bState == "up" or liveUnit then
+                bState = "up";
+                bossSeenUp[bName] = true;
+            elseif bState == "due" then
+                -- Due
             else
-                -- Future scheduled boss in grey
-                row.name:SetTextColor(0.55, 0.55, 0.58);
-                row.timeText:SetTextColor(0.55, 0.55, 0.58);
-                row.timeText:SetText(FormatClock(bTime));
+                if bossSeenUp[bName] and not liveUnit and t > bAt then
+                    bState = "dead";
+                    if not bossKilled[bName] then bossKilled[bName] = t; end
+                elseif t >= bAt or liveUnit then
+                    bState = "up";
+                    bossSeenUp[bName] = true;
+                else
+                    bState = "due";
+                end
+            end
+
+            -- Up to 5 Boss Ticks on Timeline
+            if i <= 5 then
+                local tick = timelineTicks[i];
+                if bAt > 0 and totalTime > 0 and bAt <= totalTime then
+                    local pct = bAt / totalTime;
+                    local x = math.floor(pct * barW);
+                    x = math.min(barW - 2, math.max(1, x));
+                    tick:ClearAllPoints();
+                    tick:SetPoint("BOTTOMLEFT", timelineBar, "BOTTOMLEFT", x, 0);
+
+                    if bFinal then
+                        tick:SetWidth(3);
+                    else
+                        tick:SetWidth(2);
+                    end
+
+                    if bState == "dead" then
+                        tick.line:SetVertexColor(0.30, 0.90, 0.40, 0.95);
+                        tick.label:SetText(FormatClock(bAt));
+                        tick.label:SetTextColor(0.30, 0.90, 0.40);
+                    elseif bState == "up" then
+                        tick.line:SetVertexColor(1.00, 0.55, 0.15, 0.95);
+                        tick.label:SetText("FIGHT");
+                        tick.label:SetTextColor(1.00, 0.55, 0.15);
+                    elseif not foundNext and bAt >= t then
+                        tick.line:SetVertexColor(1.00, 0.82, 0.20, 0.95);
+                        tick.label:SetText(FormatClock(math.max(0, bAt - t)));
+                        tick.label:SetTextColor(1.00, 0.82, 0.20);
+                    else
+                        tick.line:SetVertexColor(0.85, 0.85, 0.85, 0.80);
+                        tick.label:SetText(FormatClock(bAt));
+                        tick.label:SetTextColor(0.70, 0.70, 0.70);
+                    end
+                    tick:Show();
+                else
+                    timelineTicks[i]:Hide();
+                end
+            end
+
+            -- Scheduled Boss Row Display
+            row.name:SetText(bName);
+            if bState == "dead" then
+                -- Slain: Green
+                row.name:SetTextColor(0.30, 0.90, 0.40);
+                row.timeText:SetTextColor(0.30, 0.90, 0.40);
+                if bossKilled[bName] then
+                    row.timeText:SetText(string.format("%s / %s", FormatClock(bAt), FormatClock(bossKilled[bName])));
+                else
+                    row.timeText:SetText(string.format("%s \194\183 done", FormatClock(bAt)));
+                end
+                row.bossTarget = nil;
+            elseif bState == "up" then
+                -- Alive / Active: Orange
+                row.name:SetTextColor(1.00, 0.55, 0.25);
+                row.timeText:SetTextColor(1.00, 0.65, 0.30);
+                if liveUnit then
+                    local hp = tonumber(liveUnit.hp or liveUnit[4]) or 0;
+                    local hpm = tonumber(liveUnit.hpm or liveUnit[5]) or 0;
+                    if hpm > 0 then
+                        local pct = math.floor(hp / hpm * 100 + 0.5);
+                        row.timeText:SetText(string.format("%d%%  %s", pct, FormatClock(bAt)));
+                    else
+                        row.timeText:SetText(string.format("FIGHT  %s", FormatClock(bAt)));
+                    end
+                else
+                    row.timeText:SetText(string.format("ALIVE  %s", FormatClock(bAt)));
+                end
+                row.bossTarget = bName;
+            else
+                -- Due / Upcoming
+                row.bossTarget = nil;
+                if not foundNext and bAt >= t then
+                    foundNext = true;
+                    local diff = math.max(0, bAt - t);
+                    row.name:SetTextColor(1.00, 1.00, 1.00);
+                    row.timeText:SetTextColor(1.00, 0.82, 0.20);
+                    row.timeText:SetText(string.format("in %s  %s", FormatClock(diff), FormatClock(bAt)));
+                else
+                    row.name:SetTextColor(0.55, 0.55, 0.58);
+                    row.timeText:SetTextColor(0.55, 0.55, 0.58);
+                    row.timeText:SetText(FormatClock(bAt));
+                end
             end
             row:Show();
         else
-            row:Hide();
+            -- Endless Mode: Display returning boss in row 6 if schedule is done
+            if i == 6 and run and tonumber(run.endl) == 1 and tonumber(run.nb or -1) >= 0 then
+                local nextIn = tonumber(run.nb);
+                local nextName = run.nbn;
+                if not nextName or nextName == "" then nextName = "Next boss"; end
+                row.name:SetText(nextName);
+                row.name:SetTextColor(1, 1, 1);
+                row.timeText:SetTextColor(1, 0.82, 0);
+                row.timeText:SetText(string.format("in %s", FormatClock(nextIn)));
+                row.bossTarget = nil;
+                row:Show();
+            else
+                row:Hide();
+            end
+            if i <= 5 then
+                timelineTicks[i]:Hide();
+            end
         end
     end
-    
+
     -- Guardians / Lairs
     local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
     local numLairs = table.getn(lairs);
@@ -364,9 +666,8 @@ function TrackerUI:Update()
     local px = (run and tonumber(run.px)) or 0;
     local py = (run and tonumber(run.py)) or 0;
     local pFacing = UpdatePlayerHeading();
-    
+
     -- Check achievement 4/4 before 8:00
-    local slainBefore8 = 0;
     local totalSlain = 0;
     for i = 1, numLairs do
         local l = lairs[i];
@@ -382,7 +683,7 @@ function TrackerUI:Update()
         gGoal:SetText(string.format("%d/4 in %s", totalSlain, FormatClock(rem)));
         gGoal:SetTextColor(1, 0.82, 0);
     end
-    
+
     if ( numLairs > 0 ) then
         local segW = (barW - (numLairs - 1) * 2) / numLairs;
         for i = 1, 6 do
@@ -390,16 +691,16 @@ function TrackerUI:Update()
             if ( i <= numLairs ) then
                 local lair = lairs[i];
                 local markId = marks[tonumber(lair.index or lair[1]) or i] or i;
-                
+
                 seg:ClearAllPoints();
                 seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 2), 0);
                 seg:SetWidth(segW);
-                
+
                 local isActive = (lair.active == true or lair.active == 1);
                 local isAwake = (lair.awake == true or lair.awake == 1);
-                
+
                 SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
-                
+
                 if ( isAwake ) then
                     -- Fighting / Awake in orange
                     seg.bg:SetVertexColor(1.0, 0.55, 0.15, 0.85);
@@ -411,7 +712,7 @@ function TrackerUI:Update()
                     seg.bg:SetVertexColor(0.70, 0.92, 0.55, 0.85);
                     seg.timer:Hide();
                     seg.arrow:Show();
-                    
+
                     local lx = tonumber(lair.x or lair[2]) or 0;
                     local ly = tonumber(lair.y or lair[3]) or 0;
                     local bearing = math.atan2(ly - py, lx - px);
@@ -437,7 +738,7 @@ function TrackerUI:Update()
     else
         for i = 1, 6 do guardianSegments[i]:Hide(); end
     end
-    
+
     -- Elites count
     local elites = 0;
     if ( AZS_UNITS ) then
@@ -456,7 +757,8 @@ function TrackerUI:Update()
         eCount:SetTextColor(0.65, 0.65, 0.65);
     end
 end
--- Ticker (10 updates per second for butter-smooth arrow rotation)
+
+-- Ticker (10 updates per second for smooth arrow rotation & countdowns)
 local ticker = CreateFrame("Frame", "BordoUI_BossTrackerTicker");
 local elapsed = 0;
 ticker:SetScript("OnUpdate", function()
@@ -465,6 +767,7 @@ ticker:SetScript("OnUpdate", function()
     elapsed = 0;
     TrackerUI:Update();
 end);
+
 function TrackerUI:ResetPosition()
     frame:ClearAllPoints();
     frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -160);
@@ -475,6 +778,7 @@ function TrackerUI:ResetPosition()
         BordoUI_UpdateBuildPosition();
     end
 end
+
 local function InitBossTracker()
     if ( BordoUIDB and BordoUIDB.bossTrackerPos and BordoUIDB.bossTrackerPos.point ) then
         BordoUI:RestorePosition(frame, BordoUIDB.bossTrackerPos);
@@ -491,7 +795,19 @@ local function InitBossTracker()
         BordoUI_UpdateBuildPosition();
     end
 end
+
 local loader = CreateFrame("Frame");
 loader:RegisterEvent("PLAYER_ENTERING_WORLD");
 loader:RegisterEvent("VARIABLES_LOADED");
-loader:SetScript("OnEvent", InitBossTracker);
+loader:RegisterEvent("CHAT_MSG_ADDON");
+loader:SetScript("OnEvent", function()
+    if event == "CHAT_MSG_ADDON" then
+        if arg1 == "AZSZONE" then
+            bossSeenUp = {};
+            bossKilled = {};
+            lastRunSeconds = nil;
+        end
+        return;
+    end
+    InitBossTracker();
+end);
