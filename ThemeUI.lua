@@ -169,10 +169,31 @@ row:SetWidth(table.getn(BAR_BUTTONS) * (BUTTON_SIZE + BUTTON_GAP) - BUTTON_GAP)
 row:SetHeight(BUTTON_SIZE)
 row:SetPoint("CENTER", UIParent, "CENTER", 0, -ROW_BELOW_CENTER)
 row:SetMovable(true)
+row:EnableMouse(true)
+row:RegisterForDrag("LeftButton")
 row:SetClampedToScreen(true)
 row:SetFrameStrata("LOW")
 UI.skillsContainer = row
 AZSHelper_SkillsContainer = row
+
+local function SaveHudPosition()
+	BordoUIDB = BordoUIDB or {}
+	local x = math.floor(row:GetLeft() - UIParent:GetWidth() / 2 + row:GetWidth() / 2 + 0.5)
+	local y = math.floor(row:GetBottom() - UIParent:GetHeight() / 2 + row:GetHeight() / 2 + 0.5)
+	BordoUIDB.hudPos = { point = "CENTER", x = x, y = y }
+	AZSHelperDB = AZSHelperDB or {}
+	AZSHelperDB.rowPos = BordoUIDB.hudPos
+end
+
+row:SetScript("OnDragStart", function()
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		row:StartMoving()
+	end
+end)
+row:SetScript("OnDragStop", function()
+	row:StopMovingOrSizing()
+	SaveHudPosition()
+end)
 
 row.slots = {}
 for position = 1, table.getn(BAR_BUTTONS) do
@@ -274,6 +295,18 @@ local function LayoutBar()
 	if xpText then
 		xpText:Hide()
 		xpText.Show = function() end
+	end
+
+	local expBar = getglobal("MainMenuExpBar")
+	if expBar then
+		expBar:Hide()
+		expBar.Show = function() end
+	end
+
+	local expBar = getglobal("MainMenuExpBar")
+	if expBar then
+		expBar:Hide()
+		expBar.Show = function() end
 	end
 
 	for _, name in pairs({ "MainMenuBarMaxLevelBar", "ReputationWatchBar" }) do
@@ -455,18 +488,13 @@ local function UnitFrame(unit, name, side, dropdown)
 
 	frame:RegisterForDrag("LeftButton")
 	frame:SetScript("OnDragStart", function()
-		if IsAltKeyDown() or IsShiftKeyDown() then
+		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 			row:StartMoving()
 		end
 	end)
 	frame:SetScript("OnDragStop", function()
 		row:StopMovingOrSizing()
-		AZSHelperDB = AZSHelperDB or {}
-		AZSHelperDB.rowPos = {
-			point = "CENTER",
-			x = math.floor(row:GetLeft() - UIParent:GetWidth() / 2 + row:GetWidth() / 2 + 0.5),
-			y = math.floor(row:GetBottom() - UIParent:GetHeight() / 2 + row:GetHeight() / 2 + 0.5),
-		}
+		SaveHudPosition()
 	end)
 
 	return frame
@@ -659,58 +687,32 @@ local fullBarWidth = row:GetWidth() + 2 * (SECTION_GAP + FRAME_WIDTH + 1 + BUTTO
 
 UI.bottomBar = CreateFrame("Frame", "AZSHelper_BottomBar", UIParent)
 UI.bottomBar:SetWidth(fullBarWidth)
-UI.bottomBar:SetHeight(24)
-UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -6)
+UI.bottomBar:SetHeight(22)
+UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
 UI.bottomBar:SetFrameStrata("LOW")
 UI.bottomBar:SetFrameLevel(5)
 UI.bottomBar:SetClampedToScreen(true)
-AZSHelper:MakeMovable(UI.bottomBar, "bottomBarPos")
 
-UI.bottomBar:SetBackdrop({
-	bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile     = true,
-	tileSize = 12,
-	edgeSize = 8,
-	insets   = { left = 2, right = 2, top = 2, bottom = 2 }
-})
-UI.bottomBar:SetBackdropColor(0.04, 0.04, 0.06, 0.90)
-UI.bottomBar:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
-
--- Modern XP Status Bar attached directly to top of bottomBar
-UI.xpContainer = CreateFrame("Frame", "AZSHelper_XPContainer", UI.bottomBar)
-UI.xpContainer:SetPoint("BOTTOMLEFT", UI.bottomBar, "TOPLEFT", 0, -4)
-UI.xpContainer:SetPoint("BOTTOMRIGHT", UI.bottomBar, "TOPRIGHT", 0, -4)
-UI.xpContainer:SetHeight(10)
-UI.xpContainer:SetFrameStrata("LOW")
-UI.xpContainer:SetFrameLevel(6)
-UI.xpContainer:SetBackdrop({
-	bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-	edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-	tile     = true,
-	tileSize = 8,
-	edgeSize = 6,
-	insets   = { left = 1, right = 1, top = 1, bottom = 1 }
-})
-UI.xpContainer:SetBackdropColor(0.04, 0.04, 0.06, 0.95)
-UI.xpContainer:SetBackdropBorderColor(0.15, 0.15, 0.18, 0.95)
-
-UI.xpBar = CreateFrame("StatusBar", "AZSHelper_XPBar", UI.xpContainer)
-UI.xpBar:SetPoint("TOPLEFT", UI.xpContainer, "TOPLEFT", 2, -2)
-UI.xpBar:SetPoint("BOTTOMRIGHT", UI.xpContainer, "BOTTOMRIGHT", -2, 2)
+-- Sleek 4px flat XP Bar directly under the buttons
+UI.xpBar = CreateFrame("StatusBar", "AZSHelper_XPBar", UI.bottomBar)
+UI.xpBar:SetPoint("TOPLEFT", UI.bottomBar, "TOPLEFT", 0, 0)
+UI.xpBar:SetPoint("TOPRIGHT", UI.bottomBar, "TOPRIGHT", 0, 0)
+UI.xpBar:SetHeight(4)
 UI.xpBar:SetStatusBarTexture(FLAT)
 UI.xpBar:SetStatusBarColor(0.55, 0.20, 0.85, 1.0)
 UI.xpBar:SetMinMaxValues(0, 100)
+AddBorder(UI.xpBar)
+AddBacking(UI.xpBar)
 
 UI.xpText = UI.xpBar:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
 UI.xpText:SetPoint("CENTER", UI.xpBar, "CENTER", 0, 0)
-UI.xpText:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE")
-UI.xpText:SetTextColor(1, 1, 1, 1)
+UI.xpText:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE")
+UI.xpText:SetTextColor(1, 1, 1, 0)
 
 -- Centered Tally Frame for Kills & Gold
 UI.tallyFrame = CreateFrame("Frame", "AZSHelper_TallyFrame", UI.bottomBar)
-UI.tallyFrame:SetHeight(18)
-UI.tallyFrame:SetPoint("CENTER", UI.bottomBar, "CENTER", 0, 0)
+UI.tallyFrame:SetHeight(16)
+UI.tallyFrame:SetPoint("TOP", UI.xpBar, "BOTTOM", 0, -2)
 
 -- Red Skull Icon for Kills
 UI.killsSkull = UI.tallyFrame:CreateTexture(nil, "ARTWORK")
@@ -1084,12 +1086,16 @@ eventHandler:SetScript("OnEvent", function()
 		UpdatePortrait(player)
 		UpdateUnitFrame(player)
 
-		if AZSHelperDB and AZSHelperDB.rowPos then
+		if BordoUIDB and BordoUIDB.hudPos and BordoUIDB.hudPos.point then
+			AZSHelper:RestorePosition(row, BordoUIDB.hudPos)
+		elseif AZSHelperDB and AZSHelperDB.rowPos and AZSHelperDB.rowPos.point then
 			AZSHelper:RestorePosition(row, AZSHelperDB.rowPos)
+		else
+			row:ClearAllPoints()
+			row:SetPoint("CENTER", UIParent, "CENTER", 0, -170)
 		end
-		if AZSHelperDB and AZSHelperDB.bottomBarPos then
-			AZSHelper:RestorePosition(UI.bottomBar, AZSHelperDB.bottomBarPos)
-		end
+		UI.bottomBar:ClearAllPoints()
+		UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
 	elseif event == "PLAYER_TARGET_CHANGED" then
 		UpdatePortrait(target)
 		UpdateUnitFrame(target)
@@ -1104,3 +1110,18 @@ eventHandler:SetScript("OnEvent", function()
 		end
 	end
 end)
+
+function BordoUI_ResetThemeUI()
+	row:ClearAllPoints()
+	row:SetPoint("CENTER", UIParent, "CENTER", 0, -170)
+	UI.bottomBar:ClearAllPoints()
+	UI.bottomBar:SetPoint("TOP", row, "BOTTOM", 0, -4)
+	if BordoUIDB then
+		BordoUIDB.hudPos = nil
+		BordoUIDB.bottomBarPos = nil
+	end
+	if AZSHelperDB then
+		AZSHelperDB.rowPos = nil
+		AZSHelperDB.bottomBarPos = nil
+	end
+end

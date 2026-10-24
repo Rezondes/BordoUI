@@ -4,6 +4,22 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.1] - 2026-10-24
+
+### Fixed & Improved
+- **Window Dragging & Universal Move Mode (`/unlock` & `/lock`):**
+  - Resolved window dragging issues: Left-clicking and dragging now works directly on all frame backgrounds and headers without requiring keyboard modifiers.
+  - Added visual **Move Mode** (`/unlock`, `/bordo move`): Renders prominent translucent drag boxes over every UI element (`Combat HUD`, `Stats Window`, `Boss Tracker`, `Build & Jewelry List`, `Party Frames`).
+  - Added on-screen top control bar during Move Mode with one-click buttons: `[ Lock All Windows ]` and `[ Reset Default Layout ]`.
+  - Type `/lock` to lock all windows once repositioned.
+- **Pixel-Perfect Default Layout Matching Screenshot:**
+  - **Eliminated Boss Tracker & Build List Overlap:** Build List now dynamically docks beneath `BossTracker` (`TOPRIGHT, SurvivorUITracker, BOTTOMRIGHT, 0, -8`) with zero overlapping.
+  - **Stats Window:** Default position docked in the upper-left corner (`TOPLEFT, 12, -14`).
+  - **Sleek Unified Combat HUD:** Eliminated duplicate stock Blizzard XP bars. The sleek XP bar and Kills/Gold tally are now snugly attached directly under the action buttons (`TOP, row, BOTTOM, 0, -4`), moving with the HUD as one unified combat block.
+  - **One-Command Reset (`/bordo reset`):** Instantly purges any corrupted or stale saved positions and snaps all frames back to the clean reference layout.
+
+---
+
 ## [2.7.0] - 2026-10-24
 
 ### Added

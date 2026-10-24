@@ -242,11 +242,13 @@ SlashCmdList["BORDOU"] = function(msg)
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
     elseif ( cmd == "lock" ) then
+        BordoUI:ToggleMoveMode(false);
         BordoUI:SetLocked(true);
     elseif ( cmd == "unlock" ) then
         BordoUI:SetLocked(false);
+        BordoUI:ToggleMoveMode(true);
     elseif ( cmd == "move" or cmd == "togglelock" ) then
-        BordoUI:ToggleLock();
+        BordoUI:ToggleMoveMode();
     elseif ( cmd == "help" ) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
@@ -261,46 +263,7 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo size <0.4-1.5>|r - Set stats table scale");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance");
     elseif ( cmd == "reset" ) then
-        BordoUIDB.statsPos = nil;
-        BordoUIDB.multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 };
-        BordoUIDB.centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 };
-        BordoUIDB.deathRecapPos = { point = "RIGHT", relativePoint = "CENTER", x = -260, y = 20 };
-        BordoUIDB.encounterBarsPos = { point = "TOP", relativePoint = "TOP", x = 0, y = -55 };
-        BordoUIDB.bottomBarPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 2 };
-        BordoUIDB.chatPos = { point = "BOTTOMLEFT", relativePoint = "BOTTOMLEFT", x = 14, y = 26 };
-        BordoUIDB.partyPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 142, y = -120 };
-        if ( ChatFrame1 ) then
-            ChatFrame1:ClearAllPoints();
-            ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 26);
-        end
-        if ( AZSHelper_BottomBar ) then
-            BordoUI:RestorePosition(AZSHelper_BottomBar, BordoUIDB.bottomBarPos);
-        end
-        if ( AZSHelper_MultipliersPanel ) then
-            BordoUI:RestorePosition(AZSHelper_MultipliersPanel, BordoUIDB.multPanelPos);
-        end
-        if ( AZSHelper_StatsTableFrame ) then
-            if ( AZSHelper.AnchorStatsTableToMultipliers ) then
-                AZSHelper:AnchorStatsTableToMultipliers();
-            else
-                AZSHelper_StatsTableFrame:ClearAllPoints();
-                AZSHelper_StatsTableFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 143, -120);
-            end
-        end
-        if ( AZSHelper_SkillsContainer ) then
-            BordoUI:RestorePosition(AZSHelper_SkillsContainer, BordoUIDB.centerHudPos);
-        end
-        if ( AZSHelper_DeathRecapFrame ) then
-            BordoUI:RestorePosition(AZSHelper_DeathRecapFrame, BordoUIDB.deathRecapPos);
-        end
-        if ( AZSHelper_BossEncounterContainer ) then
-            BordoUI:RestorePosition(AZSHelper_BossEncounterContainer, BordoUIDB.encounterBarsPos);
-        end
-        if ( BordoUI_PartyContainer ) then
-            BordoUI:RestorePosition(BordoUI_PartyContainer, BordoUIDB.partyPos);
-            if ( BordoUI.UpdatePartyFrames ) then BordoUI:UpdatePartyFrames(); end
-        end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI window positions reset to defaults.");
+        BordoUI:ResetToDefaultLayout();
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
         if ( SlashCmdList["AZSCHESTLIGHT"] ) then
             SlashCmdList["AZSCHESTLIGHT"](val);
@@ -385,3 +348,190 @@ function SurvivorUI_LairMarkName(mark)
     return mark and MARK_NAMES[mark] or nil;
 end
 
+
+-- =========================================================================
+-- Visual Move Mode & Universal Layout System
+-- =========================================================================
+BordoUI.MoveOverlays = {};
+
+local function CreateMoveOverlay(targetFrame, labelText, saveFunc)
+    if ( not targetFrame ) then return nil; end
+    local overlay = CreateFrame("Button", nil, UIParent);
+    overlay:SetFrameStrata("TOOLTIP");
+    overlay:SetFrameLevel(100);
+    overlay:SetAllPoints(targetFrame);
+    
+    overlay:SetBackdrop({
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true,
+        tileSize = 8,
+        edgeSize = 8,
+        insets   = { left = 1, right = 1, top = 1, bottom = 1 }
+    });
+    overlay:SetBackdropColor(0.10, 0.45, 0.90, 0.40);
+    overlay:SetBackdropBorderColor(0.20, 0.85, 1.00, 1.00);
+
+    local txt = overlay:CreateFontString(nil, "OVERLAY", "GameFontHighlight");
+    txt:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE");
+    txt:SetPoint("CENTER", overlay, "CENTER", 0, 0);
+    txt:SetTextColor(1, 1, 1, 1);
+    txt:SetText(labelText);
+    overlay.text = txt;
+
+    overlay:EnableMouse(true);
+    overlay:RegisterForDrag("LeftButton");
+    overlay:SetScript("OnDragStart", function()
+        targetFrame:StartMoving();
+    end);
+    overlay:SetScript("OnDragStop", function()
+        targetFrame:StopMovingOrSizing();
+        if ( saveFunc ) then saveFunc(targetFrame); end
+    end);
+    overlay:Hide();
+    return overlay;
+end
+
+function BordoUI:ToggleMoveMode(enable)
+    if ( enable == nil ) then
+        enable = not BordoUI.moveModeActive;
+    end
+    BordoUI.moveModeActive = enable;
+
+    if ( not BordoUI.controlBar ) then
+        local bar = CreateFrame("Frame", "BordoUI_MoveControlBar", UIParent);
+        bar:SetWidth(340);
+        bar:SetHeight(34);
+        bar:SetPoint("TOP", UIParent, "TOP", 0, -25);
+        bar:SetFrameStrata("TOOLTIP");
+        bar:SetFrameLevel(105);
+        bar:SetBackdrop({
+            bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            tile     = true,
+            tileSize = 8,
+            edgeSize = 8,
+            insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+        });
+        bar:SetBackdropColor(0.04, 0.04, 0.06, 0.95);
+        bar:SetBackdropBorderColor(1.00, 0.82, 0.00, 1.00);
+
+        local lockBtn = CreateFrame("Button", nil, bar);
+        lockBtn:SetWidth(150);
+        lockBtn:SetHeight(22);
+        lockBtn:SetPoint("LEFT", bar, "LEFT", 8, 0);
+        lockBtn:SetBackdrop({
+            bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            edgeSize = 6,
+        });
+        lockBtn:SetBackdropColor(0.12, 0.35, 0.15, 0.90);
+        lockBtn:SetBackdropBorderColor(0.30, 0.95, 0.30, 0.90);
+        local lTxt = lockBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+        lTxt:SetPoint("CENTER", lockBtn, "CENTER", 0, 0);
+        lTxt:SetText("Lock All Windows");
+        lockBtn:SetScript("OnClick", function()
+            BordoUI:ToggleMoveMode(false);
+            BordoUI:SetLocked(true);
+        end);
+
+        local resetBtn = CreateFrame("Button", nil, bar);
+        resetBtn:SetWidth(150);
+        resetBtn:SetHeight(22);
+        resetBtn:SetPoint("RIGHT", bar, "RIGHT", -8, 0);
+        resetBtn:SetBackdrop({
+            bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+            edgeSize = 6,
+        });
+        resetBtn:SetBackdropColor(0.35, 0.15, 0.15, 0.90);
+        resetBtn:SetBackdropBorderColor(0.95, 0.30, 0.30, 0.90);
+        local rTxt = resetBtn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall");
+        rTxt:SetPoint("CENTER", resetBtn, "CENTER", 0, 0);
+        rTxt:SetText("Reset Default Layout");
+        resetBtn:SetScript("OnClick", function()
+            BordoUI:ResetToDefaultLayout();
+        end);
+
+        BordoUI.controlBar = bar;
+    end
+
+    local targets = {
+        { frame = SurvivorUIRow, name = "Combat HUD (Drag Me)", key = "hudPos" },
+        { frame = BordoUI_StatsWindowFrame, name = "Stats Window (Drag Me)", key = "statsPos" },
+        { frame = BordoUI_BossTrackerFrame or AZSHelper_BossSchedulePanel, name = "Boss Tracker (Drag Me)", key = "bossTrackerPos" },
+        { frame = SurvivorUIBuild, name = "Build & Jewelry (Drag Me)", key = "buildPos" },
+        { frame = SurvivorUIParty, name = "Party Frames (Drag Me)", key = "partyPos" },
+    };
+
+    for i = 1, table.getn(targets) do
+        local t = targets[i];
+        if ( t.frame ) then
+            if ( not BordoUI.MoveOverlays[i] ) then
+                BordoUI.MoveOverlays[i] = CreateMoveOverlay(t.frame, t.name, function(f)
+                    local pt, _, relPt, x, y = f:GetPoint();
+                    BordoUIDB = BordoUIDB or {};
+                    BordoUIDB[t.key] = { point = pt, relativePoint = relPt, x = x, y = y };
+                end);
+            end
+            if ( enable ) then
+                BordoUI.MoveOverlays[i]:ClearAllPoints();
+                BordoUI.MoveOverlays[i]:SetAllPoints(t.frame);
+                BordoUI.MoveOverlays[i]:Show();
+            else
+                BordoUI.MoveOverlays[i]:Hide();
+            end
+        end
+    end
+
+    if ( enable ) then
+        BordoUI.controlBar:Show();
+        BordoUIDB.locked = false;
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cff55ff55[ACTIVE]|r. Drag any colored box to reposition. Click |cffffd100[Lock All Windows]|r or type |cffffd100/lock|r when done.");
+    else
+        BordoUI.controlBar:Hide();
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Move Mode |cffff3333[OFF]|r. All window positions saved.");
+    end
+end
+
+function BordoUI:ResetToDefaultLayout()
+    BordoUIDB = BordoUIDB or {};
+    BordoUIDB.hudPos = nil;
+    BordoUIDB.statsPos = nil;
+    BordoUIDB.bossTrackerPos = nil;
+    BordoUIDB.buildLeft = nil;
+    BordoUIDB.buildTop = nil;
+    BordoUIDB.buildPos = nil;
+    BordoUIDB.partyLeft = nil;
+    BordoUIDB.partyBottom = nil;
+    BordoUIDB.partyPos = nil;
+    BordoUIDB.bottomBarPos = nil;
+    BordoUIDB.centerHudPos = nil;
+    BordoUIDB.multPanelPos = nil;
+    if ( AZSHelperDB ) then
+        AZSHelperDB.rowPos = nil;
+        AZSHelperDB.bottomBarPos = nil;
+        AZSHelperDB.centerHudPos = nil;
+    end
+
+    if ( BordoUI_ResetThemeUI ) then BordoUI_ResetThemeUI(); end
+    if ( StatsUI and StatsUI.ResetPosition ) then StatsUI:ResetPosition(); end
+    if ( TrackerUI and TrackerUI.ResetPosition ) then TrackerUI:ResetPosition(); end
+    if ( BordoUI_ResetBuildPosition ) then BordoUI_ResetBuildPosition(); end
+    if ( BordoUI_ResetPartyPosition ) then BordoUI_ResetPartyPosition(); end
+
+    if ( ChatFrame1 ) then
+        ChatFrame1:ClearAllPoints();
+        ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 12, 16);
+    end
+    if ( Minimap ) then
+        Minimap:ClearAllPoints();
+        Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -12);
+    end
+
+    if ( BordoUI.moveModeActive ) then
+        BordoUI:ToggleMoveMode(true);
+    end
+
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows reset to standard layout matching reference screenshot!");
+end

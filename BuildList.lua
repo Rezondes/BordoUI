@@ -1,4 +1,4 @@
-﻿local SurvivorUI_FONT = "Fonts\\ARIALN.TTF"
+local SurvivorUI_FONT = "Fonts\\ARIALN.TTF"
 local SurvivorUI_FONT_BUMP = 0
 -- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the build, in the right column between the run tracker and the
@@ -104,10 +104,21 @@ end
 local list = CreateFrame("Frame", "SurvivorUIBuild", UIParent)
 list:SetWidth(WIDTH + 12)
 list:SetHeight(GEAR_TOP + 16 + table.getn(GEAR_SLOTS) * 17 + 6)
-list:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -260)
+list:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -395)
 list:SetBackdrop({ bgFile = FLAT })
 list:SetBackdropColor(0.04, 0.04, 0.07, 0.55)
 list:SetMovable(true)
+list:EnableMouse(true)
+list:RegisterForDrag("LeftButton")
+list:SetScript("OnDragStart", function()
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		list:StartMoving()
+	end
+end)
+list:SetScript("OnDragStop", function()
+	list:StopMovingOrSizing()
+	SavePlace()
+end)
 list:Hide()
 
 local function SavePlace()
@@ -119,14 +130,25 @@ end
 local function RestorePlace()
 	local settings = Settings()
 	list:ClearAllPoints()
-	if settings.buildLeft then
+	if settings.buildLeft and settings.buildTop then
 		list:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", settings.buildLeft, settings.buildTop)
-	elseif SurvivorUITracker then
-		-- Under the run tracker, right edges together.
-		list:SetPoint("TOPRIGHT", SurvivorUITracker, "BOTTOMRIGHT", 8, -14)
+	elseif SurvivorUITracker and SurvivorUITracker:IsVisible() then
+		list:SetPoint("TOPRIGHT", SurvivorUITracker, "BOTTOMRIGHT", 0, -8)
 	else
-		list:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -260)
+		list:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -395)
 	end
+end
+
+function BordoUI_UpdateBuildPosition()
+	RestorePlace()
+end
+
+function BordoUI_ResetBuildPosition()
+	if BordoUIDB then
+		BordoUIDB.buildLeft = nil
+		BordoUIDB.buildTop = nil
+	end
+	RestorePlace()
 end
 
 list.title = list:CreateFontString(nil, "OVERLAY")

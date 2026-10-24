@@ -32,14 +32,32 @@ end
 -- Main Frame
 local frame = CreateFrame("Frame", "BordoUI_BossTrackerFrame", UIParent);
 TrackerUI.frame = frame;
+SurvivorUITracker = frame;
+AZSHelper_BossSchedulePanel = frame;
 frame:SetWidth(WIDTH);
 frame:SetHeight(230);
-frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -16, -170);
+frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -160);
 frame:SetFrameStrata("LOW");
 frame:SetFrameLevel(6);
 frame:SetClampedToScreen(true);
 frame:SetMovable(true);
 frame:EnableMouse(true);
+frame:RegisterForDrag("LeftButton");
+frame:SetScript("OnDragStart", function()
+    if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+        frame:StartMoving();
+    end
+end);
+frame:SetScript("OnDragStop", function()
+    frame:StopMovingOrSizing();
+    if ( BordoUIDB ) then
+        local point, _, relPoint, x, y = frame:GetPoint();
+        BordoUIDB.bossTrackerPos = { point = point, relativePoint = relPoint, x = x, y = y };
+    end
+    if ( BordoUI_UpdateBuildPosition ) then
+        BordoUI_UpdateBuildPosition();
+    end
+end);
 
 frame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -60,14 +78,18 @@ headerBar:SetHeight(38);
 headerBar:EnableMouse(true);
 headerBar:RegisterForDrag("LeftButton");
 headerBar:SetScript("OnDragStart", function()
-    if ( BordoUIDB and BordoUIDB.locked ) then return; end
-    frame:StartMoving();
+    if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+        frame:StartMoving();
+    end
 end);
 headerBar:SetScript("OnDragStop", function()
     frame:StopMovingOrSizing();
     if ( BordoUIDB ) then
         local point, _, relPoint, x, y = frame:GetPoint();
         BordoUIDB.bossTrackerPos = { point = point, relativePoint = relPoint, x = x, y = y };
+    end
+    if ( BordoUI_UpdateBuildPosition ) then
+        BordoUI_UpdateBuildPosition();
     end
 end);
 
@@ -469,15 +491,32 @@ ticker:SetScript("OnUpdate", function()
     TrackerUI:Update();
 end);
 
+function TrackerUI:ResetPosition()
+    frame:ClearAllPoints();
+    frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -160);
+    if ( BordoUIDB ) then
+        BordoUIDB.bossTrackerPos = nil;
+    end
+    if ( BordoUI_UpdateBuildPosition ) then
+        BordoUI_UpdateBuildPosition();
+    end
+end
+
 local function InitBossTracker()
-    if ( BordoUIDB and BordoUIDB.bossTrackerPos ) then
+    if ( BordoUIDB and BordoUIDB.bossTrackerPos and BordoUIDB.bossTrackerPos.point ) then
         BordoUI:RestorePosition(frame, BordoUIDB.bossTrackerPos);
+    else
+        frame:ClearAllPoints();
+        frame:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -160);
     end
     if ( BordoUIDB and BordoUIDB.bossScale ) then
         frame:SetScale(BordoUIDB.bossScale);
     end
     frame:Show();
     TrackerUI:Update();
+    if ( BordoUI_UpdateBuildPosition ) then
+        BordoUI_UpdateBuildPosition();
+    end
 end
 
 local loader = CreateFrame("Frame");

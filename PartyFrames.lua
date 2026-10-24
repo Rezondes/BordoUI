@@ -201,10 +201,31 @@ local holder = CreateFrame("Frame", "SurvivorUIParty", UIParent)
 holder:SetWidth(ROW_WIDTH)
 holder:SetHeight(ROW_HEIGHT)
 holder:SetMovable(true)
+holder:EnableMouse(true)
+holder:RegisterForDrag("LeftButton")
 holder:SetClampedToScreen(true)
 holder:Hide()
 BordoUIParty = holder
 BordoUI.Party.holder = holder
+
+local PlaceFrames
+
+local function SaveFrames()
+	BordoUIDB = BordoUIDB or {}
+	BordoUIDB.partyLeft = math.floor(holder:GetLeft() + 0.5)
+	BordoUIDB.partyBottom = math.floor(holder:GetBottom() + 0.5)
+	if PlaceFrames then PlaceFrames() end
+end
+
+holder:SetScript("OnDragStart", function()
+	if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+		holder:StartMoving()
+	end
+end)
+holder:SetScript("OnDragStop", function()
+	holder:StopMovingOrSizing()
+	SaveFrames()
+end)
 
 local rows = {}
 
@@ -302,18 +323,16 @@ local function Row(index)
 	row:SetScript("OnEnter", function() Tip(this) end)
 	row:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-	-- Movable dragging support: Alt-drag or Shift-drag moves entire holder
+	-- Movable dragging support: Left-drag or Alt-drag moves entire holder
 	row:RegisterForDrag("LeftButton")
 	row:SetScript("OnDragStart", function()
-		if IsAltKeyDown() or IsShiftKeyDown() then
+		if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
 			holder:StartMoving()
 		end
 	end)
 	row:SetScript("OnDragStop", function()
 		holder:StopMovingOrSizing()
-		BordoUIDB = BordoUIDB or {}
-		BordoUIDB.partyLeft = math.floor(holder:GetLeft() + 0.5)
-		BordoUIDB.partyBottom = math.floor(holder:GetBottom() + 0.5)
+		SaveFrames()
 	end)
 
 	rows[index] = row
@@ -632,3 +651,12 @@ partyLoader:SetScript("OnEvent", function()
 	PlaceFrames()
 	PlaceBar()
 end)
+
+function BordoUI_ResetPartyPosition()
+	if BordoUIDB then
+		BordoUIDB.partyLeft = nil
+		BordoUIDB.partyBottom = nil
+		BordoUIDB.partyPos = nil
+	end
+	PlaceFrames()
+end

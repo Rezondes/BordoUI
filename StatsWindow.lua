@@ -95,12 +95,25 @@ local frame = CreateFrame("Frame", "BordoUI_StatsWindowFrame", UIParent);
 StatsUI.frame = frame;
 frame:SetWidth(180);
 frame:SetHeight(335);
-frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 14, -135);
+frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -14);
 frame:SetFrameStrata("LOW");
 frame:SetFrameLevel(6);
 frame:SetClampedToScreen(true);
 frame:SetMovable(true);
 frame:EnableMouse(true);
+frame:RegisterForDrag("LeftButton");
+frame:SetScript("OnDragStart", function()
+    if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+        frame:StartMoving();
+    end
+end);
+frame:SetScript("OnDragStop", function()
+    frame:StopMovingOrSizing();
+    if ( BordoUIDB ) then
+        local point, _, relPoint, x, y = frame:GetPoint();
+        BordoUIDB.statsPos = { point = point, relativePoint = relPoint, x = x, y = y };
+    end
+end);
 
 frame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -121,8 +134,9 @@ headerBar:SetHeight(24);
 headerBar:EnableMouse(true);
 headerBar:RegisterForDrag("LeftButton");
 headerBar:SetScript("OnDragStart", function()
-    if ( BordoUIDB and BordoUIDB.locked ) then return; end
-    frame:StartMoving();
+    if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+        frame:StartMoving();
+    end
 end);
 headerBar:SetScript("OnDragStop", function()
     frame:StopMovingOrSizing();
@@ -271,10 +285,22 @@ ticker:SetScript("OnUpdate", function()
     StatsUI:Update();
 end);
 
+-- Reset Position Function
+function StatsUI:ResetPosition()
+    frame:ClearAllPoints();
+    frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -14);
+    if ( BordoUIDB ) then
+        BordoUIDB.statsPos = nil;
+    end
+end
+
 -- Initialize Position & Scale
 local function InitStatsWindow()
-    if ( BordoUIDB and BordoUIDB.statsPos ) then
+    if ( BordoUIDB and BordoUIDB.statsPos and BordoUIDB.statsPos.point ) then
         BordoUI:RestorePosition(frame, BordoUIDB.statsPos);
+    else
+        frame:ClearAllPoints();
+        frame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -14);
     end
     if ( BordoUIDB and BordoUIDB.statsScale ) then
         frame:SetScale(BordoUIDB.statsScale);
