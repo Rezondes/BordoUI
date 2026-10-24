@@ -1600,12 +1600,17 @@ function BordoUI_ResetThemeUI()
 		BordoUI_ChatBox:ClearAllPoints()
 		BordoUI_ChatBox:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20)
 	end
+	if BordoUI and BordoUI.HighestCritFrame and BordoUI.StatsWindow and BordoUI.StatsWindow.frame then
+		BordoUI.HighestCritFrame:ClearAllPoints()
+		BordoUI.HighestCritFrame:SetPoint("TOPLEFT", BordoUI.StatsWindow.frame, "BOTTOMLEFT", 0, -8)
+	end
 	if PositionMicroButtons then PositionMicroButtons() end
 	if BordoUIDB then
 		BordoUIDB.hudPos = nil
 		BordoUIDB.bottomBarPos = nil
 		BordoUIDB.tallyPos = nil
 		BordoUIDB.microDockPos = nil
+		BordoUIDB.highestCritPos = nil
 	end
 	if AZSHelperDB then
 		AZSHelperDB.rowPos = nil
