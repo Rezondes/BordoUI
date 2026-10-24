@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: one box to ask before anything goes, for the whole addon.
 --
 -- In the middle of the screen, the screen shaded behind it: a title, what
@@ -14,7 +14,7 @@
 --   SurvivorUI_ConfirmClose()
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local TRASH = "Interface\\AddOns\\SurvivorUI\\Art\\Trash"
+local TRASH = "Interface\\AddOns\\BordoUI\\Art\\Trash"
 local RED = { edge = { 1, 0.40, 0.34 }, body = { 0.34, 0.08, 0.07 }, text = { 1, 0.74, 0.70 } }
 
 local box, shade, title, text, input, yes, no

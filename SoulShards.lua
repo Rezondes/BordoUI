@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: a class's gems under the player frame, as the game counts
 -- them: a warlock's soul shards, a rogue's combo points.
 --
@@ -34,7 +34,7 @@
 -- of them flash as they are spent (Soul Fire, a finisher). Under the player
 -- frame, going with it, until moved on their own (move mode: "Class gems").
 
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
+local ART = "Interface\\AddOns\\BordoUI\\Art\\"
 local SIZE = 15
 local GAP = 2
 local CAP = 9                -- the most gems drawn, whatever a tooltip says

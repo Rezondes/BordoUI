@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: kills, gold and the next cache's price, under the minimap.
 --
 -- The game draws the same three numbers in a box of its own that no addon can
@@ -59,7 +59,7 @@ local ICON_GAP = 3              -- between an icon and its number
 local GROUP_GAP = 16            -- between two icons with their numbers
 
 local skull = holder:CreateTexture(nil, "OVERLAY")
-skull:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\Kills")
+skull:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Kills")
 skull:SetWidth(ICON_SIZE)
 skull:SetHeight(ICON_SIZE)
 skull:Hide()
@@ -77,7 +77,7 @@ slot:SetHeight(ICON_SIZE)
 slot:Hide()
 
 local coin = slot:CreateTexture(nil, "ARTWORK")
-coin:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\Coin")
+coin:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Coin")
 coin:SetPoint("CENTER", slot, "CENTER", 0, 0)
 coin:SetWidth(ICON_SIZE)
 coin:SetHeight(ICON_SIZE)
@@ -85,13 +85,13 @@ coin:SetHeight(ICON_SIZE)
 -- Its shine, as the run tracker's coin wears it: the kill pace orb's glow and
 -- spark (Pace.lua) in gold.
 local glow = slot:CreateTexture(nil, "BACKGROUND")
-glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 glow:SetBlendMode("ADD")
 glow:SetVertexColor(1, 0.78, 0.20)
 glow:SetPoint("CENTER", slot, "CENTER", 0, 0)
 glow:Hide()
 local spark = slot:CreateTexture(nil, "OVERLAY")
-spark:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceSpark")
+spark:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceSpark")
 spark:SetBlendMode("ADD")
 spark:SetVertexColor(1, 0.95, 0.70)
 spark:SetPoint("CENTER", slot, "TOPRIGHT", -2, -2)
@@ -104,7 +104,7 @@ gold:Hide()
 
 -- The cache's price on its own, by the minimap's chest.
 local chest = holder:CreateTexture(nil, "OVERLAY")
-chest:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PinCache")
+chest:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PinCache")
 chest:SetWidth(ICON_SIZE)
 chest:SetHeight(ICON_SIZE)
 chest:Hide()

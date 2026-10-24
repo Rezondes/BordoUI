@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: unit frames and an action bar for Azeroth Survivors, in the
 -- flat, dark manner of EllesmereUI. Everything sits in one centered row at the
 -- bottom of the screen:
@@ -35,8 +35,8 @@ local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
 -- A face that does not load leaves a font string without one, so each is tried
 -- on a probe first, and Friz Quadrata, the game's own, is the last resort.
 local FACES = {
-	{ path = "Interface\\AddOns\\SurvivorUI\\Fonts\\Expressway.ttf", mark = "expressway" },
-	{ path = "Interface\\AddOns\\SurvivorUI\\Media\\BarlowCondensed-Medium.ttf", mark = "barlow", bump = 1 },
+	{ path = "Interface\\AddOns\\BordoUI\\Fonts\\Expressway.ttf", mark = "expressway" },
+	{ path = "Interface\\AddOns\\BordoUI\\Media\\BarlowCondensed-Medium.ttf", mark = "barlow", bump = 1 },
 }
 
 local function FaceLoads(face)
@@ -715,7 +715,7 @@ local function UnitFrame(unit, name, side, dropdown)
 		shield.fill:SetTexture(FLAT)
 		shield.fill:SetVertexColor(0.59, 0.82, 1, 0.45)
 		shield.stripes = shield:CreateTexture(nil, "BORDER")
-		shield.stripes:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\ShieldStripes")
+		shield.stripes:SetTexture("Interface\\AddOns\\BordoUI\\Art\\ShieldStripes")
 		shield.edge = shield:CreateTexture(nil, "ARTWORK")
 		shield.edge:SetTexture(FLAT)
 		shield.edge:SetVertexColor(0.9, 0.97, 1, 1)
@@ -2359,7 +2359,7 @@ end
 -- Beside the hero, with icons: each hit with its source's icon, in
 -- the color the damage meter gives that source. A melee hit shows the weapon
 -- in hand; a shot the ranged weapon (a hunter's bow, a wand).
-local OWN_ICON = "Interface\\AddOns\\SurvivorUI\\Art\\SurvivorIcon"
+local OWN_ICON = "Interface\\AddOns\\BordoUI\\Art\\SurvivorIcon"
 local RANGED = { ["Auto Shot"] = true, ["Shoot"] = true, ["Shot"] = true, ["Auto Shoot"] = true }
 local iconCache, iconCacheAt = {}, 0
 
@@ -2748,7 +2748,7 @@ function SurvivorUI_ToggleRecord()
 		and "stands still, bigger and gold." or "climbs with the rest."))
 end
 recordShown.glow = recordShown:CreateTexture(nil, "BACKGROUND")
-recordShown.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+recordShown.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 recordShown.glow:SetBlendMode("ADD")
 recordShown.glow:SetVertexColor(1, 0.75, 0.15)
 recordShown.glow:SetPoint("CENTER", recordShown, "CENTER", 0, 0)

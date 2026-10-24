@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the Jewelry Collection: the jewelry found on this game, and what is left.
 --
 -- Every neck, ring and trinket a character wears is written down, run after
@@ -1238,7 +1238,7 @@ if pane then
 	paneButton.edge:SetPoint("BOTTOMRIGHT", paneButton, "BOTTOMRIGHT", 1, -1)
 	paneButton.icon = paneButton:CreateTexture(nil, "ARTWORK")
 	paneButton.icon:SetAllPoints(paneButton)
-	paneButton.icon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\JewelryIcon")
+	paneButton.icon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\JewelryIcon")
 	function paneButton:Refresh()
 		local on = WithPane()
 		self.icon:SetVertexColor(on and 1 or 0.55, on and 1 or 0.55, on and 1 or 0.55)

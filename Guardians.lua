@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the guardians, a small list without a background.
 --
 -- One line a lair (the game's AZS_LAIRS): the guardian's name, where it
@@ -42,7 +42,7 @@
 -- Hold Alt to move it; /sui guardians hides it.
 
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
+local ART = "Interface\\AddOns\\BordoUI\\Art\\"
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
 
 local WIDTH = 210

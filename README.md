@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-3.0.0-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-3.1.0-brightgreen.svg)](https://github.com)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
 
@@ -31,6 +31,19 @@
 - **Run Panel & History:** Full statistics, multipliers, jewelry crafting UI, pace tracker, and boss encounter bars.
 - **Configurable Settings Panel:** Type `/sui opt` or `/bordo opt` to customize every aspect of the interface.
 
+### 5. 💰 Movable Gold & Dynamic Chest Tracker (`Core.lua`)
+- **Bottom-Center HUD Widget:** Clean, movable gold display showing current player gold vs. current chest price: `[Coin] 400 / 20`.
+- **Dynamic Cost Scaling:** Automatically adjusts as chest costs scale higher throughout the run (`20`, `40`, `60`, ...).
+- **Affordability Visual Alert:** Lights up in bright green (`|cff33ff33`) with a golden border and glowing coin icon as soon as you have enough gold to open a chest!
+- **Draggable & Persistent:** Left-click and drag anywhere on screen. Position is remembered across reloads.
+- **Quick Slash Command:** Use `/gold` or `/bordo gold` to reset position or toggle test preview.
+
+### 6. 🗺️ Enhanced Minimap Boss & Lair Tracking (`MapPins.lua`)
+- **All Boss Lairs Displayed:** Bosses are reliably rendered with marks and skulls, supporting both modern array coordinates and named table structures.
+- **Combat & Awake Detection:** Active bosses engaged in battle are enlarged and pulse with a fiery red/orange glow.
+- **Edge Direction Clamping:** Boss pins stay clamped to the minimap boundary when distant, ensuring you always know the exact direction to the nearest boss.
+- **Detailed Tooltips:** Displays boss name, combat status (`AWAKE & FIGHTING!`, `Waiting in Lair`, or `Slain (Respawning)`), and exact yard distance.
+
 ---
 
 ## ⌨️ Slash Commands
@@ -38,6 +51,7 @@
 | Command | Description |
 | :--- | :--- |
 | `/bordo` or `/recap` | Open the Death Recap & Lethal Hits breakdown |
+| `/gold` or `/bordo gold` | Gold & Chest Tracker options (`/gold reset` to center) |
 | `/bordo opt` or `/sui opt` | Open the Survivor UI Settings Panel |
 | `/bordo plates` or `/plates` | Force-enable Teammate (green) & Enemy nameplates |
 | `/bordo zoom` | Unlock maximum camera distance (50 yards / 4x zoom) |

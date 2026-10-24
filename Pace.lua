@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the kill pace, a glowing orb right of the run tracker's clock.
 --
 -- How fast the enemies die, as kills a minute over the run's last 20 seconds,
@@ -34,7 +34,7 @@
 -- /sui pace hides it, /sui pace class holds it against this class's runs only
 -- (or every class's again), /sui pace reset forgets the runs it holds against.
 
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
+local ART = "Interface\\AddOns\\BordoUI\\Art\\"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 
 local WINDOW = 20   -- run seconds the rate is read over, unless set

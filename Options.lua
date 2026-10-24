@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the options panel, /sui opt (or the minimap button).
 --
 -- A window with a column of tabs on the left, in five groups, each tab in a
@@ -2271,7 +2271,7 @@ for index = 1, 9 do
 end
 -- The first lair as the flagged one, with our glow.
 pinPreview.glow = pinPreview:CreateTexture(nil, "BORDER")
-pinPreview.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+pinPreview.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 pinPreview.glow:SetBlendMode("ADD")
 pinPreview.glow:SetVertexColor(1, 0.82, 0.2, 0.85)
 pinPreview.glow:SetPoint("CENTER", pinPreview.icons[1], "CENTER", 0, 0)
@@ -2295,7 +2295,7 @@ function pinPreview:Refresh()
 			if DB().guardianMarks ~= false and SurvivorUI_SetLairMark then
 				SurvivorUI_SetLairMark(icon, index)
 			else
-				icon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PinLair")
+				icon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PinLair")
 				icon:SetTexCoord(0, 1, 0, 1)
 				icon:SetVertexColor(1, 1, 1, 1)
 				icon:Show()
@@ -2314,7 +2314,7 @@ function pinPreview:Refresh()
 	end
 	local chest = self.icons[9]
 	if cachesOn then
-		chest:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PinCache")
+		chest:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PinCache")
 		chest:SetWidth(cache)
 		chest:SetHeight(cache)
 		chest:ClearAllPoints()
@@ -2428,7 +2428,7 @@ local function MakeMoveButton(parent)
 	button:SetFrameLevel(parent:GetFrameLevel() + 5)
 	button:SetBackdrop({ bgFile = FLAT, edgeFile = FLAT, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
 	button.glow = button:CreateTexture(nil, "BACKGROUND")
-	button.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+	button.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 	button.glow:SetBlendMode("ADD")
 	button.glow:SetVertexColor(MOVE[1], MOVE[2], MOVE[3])
 	button.glow:SetWidth(190)

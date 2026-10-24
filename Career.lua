@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: Career, every run Run History keeps added up.
 --
 -- A window of its own, opened from Run History's Career button (and back with
@@ -15,7 +15,7 @@
 
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local MAP_ICON = "Interface\\AddOns\\SurvivorUI\\Art\\MapIcon"
+local MAP_ICON = "Interface\\AddOns\\BordoUI\\Art\\MapIcon"
 local GOLD = { 1, 0.82, 0 }
 local MUTED = { 0.6, 0.6, 0.65 }
 local WHITE = { 1, 1, 1 }
@@ -136,7 +136,7 @@ end
 
 local runs
 if SurvivorUI_GoldButton then
-	runs = SurvivorUI_GoldButton(window, 62, "Interface\\AddOns\\SurvivorUI\\Art\\HistoryIconWhite", nil, "Runs")
+	runs = SurvivorUI_GoldButton(window, 62, "Interface\\AddOns\\BordoUI\\Art\\HistoryIconWhite", nil, "Runs")
 	runs.icon:SetVertexColor(1, 0.85, 0.4)
 	runs.tipTitle = "Run History"
 	runs.tipText = "Back to the runs, one by one."

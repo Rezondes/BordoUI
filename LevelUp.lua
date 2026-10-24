@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the Level Up! button.
 --
 -- With the game's Store Level-Ups on (its Options, Controls; or the options'
@@ -86,7 +86,7 @@ button:Hide()
 
 -- The glow behind it, as Move UI's: it breathes, brighter under the mouse.
 button.glow = button:CreateTexture(nil, "BACKGROUND")
-button.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+button.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 button.glow:SetBlendMode("ADD")
 button.glow:SetVertexColor(GOLD[1], GOLD[2], GOLD[3])
 button.glow:SetWidth(230)
@@ -122,7 +122,7 @@ button.key:SetJustifyH("CENTER")
 button.key:SetTextColor(1, 0.95, 0.80)
 -- A glow behind the cap, breathing with the button's.
 button.capGlow = button:CreateTexture(nil, "ARTWORK")
-button.capGlow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+button.capGlow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 button.capGlow:SetBlendMode("ADD")
 button.capGlow:SetVertexColor(GOLD[1], GOLD[2], GOLD[3])
 button.capGlow:SetPoint("CENTER", button.cap, "CENTER", 0, 0)

@@ -2,7 +2,7 @@
 ## Title: |cff00ccffBordo UI|r |cffffd100[Azeroth Survivors]|r
 ## Notes: Complete Modern UI Suite for Azeroth Survivors (Survivor UI + Death Recap + High-Visibility Green Teammate Nameplates).
 ## Author: Bordo (based on Survivor UI & Survivor Plates by morderous)
-## Version: 3.0.0
+## Version: 3.1.0
 ## SavedVariables: BordoUIDB, AZSHelperDB, SurvivorUIDB, SurvivorUIJewelryBook, SurvivorPlatesDB
 ## SavedVariablesPerCharacter: SurvivorUIJewelry
 SurvivorUI.lua

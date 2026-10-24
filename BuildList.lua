@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the build, in the right column between the run tracker and the
 -- damage meter, the same spells side by side with what they deal.
 --
@@ -20,7 +20,7 @@
 -- and drag to move; /sui build hides it.
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
+local ART = "Interface\\AddOns\\BordoUI\\Art\\"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 
 local WIDTH = 224

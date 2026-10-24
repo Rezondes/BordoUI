@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the run history, the last runs as they ended.
 --
 -- The game's end screen (fallen or won) covers the addon's panels, and says
@@ -24,7 +24,7 @@
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
-local OWN_ICON = "Interface\\AddOns\\SurvivorUI\\Art\\SurvivorIcon"
+local OWN_ICON = "Interface\\AddOns\\BordoUI\\Art\\SurvivorIcon"
 local LONGEST = 10                -- the longest runs, kept however old when chosen
 local GOLD = { 1, 0.82, 0 }
 local MUTED = { 0.6, 0.6, 0.65 }
@@ -933,7 +933,7 @@ camera:SetWidth(22)
 camera:SetHeight(20)
 camera:SetPoint("RIGHT", before, "LEFT", -12, 0)
 camera.icon = camera:CreateTexture(nil, "ARTWORK")
-camera.icon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\Camera")
+camera.icon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Camera")
 camera.icon:SetWidth(20)
 camera.icon:SetHeight(20)
 camera.icon:SetPoint("CENTER", camera, "CENTER", 0, 0)
@@ -1018,11 +1018,11 @@ pick.arrow:SetHeight(16)
 pick.arrow:SetPoint("RIGHT", after, "LEFT", -4, 0)
 -- Our own arrow (Art\\DropArrow, light, tinted gold): pushed a shade darker,
 -- lit under the mouse.
-pick.arrow:SetNormalTexture("Interface\\AddOns\\SurvivorUI\\Art\\DropArrow")
+pick.arrow:SetNormalTexture("Interface\\AddOns\\BordoUI\\Art\\DropArrow")
 pick.arrow:GetNormalTexture():SetVertexColor(1, 0.82, 0)
-pick.arrow:SetPushedTexture("Interface\\AddOns\\SurvivorUI\\Art\\DropArrow")
+pick.arrow:SetPushedTexture("Interface\\AddOns\\BordoUI\\Art\\DropArrow")
 pick.arrow:GetPushedTexture():SetVertexColor(0.72, 0.58, 0)
-pick.arrow:SetHighlightTexture("Interface\\AddOns\\SurvivorUI\\Art\\DropArrow")
+pick.arrow:SetHighlightTexture("Interface\\AddOns\\BordoUI\\Art\\DropArrow")
 pick.arrow:GetHighlightTexture():SetVertexColor(0.5, 0.42, 0.1)
 -- The run's number box moves over for it.
 pageButton:ClearAllPoints()
@@ -1140,7 +1140,7 @@ function SurvivorUI_GoldButton(parent, width, texture, coords, label, tone)
 	button:SetHeight(17)
 	button:SetBackdrop({ bgFile = FLAT, edgeFile = FLAT, edgeSize = 1, insets = { left = 1, right = 1, top = 1, bottom = 1 } })
 	button.glow = button:CreateTexture(nil, "BACKGROUND")
-	button.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+	button.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 	button.glow:SetBlendMode("ADD")
 	button.glow:SetVertexColor(tone.edge[1], tone.edge[2], tone.edge[3])
 	button.glow:SetWidth(width + 40)
@@ -1190,7 +1190,7 @@ end
 
 -- Pin: the run shown kept however many come after it, its tooltips too;
 -- Delete still takes it. A push pin, lit while the run is pinned.
-local pinButton = SurvivorUI_GoldButton(window, 64, "Interface\\AddOns\\SurvivorUI\\Art\\Pin", nil, "Pin")
+local pinButton = SurvivorUI_GoldButton(window, 64, "Interface\\AddOns\\BordoUI\\Art\\Pin", nil, "Pin")
 pinButton:SetPoint("BOTTOMLEFT", window, "BOTTOMLEFT", PAD, 9)
 pinButton.tipText = "A pinned run stays however many runs come after it, its tooltips too. Delete still takes it."
 pinButton:SetScript("OnClick", function()
@@ -1203,7 +1203,7 @@ end)
 
 -- Career (Career.lua): every run added up, in this window's place; a crown
 -- (the lair marks' own).
-local careerButton = SurvivorUI_GoldButton(window, 70, "Interface\\AddOns\\SurvivorUI\\Art\\LairMarks",
+local careerButton = SurvivorUI_GoldButton(window, 70, "Interface\\AddOns\\BordoUI\\Art\\LairMarks",
 	{ 0.5, 0.75, 0, 0.5 }, "Career")
 careerButton:SetPoint("LEFT", pinButton, "RIGHT", 6, 0)
 careerButton.tipTitle = "Career"
@@ -1222,11 +1222,11 @@ footer:SetPoint("BOTTOM", window, "BOTTOM", 0, 12)
 -- the addon's one box (Confirm.lua). One table for it all: the file is near
 -- Lua 5.0's 200 locals.
 local del = {}
-local deleteButton = SurvivorUI_GoldButton(window, 84, "Interface\\AddOns\\SurvivorUI\\Art\\Trash", nil, "Delete", TONES.red)
+local deleteButton = SurvivorUI_GoldButton(window, 84, "Interface\\AddOns\\BordoUI\\Art\\Trash", nil, "Delete", TONES.red)
 deleteButton:SetPoint("BOTTOMRIGHT", window, "BOTTOMRIGHT", -PAD, 9)
 deleteButton.icon:SetVertexColor(1, 0.66, 0.62)
 deleteButton.drop = deleteButton:CreateTexture(nil, "ARTWORK")
-deleteButton.drop:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\DropArrow")
+deleteButton.drop:SetTexture("Interface\\AddOns\\BordoUI\\Art\\DropArrow")
 deleteButton.drop:SetVertexColor(1, 0.6, 0.55)
 deleteButton.drop:SetWidth(12)
 deleteButton.drop:SetHeight(12)
@@ -1255,7 +1255,7 @@ function del.Item(index, label, kind)
 	row.wash = Flat(row, "BACKGROUND", WHITE, 0)
 	row.wash:SetAllPoints(row)
 	row.icon = row:CreateTexture(nil, "ARTWORK")
-	row.icon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\Trash")
+	row.icon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Trash")
 	row.icon:SetVertexColor(1, 0.6, 0.55)
 	row.icon:SetWidth(12)
 	row.icon:SetHeight(12)
@@ -1333,7 +1333,7 @@ classIcon:SetWidth(ICON)
 classIcon:SetHeight(ICON)
 classIcon:SetPoint("TOPLEFT", window, "TOPLEFT", PAD + 2, -9)
 classIcon.glow = classIcon:CreateTexture(nil, "BACKGROUND")
-classIcon.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+classIcon.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 classIcon.glow:SetBlendMode("ADD")
 classIcon.glow:SetWidth(ICON * 2.3)
 classIcon.glow:SetHeight(ICON * 2.3)
@@ -1455,7 +1455,7 @@ party.tip:SetScript("OnEnter", function()
 end)
 party.tip:SetScript("OnLeave", function() GameTooltip:Hide() end)
 local zoneIcon = window:CreateTexture(nil, "ARTWORK")
-zoneIcon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\MapIcon")
+zoneIcon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\MapIcon")
 zoneIcon:SetWidth(16)
 zoneIcon:SetHeight(16)
 zoneIcon:SetPoint("BOTTOMLEFT", classIcon, "BOTTOMRIGHT", 8, -1)
@@ -1492,7 +1492,7 @@ whenTip:SetScript("OnLeave", function() GameTooltip:Hide() end)
 -- ended. Each holds its time. An endless run's two are its switch: the moment
 -- shown, its badge lit with a line under it; the other dimmed, lit under the
 -- mouse, a click showing its moment.
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
+local ART = "Interface\\AddOns\\BordoUI\\Art\\"
 local SPARKS, STARS = 14, 5
 local RESULTS = {
 	victory = { word = "VICTORY", fill = { 0.12, 0.60, 0.24 }, edge = { 0.62, 1.00, 0.66 }, glow = { 0.35, 1.00, 0.45 },
@@ -2299,7 +2299,7 @@ local function DrawTracker(shot, result)
 					piece.mark:SetPoint("LEFT", piece, "LEFT", -1, 0)
 					-- The lair the game's flag pointed at, its mark glowing.
 					piece.flagGlow = piece:CreateTexture(nil, "ARTWORK")
-					piece.flagGlow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+					piece.flagGlow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 					piece.flagGlow:SetBlendMode("ADD")
 					piece.flagGlow:SetVertexColor(1, 0.82, 0.2, 0.8)
 					piece.flagGlow:SetWidth(32)

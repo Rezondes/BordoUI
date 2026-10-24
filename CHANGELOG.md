@@ -4,6 +4,29 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [3.1.0] - 2026-10-24
+
+### Added
+- **Movable Bottom-Center Gold & Dynamic Chest Price Tracker (`Core.lua`):**
+  - Added a dedicated, movable HUD widget positioned by default at the bottom-center (`BOTTOM`, `0`, `185`).
+  - Displays current player gold on the left and dynamic chest cost on the right: `[Coin] 400 / 20`.
+  - Automatically updates as chests become increasingly expensive across the run (`20`, `40`, `60`, ...).
+  - **Visual Affordability Indicators:** When you have enough gold to open a chest (`gold >= chestCost`), the chest price highlights in bright green (`|cff33ff33`), the widget border glows golden, and the coin icon pulses with an animated breath glow!
+  - **Interactive Drag-and-Drop:** Left-click and drag anywhere on screen to reposition; position is automatically saved to `BordoUIDB.goldPos` across reloads.
+  - Informative hover tooltip with breakdown of current gold, next chest cost, affordability status, and drag instructions.
+  - Slash commands: `/gold` and `/bordo gold` (use `/gold reset` to reset position, `/gold test` to preview outside runs).
+
+### Fixed & Improved
+- **Minimap Boss & Lair Pin Visibility (`MapPins.lua`):**
+  - **Universal Coordinate Parsing:** Resolved a critical bug where boss lairs stored in indexed arrays (`[6]=x, [7]=y, [9]=mx, [10]=my`) returned `nil` in `WayTo()`, preventing boss markers from generating on the minimap.
+  - **Lair State Detection:** Replaced non-existent `lair.active` field with proper Azeroth Survivors state inspection (`state ~= "empty"`), ensuring alive bosses are never hidden by the empty lair filter.
+  - **Dynamic Combat & Awake Detection:** Integrated real-time awake detection via `AZS_GetGuardians` and `AZS_UNITS`. Bosses engaged in combat are enlarged (135% size) and pulse with a fiery red/orange glow.
+  - **Edge-Clamped Boss Pins:** Boss pins now stay clamped to the minimap perimeter with directional indicators (`pin.isBoss = true`), even when distant or when `pinEdge == "hide"` is configured.
+  - **Informative Boss Tooltips:** Hovering boss pins displays clean titles (`★ BOSS: Mor'Ladim ★`), combat status (`⚠ AWAKE & FIGHTING!`, `● Waiting in Lair`, or `○ Slain (Respawning in Xs)`), and exact yard distance.
+  - **Complete Texture Path Resolution:** Fixed lingering `SurvivorUI/Art` texture paths across all 18 UI files (`Art\PinLair`, `Art\PinCache`, `Art\Coin`, `Art\PaceGlow`, etc.), restoring minimap icons, coin graphics, and buttons.
+
+---
+
 ## [3.0.0] - 2026-10-24
 
 ### Added & Merged

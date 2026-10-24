@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the run so far, in one small panel.
 --
 -- This Run: a running count of what the game totals up on the screen that
@@ -1092,7 +1092,7 @@ local function DrawCrits()
 				row.icon:SetTexture(icon)
 				row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 			else
-				row.icon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\SurvivorIcon")
+				row.icon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\SurvivorIcon")
 				row.icon:SetTexCoord(0, 1, 0, 1)
 			end
 			row.base:Show()

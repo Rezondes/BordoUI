@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the run tracker, after a Mythic+ timer.
 --
 -- Under the minimap, where a quest log would sit, centered: the zone, how the
@@ -138,8 +138,8 @@ head.clock = HeadText(18, "THICKOUTLINE")
 -- own: the game's engine greys a desaturated texture and drops any tint after
 -- it). (Right of it, the kill pace's orb: Pace.lua.)
 local COIN_SIZE = 18
-local COIN_GOLD = "Interface\\AddOns\\SurvivorUI\\Art\\Coin"
-local COIN_RED = "Interface\\AddOns\\SurvivorUI\\Art\\CoinRed"
+local COIN_GOLD = "Interface\\AddOns\\BordoUI\\Art\\Coin"
+local COIN_RED = "Interface\\AddOns\\BordoUI\\Art\\CoinRed"
 local PAYS = { 1.00, 0.82, 0.25 }
 local SHORT = { 1.00, 0.28, 0.22 }
 head.coin = CreateFrame("Frame", nil, head)
@@ -153,13 +153,13 @@ head.coin.icon:SetWidth(COIN_SIZE)
 head.coin.icon:SetHeight(COIN_SIZE)
 -- Its shine, the kill pace orb's glow and spark (Pace.lua) in gold.
 head.coin.glow = head.coin:CreateTexture(nil, "BACKGROUND")
-head.coin.glow:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceGlow")
+head.coin.glow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
 head.coin.glow:SetBlendMode("ADD")
 head.coin.glow:SetVertexColor(1, 0.78, 0.20)
 head.coin.glow:SetPoint("CENTER", head.coin, "CENTER", 0, 0)
 head.coin.glow:Hide()
 head.coin.spark = head.coin:CreateTexture(nil, "OVERLAY")
-head.coin.spark:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\PaceSpark")
+head.coin.spark:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceSpark")
 head.coin.spark:SetBlendMode("ADD")
 head.coin.spark:SetVertexColor(1, 0.95, 0.70)
 head.coin.spark:SetPoint("CENTER", head.coin, "TOPRIGHT", -3, -3)

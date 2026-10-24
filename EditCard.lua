@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: a piece's card, in move mode.
 --
 -- A click on a piece in move mode (the S button by the minimap, or /sui opt,
@@ -72,7 +72,7 @@ local GAME_FONTS = {
 -- Korean or Japanese; Exo and Cinzel Decorative write no Cyrillic (Russian,
 -- Ukrainian), Russo One no Romanian ț: each is offered only where it can
 -- write the game's language.
-local OWN_FONTS = "Interface\\AddOns\\SurvivorUI\\Fonts\\"
+local OWN_FONTS = "Interface\\AddOns\\BordoUI\\Fonts\\"
 local CYRILLIC = { ru = true, uk = true }
 local ADDON_FONTS = {
 	{ name = "Fira Sans", path = OWN_FONTS.."FiraSans-Medium.ttf" },

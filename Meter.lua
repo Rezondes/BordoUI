@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: the damage meter.
 --
 -- The game's own meter, drawn again from the numbers it shares (its addon API,
@@ -630,7 +630,7 @@ local SPELL_KEYS = {
 -- an item's own damage: the spellbook, the talents, then the worn items, by
 -- name. Found icons are kept; a miss is asked again now and then, as talents
 -- and items come during a run.
-local OWN_ICON = "Interface\\AddOns\\SurvivorUI\\Art\\SurvivorIcon"
+local OWN_ICON = "Interface\\AddOns\\BordoUI\\Art\\SurvivorIcon"
 local icons = {}                -- [name] = texture
 local missedAt = {}             -- [name] = GetTime() of the last miss
 

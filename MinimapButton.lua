@@ -1,4 +1,4 @@
--- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
+﻿-- Survivor UI - Copyright (C) 2026 morderous - GPL-3.0 - github.com/morderous/survivor-ui
 -- Survivor UI: a square button outside the minimap's bottom left corner, with
 -- the addon's own icon in the class's color (Art\SurvivorIconWhite.tga,
 -- tinted), that opens the options (each tab's pieces movable while it is
@@ -8,7 +8,7 @@
 -- game's battleground button (the crossed swords).
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local ICON = "Interface\\AddOns\\SurvivorUI\\Art\\SurvivorIconWhite"
+local ICON = "Interface\\AddOns\\BordoUI\\Art\\SurvivorIconWhite"
 local SIZE = 16              -- the stock 22, smaller
 local ACCENT = SurvivorUI_ACCENT or { 1, 0.82, 0 }   -- the addon's own color, the class's
 
@@ -137,7 +137,7 @@ historyButton:SetFrameStrata("MEDIUM")
 historyButton:SetFrameLevel((Minimap and Minimap:GetFrameLevel() or 1) + 5)
 historyButton:SetPoint("BOTTOM", button, "TOP", 0, 5)
 historyButton.icon = historyButton:CreateTexture(nil, "ARTWORK")
-historyButton.icon:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\HistoryIconWhite")
+historyButton.icon:SetTexture("Interface\\AddOns\\BordoUI\\Art\\HistoryIconWhite")
 historyButton.ownIcon = historyButton.icon
 Square(historyButton, historyButton.icon)
 if SurvivorUI_OnAccent then
