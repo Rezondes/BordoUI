@@ -270,7 +270,7 @@ SlashCmdList["BORDOU"] = function(msg)
         end
     elseif ( cmd == "loot" or cmd == "testloot" ) then
         if ( BordoUI.TestLootAlert ) then
-            BordoUI:TestLootAlert();
+            BordoUI:TestLootAlert(val);
         end
     elseif ( cmd == "test" or cmd == "preview" ) then
         BordoUI.TestBossPreview = not BordoUI.TestBossPreview;

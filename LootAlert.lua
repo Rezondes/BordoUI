@@ -3,15 +3,16 @@
     World of Warcraft 1.12.1 / Azeroth Survivors
 
     Displays a prominent, modern Loot Toast above the player character
-    ("Mitte oben, über dem Charakter") when a boss drops an item or jewelry:
-    - 42x42 Loot Icon with Quality Border & Glow
+    ("Mitte oben, über dem Charakter") when a boss drops equipment or jewelry:
+    - 40x40 Loot Icon with Quality Border & Glowing Frame
     - "BOSS LOOT" header in gold
     - Item Name in full Quality Color (Uncommon, Rare, Epic, Legendary)
-    - Item Slot / Subtitle / Collection status
-    - Mouseover Tooltip with full stats & effects
-    - Smooth 7-second display with fade-in and fade-out
+    - Item Slot / Subtitle / Collection status (e.g. "Legs · Epic", "Finger · New in collection!")
+    - Live Asynchronous Icon Resolution: Scans bags, equipment, and WoW cache so authentic item icons (Pants, Rings, etc.) always appear immediately
+    - Keyword Fallbacks: Instant slot-appropriate icons (Pants -> Pants icon, etc.) so generic box icons are never shown
+    - Suppresses the native Azeroth Survivors right-side loot notice (AZS_SetHudShown("loot", false)) so loot is cleanly centralized above the character
     - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootAlertPos)
-    - Testable with /bordo loot or /bordo testloot
+    - Testable with /bordo loot, /bordo testloot, /bordo testloot pants
 ]]--
 
 BordoUI = BordoUI or {};
@@ -71,6 +72,111 @@ local NEW_TAGS = {
     "Новое в вашей коллекции",
     "收藏新增",
     "수집품에 새로 추가",
+    "Nou în colecția ta",
+    "Нове у вашій колекції",
+};
+
+-- Slot keyword fallback icons so real item symbols (Pants, Helm, Ring, etc.) ALWAYS show, never a box!
+local SLOT_KEYWORD_FALLBACKS = {
+    -- Pants / Legs
+    { keywords = { "pants", "leggings", "legguards", "trousers", "breeches", "kilt", "chaps", "hose", "beine", "beinplatten", "gamaschen" },
+      icon = "Interface\\Icons\\INV_Pants_02", slot = "Legs" },
+    -- Helm / Head
+    { keywords = { "helm", "helmet", "crown", "circlet", "cap", "cowl", "hat", "headpiece", "kopf", "krone", "haube", "visier", "diadem", "kapuze" },
+      icon = "Interface\\Icons\\INV_Helmet_06", slot = "Head" },
+    -- Shoulders
+    { keywords = { "shoulder", "pauldrons", "spaulders", "mantle", "epaulets", "shoulderguards", "schultern", "schulterpolster", "schiftung", "amice" },
+      icon = "Interface\\Icons\\INV_Shoulder_02", slot = "Shoulders" },
+    -- Chest
+    { keywords = { "chest", "vest", "robe", "tunic", "breastplate", "hauberk", "jerkin", "armor", "brust", "gewand", "wams", "harnisch", "panzer", "kutte" },
+      icon = "Interface\\Icons\\INV_Chest_Cloth_17", slot = "Chest" },
+    -- Gloves
+    { keywords = { "gloves", "gauntlets", "mitts", "handguards", "grips", "handschuhe", "stulpen", "faustschützer", "griffe", "handschutz" },
+      icon = "Interface\\Icons\\INV_Gauntlets_04", slot = "Hands" },
+    -- Belt
+    { keywords = { "belt", "girdle", "cinch", "cord", "sash", "waistguard", "gürtel", "gurt", "kordel", "schärpe", "taillenschutz" },
+      icon = "Interface\\Icons\\INV_Belt_03", slot = "Waist" },
+    -- Boots
+    { keywords = { "boots", "sabatons", "greaves", "footpads", "shoes", "striders", "stiefel", "treter", "schuhe", "panzerstiefel" },
+      icon = "Interface\\Icons\\INV_Boots_01", slot = "Feet" },
+    -- Bracers
+    { keywords = { "bracers", "cuffs", "wristguards", "bindings", "armschienen", "handgelenke", "manschetten", "armbänder" },
+      icon = "Interface\\Icons\\INV_Bracer_07", slot = "Wrist" },
+    -- Cloak
+    { keywords = { "cloak", "cape", "drape", "shroud", "umhang", "mantel", "schleier" },
+      icon = "Interface\\Icons\\INV_Misc_Cape_19", slot = "Back" },
+    -- Rings
+    { keywords = { "ring", "band", "signet", "circle", "loop", "siegel", "reif" },
+      icon = "Interface\\Icons\\INV_Jewelry_Ring_15", slot = "Finger" },
+    -- Trinkets
+    { keywords = { "trinket", "talisman", "charm", "badge", "token", "schmuck", "abzeichen", "brosche", "amulett", "medaillon" },
+      icon = "Interface\\Icons\\INV_Jewelry_Talisman_07", slot = "Trinket" },
+    -- Shield
+    { keywords = { "shield", "buckler", "bulwark", "aegis", "schild", "bollwerk", "rundschild" },
+      icon = "Interface\\Icons\\INV_Shield_05", slot = "Shield" },
+    -- Weapons
+    { keywords = { "sword", "blade", "saber", "scimitar", "broadsword", "longsword", "schwert", "klinge", "säbel" },
+      icon = "Interface\\Icons\\INV_Sword_04", slot = "One-Hand" },
+    { keywords = { "axe", "hatchet", "cleaver", "battleaxe", "axt", "beil", "spalter", "kriegsaxt" },
+      icon = "Interface\\Icons\\INV_Axe_02", slot = "One-Hand" },
+    { keywords = { "mace", "hammer", "club", "mallet", "bludgeon", "streitkolben", "hammer", "keule", "schlägel" },
+      icon = "Interface\\Icons\\INV_Mace_01", slot = "One-Hand" },
+    { keywords = { "dagger", "knife", "shank", "stiletto", "dirk", "dolch", "messer", "krummdolch" },
+      icon = "Interface\\Icons\\INV_Misc_Knife_02", slot = "One-Hand" },
+    { keywords = { "staff", "rod", "pole", "greatstaff", "stab", "stecken" },
+      icon = "Interface\\Icons\\INV_Staff_08", slot = "Two-Hand" },
+    { keywords = { "bow", "longbow", "shortbow", "composite bow", "bogen", "langbogen" },
+      icon = "Interface\\Icons\\INV_Weapon_Bow_05", slot = "Ranged" },
+    { keywords = { "crossbow", "armbrust" },
+      icon = "Interface\\Icons\\INV_Weapon_Crossbow_01", slot = "Ranged" },
+    { keywords = { "gun", "rifle", "musket", "blunderbuss", "shotgun", "flinte", "gewehr", "büchse" },
+      icon = "Interface\\Icons\\INV_Weapon_Rifle_01", slot = "Ranged" },
+    { keywords = { "wand", "zauberstab" },
+      icon = "Interface\\Icons\\INV_Wand_01", slot = "Ranged" },
+};
+
+-- Known Classic WoW & Azeroth Survivors drops for instant resolution
+local KNOWN_ITEMS = {
+    -- Pants
+    ["wildheart pants"] = { tex = "Interface\\Icons\\INV_Pants_02", slot = "INVTYPE_LEGS", q = 4 },
+    ["hose des wildherzens"] = { tex = "Interface\\Icons\\INV_Pants_02", slot = "INVTYPE_LEGS", q = 4 },
+    ["bloodfang pants"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
+    ["hose der blutfänge"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
+    ["judgement legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
+    ["beinplatten des gerichts"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
+    ["netherwind pants"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 4 },
+    ["hose des netherwinds"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 4 },
+    ["dragonstalker's legguards"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
+    ["drachenjägerschützer"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
+    ["dreadmist leggings"] = { tex = "Interface\\Icons\\INV_Pants_07", slot = "INVTYPE_LEGS", q = 3 },
+    ["gamaschen des schreckenszwirns"] = { tex = "Interface\\Icons\\INV_Pants_07", slot = "INVTYPE_LEGS", q = 3 },
+    ["shadowcraft pants"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 3 },
+    ["hose des schattenkunst"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 3 },
+    ["magister's leggings"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["gamaschen des magisters"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["devout skirt"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["rock der frömmigkeit"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["lightforge legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
+    ["beinplatten der essenz"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
+    ["beaststalker's pants"] = { tex = "Interface\\Icons\\INV_Pants_03", slot = "INVTYPE_LEGS", q = 3 },
+    ["hose des bestienmeisters"] = { tex = "Interface\\Icons\\INV_Pants_03", slot = "INVTYPE_LEGS", q = 3 },
+    ["elements kilt"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["kilt der elemente"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["valor legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
+    ["beinplatten des heldentums"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
+    ["cloudkeeper legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
+    ["wolkenwächter-beinplatten"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
+    -- Helmets
+    ["crown of destruction"] = { tex = "Interface\\Icons\\INV_Helmet_08", slot = "INVTYPE_HEAD", q = 4 },
+    ["krone der zerstörung"] = { tex = "Interface\\Icons\\INV_Helmet_08", slot = "INVTYPE_HEAD", q = 4 },
+    -- Rings
+    ["band of accuria"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_15", slot = "INVTYPE_FINGER", q = 4 },
+    ["band der präzision"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_15", slot = "INVTYPE_FINGER", q = 4 },
+    ["ring of the protector"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_03", slot = "INVTYPE_FINGER", q = 4 },
+    ["ring des beschützers"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_03", slot = "INVTYPE_FINGER", q = 4 },
+    -- Trinkets
+    ["blackhand's breadth"] = { tex = "Interface\\Icons\\INV_Misc_StoneTablet_11", slot = "INVTYPE_TRINKET", q = 3 },
+    ["schwarzfausts breite"] = { tex = "Interface\\Icons\\INV_Misc_StoneTablet_11", slot = "INVTYPE_TRINKET", q = 3 },
 };
 
 -- ============================================================================
@@ -133,14 +239,8 @@ iconGlow:SetVertexColor(0.64, 0.21, 0.93, 0.85);
 
 local iconTex = iconFrame:CreateTexture(nil, "ARTWORK");
 iconTex:SetAllPoints(iconFrame);
-iconTex:SetTexture("Interface\\Icons\\INV_Box_01");
+iconTex:SetTexture("Interface\\Icons\\INV_Pants_02");
 iconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92);
-
-local iconBorder = iconFrame:CreateTexture(nil, "OVERLAY");
-iconBorder:SetTexture(FLAT);
-iconBorder:SetAllPoints(iconFrame);
-iconBorder:SetVertexColor(0.64, 0.21, 0.93, 1.0);
-iconBorder:Hide();
 
 -- Text Elements
 local titleText = frame:CreateFontString(nil, "OVERLAY");
@@ -152,7 +252,7 @@ titleText:SetText("BOSS LOOT");
 local nameText = frame:CreateFontString(nil, "OVERLAY");
 nameText:SetFont(FONT_PATH, 11, "OUTLINE");
 nameText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, -2);
-nameText:SetPoint("RIGHT", frame, "RIGHT", -10, 0);
+nameText:SetPoint("RIGHT", frame, "RIGHT", -16, 0);
 nameText:SetJustifyH("LEFT");
 nameText:SetTextColor(1.0, 1.0, 1.0);
 nameText:SetText("Item Name");
@@ -160,10 +260,10 @@ nameText:SetText("Item Name");
 local subText = frame:CreateFontString(nil, "OVERLAY");
 subText:SetFont(FONT_PATH, 9, "OUTLINE");
 subText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
-subText:SetPoint("RIGHT", frame, "RIGHT", -10, 0);
+subText:SetPoint("RIGHT", frame, "RIGHT", -16, 0);
 subText:SetJustifyH("LEFT");
 subText:SetTextColor(0.75, 0.75, 0.80);
-subText:SetText("Jewelry Drop");
+subText:SetText("Boss Drop");
 
 -- Close button
 local closeBtn = CreateFrame("Button", nil, frame);
@@ -220,25 +320,111 @@ frame:SetScript("OnClick", function()
 end);
 
 -- ============================================================================
--- Animation & Show Routine
+-- Bag & Inventory Scanning & Persistent Item Cache
 -- ============================================================================
-local displayTimer = 0;
-local DISPLAY_DURATION = 7.0; -- seconds to stay visible
+local function GetItemCache()
+    BordoUIDB = BordoUIDB or {};
+    if type(BordoUIDB.itemCache) ~= "table" then
+        BordoUIDB.itemCache = {};
+    end
+    return BordoUIDB.itemCache;
+end
 
-frame:SetScript("OnUpdate", function()
-    if displayTimer > 0 then
-        displayTimer = displayTimer - arg1;
-        if displayTimer <= 0 then
-            frame:Hide();
-        elseif displayTimer < 0.5 then
-            -- Fade out over last 0.5s
-            local alpha = math.max(0, displayTimer / 0.5);
-            frame:SetAlpha(alpha);
-        else
-            frame:SetAlpha(1.0);
+-- Scan player equipment and all bags to build/refresh the item database
+local function ScanAllPlayerItems()
+    local cache = GetItemCache();
+
+    -- Scan 19 inventory slots
+    if GetInventoryItemLink then
+        for slot = 1, 19 do
+            local link = GetInventoryItemLink("player", slot);
+            if link then
+                local _, _, name = string.find(link, "%[(.-)%]");
+                local tex = GetInventoryItemTexture and GetInventoryItemTexture("player", slot);
+                if name and name ~= "" then
+                    local lower = string.lower(name);
+                    cache[lower] = cache[lower] or {};
+                    cache[lower].name = name;
+                    cache[lower].link = link;
+                    if tex then cache[lower].tex = tex; end
+                end
+            end
         end
     end
-end);
+
+    -- Scan bags (0 = backpack, 1..4 = bags)
+    if GetContainerNumSlots and GetContainerItemLink and GetContainerItemInfo then
+        for bag = 0, 4 do
+            local numSlots = GetContainerNumSlots(bag) or 0;
+            for slot = 1, numSlots do
+                local link = GetContainerItemLink(bag, slot);
+                if link then
+                    local _, _, name = string.find(link, "%[(.-)%]");
+                    local tex = GetContainerItemInfo(bag, slot);
+                    if name and name ~= "" then
+                        local lower = string.lower(name);
+                        cache[lower] = cache[lower] or {};
+                        cache[lower].name = name;
+                        cache[lower].link = link;
+                        if tex then cache[lower].tex = tex; end
+                    end
+                end
+            end
+        end
+    end
+end
+
+-- Find an item by name directly in bags or equipped gear right now
+local function FindItemInBagsOrInventory(targetName)
+    if not targetName or targetName == "" then return nil, nil, nil; end
+    local lowerTarget = string.lower(targetName);
+
+    -- Check bags first (as newly looted items go to bags)
+    if GetContainerNumSlots and GetContainerItemLink and GetContainerItemInfo then
+        for bag = 0, 4 do
+            local numSlots = GetContainerNumSlots(bag) or 0;
+            for slot = 1, numSlots do
+                local link = GetContainerItemLink(bag, slot);
+                if link then
+                    local _, _, name = string.find(link, "%[(.-)%]");
+                    if name and string.lower(name) == lowerTarget then
+                        local tex = GetContainerItemInfo(bag, slot);
+                        return link, tex, nil;
+                    end
+                end
+            end
+        end
+    end
+
+    -- Check equipped gear (slots 1 to 19)
+    if GetInventoryItemLink then
+        for slot = 1, 19 do
+            local link = GetInventoryItemLink("player", slot);
+            if link then
+                local _, _, name = string.find(link, "%[(.-)%]");
+                if name and string.lower(name) == lowerTarget then
+                    local tex = GetInventoryItemTexture and GetInventoryItemTexture("player", slot);
+                    return link, tex, slot;
+                end
+            end
+        end
+    end
+
+    return nil, nil, nil;
+end
+
+-- Get fallback icon from item name keywords (Pants -> INV_Pants_02, etc.)
+local function GetKeywordFallbackIcon(name)
+    local lower = string.lower(name or "");
+    for _, entry in ipairs(SLOT_KEYWORD_FALLBACKS) do
+        for _, kw in ipairs(entry.keywords) do
+            if string.find(lower, kw, 1, true) then
+                return entry.icon, entry.slot;
+            end
+        end
+    end
+    return "Interface\\Icons\\INV_Misc_Gift_01", "Boss Drop";
+end
 
 -- Check if an item is a Neck/Amulet (Neck pieces are class ability amulets, NOT boss drops!)
 local function IsNeckPiece(name, itemLink, slotLabel, itemSlot)
@@ -258,24 +444,174 @@ local function IsNeckPiece(name, itemLink, slotLabel, itemSlot)
     return false;
 end
 
+-- Suppress the native Azeroth Survivors right-side boss loot notice
+local function SuppressNativeLootNotice()
+    if AZS_SetHudShown and AZS_IsHudShown then
+        if AZS_IsHudShown("loot") then
+            AZS_SetHudShown("loot", false);
+        end
+    end
+end
+
+-- ============================================================================
+-- Animation & Live Asynchronous Texture Resolver
+-- ============================================================================
+local displayTimer = 0;
+local DISPLAY_DURATION = 7.0; -- seconds to stay visible
+local resolveTimer = 0;
+
+frame:SetScript("OnUpdate", function()
+    -- Native notice suppression maintenance
+    SuppressNativeLootNotice();
+
+    -- Display duration & fade
+    if displayTimer > 0 then
+        displayTimer = displayTimer - arg1;
+        if displayTimer <= 0 then
+            frame:Hide();
+            frame.pendingQuery = nil;
+            frame.pendingName = nil;
+        elseif displayTimer < 0.5 then
+            -- Fade out over last 0.5s
+            local alpha = math.max(0, displayTimer / 0.5);
+            frame:SetAlpha(alpha);
+        else
+            frame:SetAlpha(1.0);
+        end
+    end
+
+    -- Live texture & metadata resolver
+    if (frame.pendingQuery or frame.pendingName) and displayTimer > 0 then
+        resolveTimer = resolveTimer + arg1;
+        if resolveTimer >= 0.05 then
+            resolveTimer = 0;
+            local resolvedTex, resolvedLink, resolvedSlot = nil, nil, nil;
+
+            -- 1. Try GetItemInfo if link/query exists
+            if frame.pendingQuery and GetItemInfo then
+                local iName, iLink, iQual, _, _, _, _, equipLoc, itemTex = GetItemInfo(frame.pendingQuery);
+                if itemTex and itemTex ~= "" then
+                    resolvedTex = itemTex;
+                    resolvedLink = iLink;
+                    if equipLoc and equipLoc ~= "" and getglobal(equipLoc) then
+                        resolvedSlot = getglobal(equipLoc);
+                    end
+                    if iQual and QUALITY_COLORS[iQual] then
+                        local qc = QUALITY_COLORS[iQual];
+                        nameText:SetTextColor(qc[1], qc[2], qc[3]);
+                        iconGlow:SetVertexColor(qc[1], qc[2], qc[3], 0.90);
+                        frame:SetBackdropBorderColor(qc[1], qc[2], qc[3], 0.95);
+                    end
+                end
+            end
+
+            -- 2. Try Bags or Inventory
+            if (not resolvedTex) and frame.pendingName then
+                local bLink, bTex, bSlot = FindItemInBagsOrInventory(frame.pendingName);
+                if bTex then
+                    resolvedTex = bTex;
+                    resolvedLink = bLink;
+                end
+            end
+
+            -- 3. Apply resolved texture
+            if resolvedTex and resolvedTex ~= "" then
+                iconTex:SetTexture(resolvedTex);
+                if resolvedLink then frame.itemLink = resolvedLink; end
+                if resolvedSlot and subText:GetText() then
+                    local currentSub = subText:GetText();
+                    if string.find(currentSub, "New in", 1, true) or string.find(currentSub, "Neu", 1, true) then
+                        subText:SetText(resolvedSlot .. " \194\183 |cff7dff7dNew in collection!|r");
+                    else
+                        subText:SetText(resolvedSlot);
+                    end
+                end
+
+                -- Save to persistent item cache
+                if frame.pendingName then
+                    local cache = GetItemCache();
+                    local lower = string.lower(frame.pendingName);
+                    cache[lower] = cache[lower] or {};
+                    cache[lower].tex = resolvedTex;
+                    if resolvedLink then cache[lower].link = resolvedLink; end
+                end
+
+                frame.pendingQuery = nil;
+                frame.pendingName = nil;
+            end
+        end
+    end
+end);
+
+-- ============================================================================
+-- Main Show Routine
+-- ============================================================================
 function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, itemSlot)
     if not name or name == "" then return; end
     -- Exclude Neck pieces: Neck is player's class ability amulet, NOT a boss drop!
     if IsNeckPiece(name, itemLink, slotLabel, itemSlot) then return; end
 
+    -- Suppress native right-hand notice immediately
+    SuppressNativeLootNotice();
+
+    local lowerName = string.lower(name);
+    local cache = GetItemCache();
+
+    -- Step 1: Pre-fill from Known Items dictionary
+    if KNOWN_ITEMS[lowerName] then
+        local entry = KNOWN_ITEMS[lowerName];
+        if not texture or texture == "" then texture = entry.tex; end
+        if not quality then quality = entry.q; end
+        if (not slotLabel or slotLabel == "Boss Drop") and entry.slot and getglobal(entry.slot) then
+            slotLabel = getglobal(entry.slot);
+        end
+    end
+
+    -- Step 2: Pre-fill from Persistent Item Cache
+    if cache[lowerName] then
+        if (not texture or texture == "") and cache[lowerName].tex then
+            texture = cache[lowerName].tex;
+        end
+        if (not itemLink or itemLink == "") and cache[lowerName].link then
+            itemLink = cache[lowerName].link;
+        end
+    end
+
+    -- Step 3: Check bags or equipped gear right now
+    if not texture or texture == "" then
+        local bLink, bTex, bSlot = FindItemInBagsOrInventory(name);
+        if bTex then
+            texture = bTex;
+            if bLink and not itemLink then itemLink = bLink; end
+            if bSlot and not itemSlot then itemSlot = bSlot; end
+        end
+    end
+
+    -- Step 4: Try GetItemInfo
+    local itemQuery = itemLink or name;
+    if (not texture or texture == "") and itemQuery and GetItemInfo then
+        local iName, iLink, iQual, _, _, _, _, equipLoc, itemTex = GetItemInfo(itemQuery);
+        if itemTex and itemTex ~= "" then texture = itemTex; end
+        if iLink and not itemLink then itemLink = iLink; end
+        if iQual and not quality then quality = iQual; end
+        if equipLoc and equipLoc ~= "" and getglobal(equipLoc) then
+            slotLabel = getglobal(equipLoc);
+        end
+    end
+
+    -- Step 5: Fallback to keyword icon (e.g. Pants -> INV_Pants_02, Helm -> INV_Helmet_06)
+    local isFallback = false;
+    if not texture or texture == "" then
+        local fallbackIcon, fallbackSlot = GetKeywordFallbackIcon(name);
+        texture = fallbackIcon;
+        if not slotLabel or slotLabel == "Boss Drop" then slotLabel = fallbackSlot; end
+        isFallback = true;
+    end
+
     -- Quality Color
     quality = quality or 4; -- default Epic
     local qc = QUALITY_COLORS[quality] or QUALITY_COLORS[4];
     local r, g, b = qc[1], qc[2], qc[3];
-
-    -- Texture
-    if (not texture or texture == "") and itemLink and GetItemInfo then
-        local _, _, _, _, _, _, _, _, itemTex = GetItemInfo(itemLink);
-        texture = itemTex;
-    end
-    if not texture or texture == "" then
-        texture = "Interface\\Icons\\INV_Box_01";
-    end
 
     iconTex:SetTexture(texture);
     iconGlow:SetVertexColor(r, g, b, 0.90);
@@ -284,7 +620,7 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, it
     nameText:SetText(name);
     nameText:SetTextColor(r, g, b);
 
-    local sub = slotLabel or "Jewelry Drop";
+    local sub = slotLabel or "Boss Drop";
     if isNew then
         sub = sub .. " \194\183 |cff7dff7dNew in collection!|r";
     end
@@ -295,6 +631,16 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, it
     frame.itemQuality = quality;
     frame.subDetail = sub;
     frame.itemSlot = itemSlot;
+
+    -- If texture was a fallback or item link is still unknown, queue for live background resolver
+    if isFallback or (not itemLink) then
+        frame.pendingQuery = itemLink or name;
+        frame.pendingName = name;
+        resolveTimer = 0;
+    else
+        frame.pendingQuery = nil;
+        frame.pendingName = nil;
+    end
 
     displayTimer = DISPLAY_DURATION;
     frame:SetAlpha(1.0);
@@ -360,7 +706,7 @@ local function ParseLootMessage(message)
     local slotLabel = "Boss Drop";
     if itemQuery and GetItemInfo then
         local iName, iLink, iQual, _, _, _, _, equipLoc, itemTex = GetItemInfo(itemQuery);
-        if itemTex then texture = itemTex; end
+        if itemTex and itemTex ~= "" then texture = itemTex; end
         if iLink and not itemLink then itemLink = iLink; end
         if iQual and not hexColor then quality = iQual; end
         if equipLoc and equipLoc ~= "" and getglobal(equipLoc) then
@@ -374,16 +720,28 @@ local function ParseLootMessage(message)
 end
 
 -- ============================================================================
--- Inventory Watcher (Detect newly equipped boss drops / jewelry in run)
+-- Equipment Watcher (Detect newly equipped boss drops / armor / jewelry in run)
 -- ============================================================================
--- Only Rings and Trinkets (slots 11, 12, 13, 14) are dropped by bosses!
+-- Watch all armor and weapon slots (slot 7 = Legs / Pants!)
 -- Slot 2 (Neck) is strictly the starting class ability amulet and excluded.
-local JEWELRY_SLOTS = { 11, 12, 13, 14 };
+local GEAR_SLOTS = { 1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };
 local SLOT_NAMES = {
+    [1]  = "Head",
+    [3]  = "Shoulder",
+    [5]  = "Chest",
+    [6]  = "Waist",
+    [7]  = "Legs",     -- Pants!
+    [8]  = "Feet",
+    [9]  = "Wrist",
+    [10] = "Hands",
     [11] = "Ring",
     [12] = "Ring",
     [13] = "Trinket",
     [14] = "Trinket",
+    [15] = "Back",
+    [16] = "Main Hand",
+    [17] = "Off Hand",
+    [18] = "Ranged",
 };
 
 local knownGear = {};
@@ -405,7 +763,7 @@ end
 local function CheckEquippedGear()
     if not GetInventoryItemLink then return; end
 
-    for _, slot in ipairs(JEWELRY_SLOTS) do
+    for _, slot in ipairs(GEAR_SLOTS) do
         local link = GetInventoryItemLink("player", slot);
         local oldLink = knownGear[slot];
 
@@ -414,13 +772,13 @@ local function CheckEquippedGear()
             if initializedGear and IsInActiveRun() then
                 -- A new boss drop piece was equipped!
                 local _, _, name = string.find(link, "%[(.-)%]");
-                local texture = GetInventoryItemTexture("player", slot);
+                local texture = GetInventoryItemTexture and GetInventoryItemTexture("player", slot);
                 local _, _, hexColor = string.find(link, "|c%x%x(%x%x%x%x%x%x)");
                 local quality = (hexColor and HEX_TO_QUALITY[string.lower(hexColor)]) or 4;
-                local slotName = SLOT_NAMES[slot] or "Jewelry";
+                local slotName = SLOT_NAMES[slot] or "Equipment";
 
                 if not IsNeckPiece(name, link, slotName, slot) then
-                    LootUI:ShowAlert(name or "Jewelry", link, texture, quality, slotName, false, slot);
+                    LootUI:ShowAlert(name or "Boss Drop", link, texture, quality, slotName, false, slot);
                 end
             end
         elseif not link then
@@ -437,6 +795,7 @@ local eventFrame = CreateFrame("Frame");
 eventFrame:RegisterEvent("CHAT_MSG_LOOT");
 eventFrame:RegisterEvent("CHAT_MSG_SYSTEM");
 eventFrame:RegisterEvent("UNIT_INVENTORY_CHANGED");
+eventFrame:RegisterEvent("BAG_UPDATE");
 eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
 eventFrame:RegisterEvent("VARIABLES_LOADED");
 eventFrame:RegisterEvent("CHAT_MSG_ADDON");
@@ -447,13 +806,17 @@ eventFrame:SetScript("OnEvent", function()
     elseif event == "UNIT_INVENTORY_CHANGED" then
         if arg1 == "player" then
             CheckEquippedGear();
+            ScanAllPlayerItems();
         end
+    elseif event == "BAG_UPDATE" then
+        ScanAllPlayerItems();
     elseif event == "CHAT_MSG_ADDON" then
         if arg1 == "AZSZONE" then
-            -- Reset gear baseline for new run
+            -- Reset gear baseline for new run & suppress native loot
             knownGear = {};
             initializedGear = false;
             CheckEquippedGear();
+            SuppressNativeLootNotice();
         end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
         -- Restore saved position
@@ -464,20 +827,45 @@ eventFrame:SetScript("OnEvent", function()
             frame:SetPoint("TOP", UIParent, "TOP", 0, -175);
         end
         CheckEquippedGear();
+        ScanAllPlayerItems();
+        SuppressNativeLootNotice();
     end
 end);
 
 -- ============================================================================
 -- Test Helper
 -- ============================================================================
-function BordoUI:TestLootAlert()
-    LootUI:ShowAlert(
-        "Band of Accuria",
-        "item:17063:0:0:0",
-        "Interface\\Icons\\INV_Jewelry_Ring_15",
-        4, -- Epic
-        "Finger (Ring · Rank IV)",
-        true
-    );
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview above character.");
+function BordoUI:TestLootAlert(kind)
+    kind = string.lower(kind or "");
+    if kind == "pants" or kind == "hosen" or kind == "legs" or kind == "beine" then
+        LootUI:ShowAlert(
+            "Wildheart Pants",
+            "item:16678:0:0:0",
+            "Interface\\Icons\\INV_Pants_02",
+            4, -- Epic
+            "Legs (Pants · Tier 0.5)",
+            true
+        );
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview: |cffa335ee[Wildheart Pants]|r (Legs).");
+    elseif kind == "helm" or kind == "kopf" or kind == "head" then
+        LootUI:ShowAlert(
+            "Crown of Destruction",
+            "item:18817:0:0:0",
+            "Interface\\Icons\\INV_Helmet_08",
+            4, -- Epic
+            "Head (Crown)",
+            false
+        );
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview: |cffa335ee[Crown of Destruction]|r (Head).");
+    else
+        LootUI:ShowAlert(
+            "Band of Accuria",
+            "item:17063:0:0:0",
+            "Interface\\Icons\\INV_Jewelry_Ring_15",
+            4, -- Epic
+            "Finger (Ring · Rank IV)",
+            true
+        );
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview: |cffa335ee[Band of Accuria]|r (Ring). Type '/bordo testloot pants' for pants test.");
+    end
 end

@@ -4,6 +4,18 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.2] - 2026-10-25
+
+### Fixed & Improved
+- **Modern Boss Loot Alert & Authentic Item Icon Resolution (`LootAlert.lua`):**
+  - **Live Asynchronous Icon Resolution:** Fixed an issue where the center boss loot notification fell back to a generic wooden box icon (`INV_Box_01`) when items like Pants dropped. The alert now queries local equipment, all bags (0-4), the persistent item cache, and continuously polls `GetItemInfo` on `OnUpdate` to ensure authentic item textures are always displayed immediately.
+  - **Smart Keyword-to-Texture Fallbacks:** Implemented instant slot-appropriate icon mapping (e.g. Pants/Hose -> `INV_Pants_02`, Helm -> `INV_Helmet_06`, Ring -> `INV_Jewelry_Ring_15`, Boots -> `INV_Boots_01`, etc.) so that generic box textures are never shown even on the very first frame before server item data returns.
+  - **Expanded Equipment Watcher:** Extended run equipment tracking to all gear and armor slots (Head, Shoulders, Chest, Waist, Legs, Feet, Wrist, Hands, Rings, Trinkets, Cloak, Weapons) while strictly filtering out starting ability Amulets (Neck).
+  - **Clean UI Centralization:** Automatically suppresses the native game engine's redundant right-side loot popup (`AZS_SetHudShown("loot", false)`), centralizing all boss loot notifications into the modern top-center toast above the character.
+  - **Interactive Testing:** Added `/bordo testloot pants` and `/bordo testloot helm` to easily preview different drop types.
+
+---
+
 ## [2.7.1] - 2026-10-24
 
 ### Fixed & Improved
