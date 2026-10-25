@@ -240,8 +240,28 @@ frame:SetScript("OnUpdate", function()
     end
 end);
 
+-- Check if an item is a Neck/Amulet (Neck pieces are class ability amulets, NOT boss drops!)
+local function IsNeckPiece(name, itemLink, slotLabel, itemSlot)
+    if itemSlot == 2 then return true; end
+    if slotLabel == "Neck" or slotLabel == "Hals" or slotLabel == "INVTYPE_NECK" then return true; end
+    local lower = string.lower(name or "");
+    if string.find(lower, "neck") or string.find(lower, "amulet") or string.find(lower, "halskette") or string.find(lower, "medallion") then
+        return true;
+    end
+    if string.find(name or "", ":") and (string.find(name or "", " I") or string.find(name or "", " II") or string.find(name or "", " III") or string.find(name or "", " IV") or string.find(name or "", " V")) then
+        return true;
+    end
+    if itemLink and GetItemInfo then
+        local _, _, _, _, _, _, _, equipLoc = GetItemInfo(itemLink);
+        if equipLoc == "INVTYPE_NECK" then return true; end
+    end
+    return false;
+end
+
 function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, itemSlot)
     if not name or name == "" then return; end
+    -- Exclude Neck pieces: Neck is player's class ability amulet, NOT a boss drop!
+    if IsNeckPiece(name, itemLink, slotLabel, itemSlot) then return; end
 
     -- Quality Color
     quality = quality or 4; -- default Epic
@@ -348,15 +368,18 @@ local function ParseLootMessage(message)
         end
     end
 
+    if IsNeckPiece(name, itemLink, slotLabel, nil) then return; end
+
     LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew);
 end
 
 -- ============================================================================
 -- Inventory Watcher (Detect newly equipped boss drops / jewelry in run)
 -- ============================================================================
-local JEWELRY_SLOTS = { 2, 11, 12, 13, 14 };
+-- Only Rings and Trinkets (slots 11, 12, 13, 14) are dropped by bosses!
+-- Slot 2 (Neck) is strictly the starting class ability amulet and excluded.
+local JEWELRY_SLOTS = { 11, 12, 13, 14 };
 local SLOT_NAMES = {
-    [2] = "Neck",
     [11] = "Ring",
     [12] = "Ring",
     [13] = "Trinket",
@@ -365,6 +388,19 @@ local SLOT_NAMES = {
 
 local knownGear = {};
 local initializedGear = false;
+
+local function IsInActiveRun()
+    if AZS_GetPhase then
+        local phase = AZS_GetPhase();
+        if phase and phase ~= "ready" then
+            return true;
+        end
+    end
+    if AZS_RUN and AZS_RUN.t and tonumber(AZS_RUN.t) > 0 then
+        return true;
+    end
+    return false;
+end
 
 local function CheckEquippedGear()
     if not GetInventoryItemLink then return; end
@@ -375,15 +411,17 @@ local function CheckEquippedGear()
 
         if link and link ~= oldLink then
             knownGear[slot] = link;
-            if initializedGear then
-                -- A new piece was equipped!
+            if initializedGear and IsInActiveRun() then
+                -- A new boss drop piece was equipped!
                 local _, _, name = string.find(link, "%[(.-)%]");
                 local texture = GetInventoryItemTexture("player", slot);
                 local _, _, hexColor = string.find(link, "|c%x%x(%x%x%x%x%x%x)");
                 local quality = (hexColor and HEX_TO_QUALITY[string.lower(hexColor)]) or 4;
                 local slotName = SLOT_NAMES[slot] or "Jewelry";
 
-                LootUI:ShowAlert(name or "Jewelry", link, texture, quality, slotName, false, slot);
+                if not IsNeckPiece(name, link, slotName, slot) then
+                    LootUI:ShowAlert(name or "Jewelry", link, texture, quality, slotName, false, slot);
+                end
             end
         elseif not link then
             knownGear[slot] = nil;
