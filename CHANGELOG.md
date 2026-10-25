@@ -4,6 +4,24 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.3] - 2026-10-25
+
+### Fixed & Added
+- **Strict Boss Loot Filtering (Eliminated Augments from Toast):**
+  - Removed inventory change triggers that previously caused picked Augment rings (e.g. *Master Dragonslayer's Ring*) to falsely display as a Boss Loot alert.
+  - Added strict phase verification (`AZS_GetPhase() ~= "choosing"`) so upgrade choices never trigger the alert.
+  - The center Boss Loot toast now fires **exclusively** on true enemy boss item drops (`CHAT_MSG_LOOT` / `CHAT_MSG_SYSTEM`).
+- **New Run Loot Log Panel on Left Side ("Links wo höchster Krit ist"):**
+  - Added a dedicated, movable run loot panel (`BordoUI_LootLogFrame`) docked directly below *Höchster Krit* (`SurvivorUICrits`) or *This Run* (`SurvivorUIRun`).
+  - Displays a clean history of all equipment, armor, and jewelry dropped in the current run (newest first).
+  - Every row features the authentic item icon, item name in quality color, drop timestamp (`M:SS`), stack count (`x2`), and `new` collection tags.
+  - Full mouseover tooltip (`GameTooltip:SetHyperlink`) and Shift-Click chat insertion.
+  - Included in `/bordo unlock` / `/bordo move` mode and auto-resets on each new run or with `/bordo clearloot`.
+- **Permanent Right-Side Loot Popup Suppression:**
+  - Continuous background maintenance ensures `AZS_SetHudShown("loot", false)` remains active at all times, preventing duplicate popups on the right edge.
+
+---
+
 ## [2.7.2] - 2026-10-25
 
 ### Fixed & Improved

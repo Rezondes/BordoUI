@@ -1,18 +1,28 @@
 --[[
-    Bordo UI - Modern Boss Loot Alert (LootAlert.lua)
+    Bordo UI - Modern Boss Loot Alert & Run Loot Log (LootAlert.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
 
-    Displays a prominent, modern Loot Toast above the player character
-    ("Mitte oben, über dem Charakter") when a boss drops equipment or jewelry:
-    - 40x40 Loot Icon with Quality Border & Glowing Frame
-    - "BOSS LOOT" header in gold
-    - Item Name in full Quality Color (Uncommon, Rare, Epic, Legendary)
-    - Item Slot / Subtitle / Collection status (e.g. "Legs · Epic", "Finger · New in collection!")
-    - Live Asynchronous Icon Resolution: Scans bags, equipment, and WoW cache so authentic item icons (Pants, Rings, etc.) always appear immediately
-    - Keyword Fallbacks: Instant slot-appropriate icons (Pants -> Pants icon, etc.) so generic box icons are never shown
-    - Suppresses the native Azeroth Survivors right-side loot notice (AZS_SetHudShown("loot", false)) so loot is cleanly centralized above the character
-    - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootAlertPos)
-    - Testable with /bordo loot, /bordo testloot, /bordo testloot pants
+    1. Top-Center Boss Loot Toast ("Mitte oben, über dem Charakter"):
+       - Prominent 40x40 Authentic Item Icon with Quality Border & Glow
+       - "BOSS LOOT" header in gold
+       - Item Name in full Quality Color (Uncommon, Rare, Epic, Legendary)
+       - Item Slot / Subtitle / Collection status (e.g. "Legs · Epic", "Finger · New in collection!")
+       - ONLY triggers on true enemy boss drops (CHAT_MSG_LOOT / CHAT_MSG_SYSTEM).
+       - Never triggers on Augment choices or level-up upgrades!
+       - Excludes starting ability Neck amulets.
+       - Smooth 7-second display with fade-out.
+       - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootAlertPos).
+
+    2. Left-Hand Run Loot Log ("Links wo höchster Krit ist"):
+       - Sleek panel docked under "Höchster Krit" (SurvivorUICrits) or This Run (SurvivorUIRun)
+       - Lists all equipment & jewelry dropped in the current run (newest first)
+       - Each entry displays the authentic item icon, quality color, drop time, and count
+       - Interactive hover tooltip and Shift-Click link insertion
+       - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootListPos)
+       - Resets cleanly when a new run begins (AZSZONE or "Move to begin")
+
+    3. Native Right-Side Loot Suppression:
+       - Continuously ensures AZS_SetHudShown("loot", false) so no duplicate window appears on the right.
 ]]--
 
 BordoUI = BordoUI or {};
@@ -21,8 +31,8 @@ BordoUI.LootAlert = LootUI;
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground";
 local FONT_PATH = "Fonts\\ARIALN.TTF";
-local WIDTH = 270;
-local HEIGHT = 54;
+local TOAST_WIDTH = 270;
+local TOAST_HEIGHT = 54;
 local ICON_SIZE = 40;
 
 -- Quality Colors (Standard WoW 1.12.1)
@@ -179,40 +189,47 @@ local KNOWN_ITEMS = {
     ["schwarzfausts breite"] = { tex = "Interface\\Icons\\INV_Misc_StoneTablet_11", slot = "INVTYPE_TRINKET", q = 3 },
 };
 
--- ============================================================================
--- Frame Creation (Top-Center, above Character)
--- ============================================================================
-local frame = CreateFrame("Button", "BordoUI_LootAlertFrame", UIParent);
-LootUI.frame = frame;
-frame:SetWidth(WIDTH);
-frame:SetHeight(HEIGHT);
--- Default: Top-Center above character
-frame:SetPoint("TOP", UIParent, "TOP", 0, -175);
-frame:SetFrameStrata("HIGH");
-frame:SetFrameLevel(25);
-frame:SetClampedToScreen(true);
-frame:SetMovable(true);
-frame:EnableMouse(true);
-frame:RegisterForDrag("LeftButton");
-frame:RegisterForClicks("LeftButtonUp", "RightButtonUp");
-frame:Hide();
+-- Suppress native right-hand boss loot notice
+local function SuppressNativeLootNotice()
+    if AZS_SetHudShown and AZS_IsHudShown then
+        if AZS_IsHudShown("loot") then
+            AZS_SetHudShown("loot", false);
+        end
+    end
+end
 
-frame:SetScript("OnDragStart", function()
+-- ============================================================================
+-- 1. Center Boss Loot Toast
+-- ============================================================================
+local toastFrame = CreateFrame("Button", "BordoUI_LootAlertFrame", UIParent);
+LootUI.frame = toastFrame;
+toastFrame:SetWidth(TOAST_WIDTH);
+toastFrame:SetHeight(TOAST_HEIGHT);
+toastFrame:SetPoint("TOP", UIParent, "TOP", 0, -175);
+toastFrame:SetFrameStrata("HIGH");
+toastFrame:SetFrameLevel(25);
+toastFrame:SetClampedToScreen(true);
+toastFrame:SetMovable(true);
+toastFrame:EnableMouse(true);
+toastFrame:RegisterForDrag("LeftButton");
+toastFrame:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+toastFrame:Hide();
+
+toastFrame:SetScript("OnDragStart", function()
     if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
-        frame:StartMoving();
+        toastFrame:StartMoving();
     end
 end);
 
-frame:SetScript("OnDragStop", function()
-    frame:StopMovingOrSizing();
+toastFrame:SetScript("OnDragStop", function()
+    toastFrame:StopMovingOrSizing();
     if ( BordoUIDB ) then
-        local point, _, relPoint, x, y = frame:GetPoint();
+        local point, _, relPoint, x, y = toastFrame:GetPoint();
         BordoUIDB.lootAlertPos = { point = point, relativePoint = relPoint, x = x, y = y };
     end
 end);
 
--- Background
-frame:SetBackdrop({
+toastFrame:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
     edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
     tile     = true,
@@ -220,14 +237,13 @@ frame:SetBackdrop({
     edgeSize = 8,
     insets   = { left = 2, right = 2, top = 2, bottom = 2 }
 });
-frame:SetBackdropColor(0.04, 0.04, 0.07, 0.94);
-frame:SetBackdropBorderColor(0.64, 0.21, 0.93, 0.95); -- default epic purple accent
+toastFrame:SetBackdropColor(0.04, 0.04, 0.07, 0.94);
+toastFrame:SetBackdropBorderColor(0.64, 0.21, 0.93, 0.95);
 
--- Icon Container & Glow
-local iconFrame = CreateFrame("Frame", nil, frame);
+local iconFrame = CreateFrame("Frame", nil, toastFrame);
 iconFrame:SetWidth(ICON_SIZE);
 iconFrame:SetHeight(ICON_SIZE);
-iconFrame:SetPoint("LEFT", frame, "LEFT", 7, 0);
+iconFrame:SetPoint("LEFT", toastFrame, "LEFT", 7, 0);
 
 local iconGlow = iconFrame:CreateTexture(nil, "BACKGROUND");
 iconGlow:SetTexture("Interface\\Buttons\\UI-ActionButton-Border");
@@ -242,34 +258,32 @@ iconTex:SetAllPoints(iconFrame);
 iconTex:SetTexture("Interface\\Icons\\INV_Pants_02");
 iconTex:SetTexCoord(0.08, 0.92, 0.08, 0.92);
 
--- Text Elements
-local titleText = frame:CreateFontString(nil, "OVERLAY");
+local titleText = toastFrame:CreateFontString(nil, "OVERLAY");
 titleText:SetFont(FONT_PATH, 9, "OUTLINE");
 titleText:SetPoint("TOPLEFT", iconFrame, "TOPRIGHT", 9, -2);
 titleText:SetTextColor(1.0, 0.82, 0.0);
 titleText:SetText("BOSS LOOT");
 
-local nameText = frame:CreateFontString(nil, "OVERLAY");
+local nameText = toastFrame:CreateFontString(nil, "OVERLAY");
 nameText:SetFont(FONT_PATH, 11, "OUTLINE");
 nameText:SetPoint("TOPLEFT", titleText, "BOTTOMLEFT", 0, -2);
-nameText:SetPoint("RIGHT", frame, "RIGHT", -16, 0);
+nameText:SetPoint("RIGHT", toastFrame, "RIGHT", -16, 0);
 nameText:SetJustifyH("LEFT");
 nameText:SetTextColor(1.0, 1.0, 1.0);
 nameText:SetText("Item Name");
 
-local subText = frame:CreateFontString(nil, "OVERLAY");
+local subText = toastFrame:CreateFontString(nil, "OVERLAY");
 subText:SetFont(FONT_PATH, 9, "OUTLINE");
 subText:SetPoint("TOPLEFT", nameText, "BOTTOMLEFT", 0, -2);
-subText:SetPoint("RIGHT", frame, "RIGHT", -16, 0);
+subText:SetPoint("RIGHT", toastFrame, "RIGHT", -16, 0);
 subText:SetJustifyH("LEFT");
 subText:SetTextColor(0.75, 0.75, 0.80);
 subText:SetText("Boss Drop");
 
--- Close button
-local closeBtn = CreateFrame("Button", nil, frame);
+local closeBtn = CreateFrame("Button", nil, toastFrame);
 closeBtn:SetWidth(14);
 closeBtn:SetHeight(14);
-closeBtn:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -4, -4);
+closeBtn:SetPoint("TOPRIGHT", toastFrame, "TOPRIGHT", -4, -4);
 local closeTxt = closeBtn:CreateFontString(nil, "OVERLAY");
 closeTxt:SetFont(FONT_PATH, 10, "OUTLINE");
 closeTxt:SetPoint("CENTER", closeBtn, "CENTER", 0, 0);
@@ -277,19 +291,12 @@ closeTxt:SetTextColor(0.6, 0.6, 0.6);
 closeTxt:SetText("x");
 closeBtn:SetScript("OnEnter", function() closeTxt:SetTextColor(1, 0.3, 0.3); end);
 closeBtn:SetScript("OnLeave", function() closeTxt:SetTextColor(0.6, 0.6, 0.6); end);
-closeBtn:SetScript("OnClick", function()
-    frame:Hide();
-end);
+closeBtn:SetScript("OnClick", function() toastFrame:Hide(); end);
 
--- Tooltip on Hover
-frame:SetScript("OnEnter", function()
+toastFrame:SetScript("OnEnter", function()
     if this.itemLink then
         GameTooltip:SetOwner(this, "ANCHOR_BOTTOM");
         GameTooltip:SetHyperlink(this.itemLink);
-        GameTooltip:Show();
-    elseif this.itemSlot then
-        GameTooltip:SetOwner(this, "ANCHOR_BOTTOM");
-        GameTooltip:SetInventoryItem("player", this.itemSlot);
         GameTooltip:Show();
     elseif this.itemName then
         GameTooltip:SetOwner(this, "ANCHOR_BOTTOM");
@@ -307,20 +314,234 @@ frame:SetScript("OnEnter", function()
     end
 end);
 
-frame:SetScript("OnLeave", function()
-    GameTooltip:Hide();
-end);
-
-frame:SetScript("OnClick", function()
+toastFrame:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+toastFrame:SetScript("OnClick", function()
     if IsShiftKeyDown() and ChatFrameEditBox and ChatFrameEditBox:IsShown() and this.itemLink then
         ChatFrameEditBox:Insert(this.itemLink);
     else
-        frame:Hide();
+        toastFrame:Hide();
     end
 end);
 
 -- ============================================================================
--- Bag & Inventory Scanning & Persistent Item Cache
+-- 2. Left-Hand Run Loot Log ("Links wo höchster Krit ist")
+-- ============================================================================
+local LOG_WIDTH = 220;
+local ROW_HEIGHT = 20;
+local MAX_LOG_ROWS = 8;
+local runLoot = {}; -- { name, link, tex, quality, isNew, time, count }
+
+local logFrame = CreateFrame("Button", "BordoUI_LootLogFrame", UIParent);
+LootUI.logFrame = logFrame;
+logFrame:SetWidth(LOG_WIDTH);
+logFrame:SetHeight(48);
+logFrame:SetFrameStrata("MEDIUM");
+logFrame:SetFrameLevel(15);
+logFrame:SetClampedToScreen(true);
+logFrame:SetMovable(true);
+logFrame:EnableMouse(true);
+logFrame:RegisterForDrag("LeftButton");
+logFrame:Hide();
+
+logFrame:SetBackdrop({
+    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+    tile     = true,
+    tileSize = 12,
+    edgeSize = 8,
+    insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+});
+logFrame:SetBackdropColor(0.04, 0.04, 0.07, 0.88);
+logFrame:SetBackdropBorderColor(0.28, 0.28, 0.32, 0.95);
+
+logFrame:SetScript("OnDragStart", function()
+    if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+        logFrame:StartMoving();
+    end
+end);
+
+logFrame:SetScript("OnDragStop", function()
+    logFrame:StopMovingOrSizing();
+    if BordoUIDB then
+        local point, _, relPoint, x, y = logFrame:GetPoint();
+        BordoUIDB.lootListPos = { point = point, relativePoint = relPoint, x = x, y = y };
+    end
+end);
+
+local logTitle = logFrame:CreateFontString(nil, "OVERLAY");
+logTitle:SetFont(FONT_PATH, 11, "OUTLINE");
+logTitle:SetPoint("TOPLEFT", logFrame, "TOPLEFT", 8, -6);
+logTitle:SetTextColor(1.0, 0.82, 0.0);
+logTitle:SetText("Loot");
+
+local logRows = {};
+
+local function CreateLogRow(i)
+    local row = CreateFrame("Button", nil, logFrame);
+    row:SetWidth(LOG_WIDTH - 16);
+    row:SetHeight(ROW_HEIGHT);
+    row:SetPoint("TOPLEFT", logFrame, "TOPLEFT", 8, -22 - (i - 1) * ROW_HEIGHT);
+    row:EnableMouse(true);
+    row:RegisterForClicks("LeftButtonUp", "RightButtonUp");
+
+    row.icon = row:CreateTexture(nil, "ARTWORK");
+    row.icon:SetWidth(16);
+    row.icon:SetHeight(16);
+    row.icon:SetPoint("LEFT", row, "LEFT", 2, 0);
+    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
+
+    row.iconBorder = row:CreateTexture(nil, "OVERLAY");
+    row.iconBorder:SetTexture(FLAT);
+    row.iconBorder:SetPoint("TOPLEFT", row.icon, "TOPLEFT", -1, 1);
+    row.iconBorder:SetPoint("BOTTOMRIGHT", row.icon, "BOTTOMRIGHT", 1, -1);
+    row.iconBorder:SetVertexColor(0, 0, 0, 1);
+
+    row.name = row:CreateFontString(nil, "OVERLAY");
+    row.name:SetFont(FONT_PATH, 10, "OUTLINE");
+    row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0);
+    row.name:SetWidth(128);
+    row.name:SetHeight(12);
+    row.name:SetJustifyH("LEFT");
+    row.name:SetTextColor(1, 1, 1);
+
+    row.time = row:CreateFontString(nil, "OVERLAY");
+    row.time:SetFont(FONT_PATH, 9, "OUTLINE");
+    row.time:SetPoint("RIGHT", row, "RIGHT", -2, 0);
+    row.time:SetTextColor(0.75, 0.75, 0.75);
+
+    row:SetScript("OnEnter", function()
+        if this.itemLink then
+            GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+            GameTooltip:SetHyperlink(this.itemLink);
+            GameTooltip:Show();
+        elseif this.itemName then
+            GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+            local r, g, b = 1, 1, 1;
+            if this.itemQuality and QUALITY_COLORS[this.itemQuality] then
+                r = QUALITY_COLORS[this.itemQuality][1];
+                g = QUALITY_COLORS[this.itemQuality][2];
+                b = QUALITY_COLORS[this.itemQuality][3];
+            end
+            GameTooltip:SetText(this.itemName, r, g, b);
+            GameTooltip:Show();
+        end
+    end);
+    row:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+    row:SetScript("OnClick", function()
+        if IsShiftKeyDown() and ChatFrameEditBox and ChatFrameEditBox:IsShown() and this.itemLink then
+            ChatFrameEditBox:Insert(this.itemLink);
+        end
+    end);
+
+    logRows[i] = row;
+    return row;
+end
+
+local function PlaceLootLog()
+    if BordoUIDB and BordoUIDB.lootListPos and BordoUIDB.lootListPos.point then
+        BordoUI:RestorePosition(logFrame, BordoUIDB.lootListPos);
+        return;
+    end
+    logFrame:ClearAllPoints();
+    local crits = getglobal("SurvivorUICrits");
+    local run = getglobal("SurvivorUIRun");
+    if crits and crits:IsShown() then
+        logFrame:SetPoint("TOPLEFT", crits, "BOTTOMLEFT", 0, -8);
+    elseif run and run:IsShown() then
+        logFrame:SetPoint("TOPLEFT", run, "BOTTOMLEFT", 0, -8);
+    else
+        logFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -260);
+    end
+end
+
+local function UpdateLootLog()
+    local n = table.getn(runLoot);
+    if n == 0 and not BordoUI.isMovingUnlocked then
+        logFrame:Hide();
+        return;
+    end
+
+    if n > 0 then
+        logTitle:SetText(string.format("Loot (%d)", n));
+    else
+        logTitle:SetText("Loot (Drag Me)");
+    end
+
+    local displayCount = math.min(n, MAX_LOG_ROWS);
+    for i = 1, MAX_LOG_ROWS do
+        local row = logRows[i] or CreateLogRow(i);
+        if i <= displayCount then
+            local entry = runLoot[i];
+            row.itemName = entry.name;
+            row.itemLink = entry.link;
+            row.itemQuality = entry.quality;
+
+            local qc = QUALITY_COLORS[entry.quality] or QUALITY_COLORS[4];
+            local r, g, b = qc[1], qc[2], qc[3];
+
+            row.icon:SetTexture(entry.tex or "Interface\\Icons\\INV_Misc_Gift_01");
+            row.name:SetText(entry.name);
+            row.name:SetTextColor(r, g, b);
+
+            local extra = entry.time or "";
+            if entry.count and entry.count > 1 then
+                extra = "x" .. entry.count .. " " .. extra;
+            end
+            if entry.isNew then
+                extra = "|cff7dff7dnew|r " .. extra;
+            end
+            row.time:SetText(extra);
+            row:Show();
+        else
+            row:Hide();
+        end
+    end
+
+    local finalHeight = 24 + math.max(1, displayCount) * ROW_HEIGHT + 6;
+    logFrame:SetHeight(finalHeight);
+    PlaceLootLog();
+    logFrame:Show();
+end
+
+local function AddRunLootEntry(name, itemLink, texture, quality, isNew)
+    local runSeconds = (AZS_GetRunTime and AZS_GetRunTime()) or (AZS_RUN and tonumber(AZS_RUN.t)) or 0;
+    local timeStr = "";
+    if runSeconds and runSeconds > 0 then
+        timeStr = string.format("%d:%02d", math.floor(runSeconds / 60), math.mod(math.floor(runSeconds), 60));
+    end
+
+    local found = nil;
+    for _, entry in ipairs(runLoot) do
+        if entry.name == name then
+            found = entry;
+            break;
+        end
+    end
+
+    if found then
+        found.count = (found.count or 1) + 1;
+        found.time = timeStr;
+        if texture and texture ~= "" and (not found.tex or string.find(found.tex, "Gift_01", 1, true)) then
+            found.tex = texture;
+        end
+    else
+        local entry = {
+            name    = name,
+            link    = itemLink,
+            tex     = texture,
+            quality = quality or 4,
+            isNew   = isNew,
+            time    = timeStr,
+            count   = 1,
+        };
+        table.insert(runLoot, 1, entry);
+    end
+
+    UpdateLootLog();
+end
+
+-- ============================================================================
+-- Item Cache & Bag Scanning (Background Knowledge Only - Never triggers alert)
 -- ============================================================================
 local function GetItemCache()
     BordoUIDB = BordoUIDB or {};
@@ -330,7 +551,6 @@ local function GetItemCache()
     return BordoUIDB.itemCache;
 end
 
--- Scan player equipment and all bags to build/refresh the item database
 local function ScanAllPlayerItems()
     local cache = GetItemCache();
 
@@ -374,12 +594,11 @@ local function ScanAllPlayerItems()
     end
 end
 
--- Find an item by name directly in bags or equipped gear right now
 local function FindItemInBagsOrInventory(targetName)
-    if not targetName or targetName == "" then return nil, nil, nil; end
+    if not targetName or targetName == "" then return nil, nil; end
     local lowerTarget = string.lower(targetName);
 
-    -- Check bags first (as newly looted items go to bags)
+    -- Check bags first
     if GetContainerNumSlots and GetContainerItemLink and GetContainerItemInfo then
         for bag = 0, 4 do
             local numSlots = GetContainerNumSlots(bag) or 0;
@@ -389,14 +608,14 @@ local function FindItemInBagsOrInventory(targetName)
                     local _, _, name = string.find(link, "%[(.-)%]");
                     if name and string.lower(name) == lowerTarget then
                         local tex = GetContainerItemInfo(bag, slot);
-                        return link, tex, nil;
+                        return link, tex;
                     end
                 end
             end
         end
     end
 
-    -- Check equipped gear (slots 1 to 19)
+    -- Check equipped gear
     if GetInventoryItemLink then
         for slot = 1, 19 do
             local link = GetInventoryItemLink("player", slot);
@@ -404,16 +623,15 @@ local function FindItemInBagsOrInventory(targetName)
                 local _, _, name = string.find(link, "%[(.-)%]");
                 if name and string.lower(name) == lowerTarget then
                     local tex = GetInventoryItemTexture and GetInventoryItemTexture("player", slot);
-                    return link, tex, slot;
+                    return link, tex;
                 end
             end
         end
     end
 
-    return nil, nil, nil;
+    return nil, nil;
 end
 
--- Get fallback icon from item name keywords (Pants -> INV_Pants_02, etc.)
 local function GetKeywordFallbackIcon(name)
     local lower = string.lower(name or "");
     for _, entry in ipairs(SLOT_KEYWORD_FALLBACKS) do
@@ -426,9 +644,8 @@ local function GetKeywordFallbackIcon(name)
     return "Interface\\Icons\\INV_Misc_Gift_01", "Boss Drop";
 end
 
--- Check if an item is a Neck/Amulet (Neck pieces are class ability amulets, NOT boss drops!)
-local function IsNeckPiece(name, itemLink, slotLabel, itemSlot)
-    if itemSlot == 2 then return true; end
+-- Filter out starting class ability amulets (Neck pieces are NOT boss drops!)
+local function IsNeckPiece(name, itemLink, slotLabel)
     if slotLabel == "Neck" or slotLabel == "Hals" or slotLabel == "INVTYPE_NECK" then return true; end
     local lower = string.lower(name or "");
     if string.find(lower, "neck") or string.find(lower, "amulet") or string.find(lower, "halskette") or string.find(lower, "medallion") then
@@ -444,52 +661,47 @@ local function IsNeckPiece(name, itemLink, slotLabel, itemSlot)
     return false;
 end
 
--- Suppress the native Azeroth Survivors right-side boss loot notice
-local function SuppressNativeLootNotice()
-    if AZS_SetHudShown and AZS_IsHudShown then
-        if AZS_IsHudShown("loot") then
-            AZS_SetHudShown("loot", false);
-        end
-    end
-end
-
 -- ============================================================================
--- Animation & Live Asynchronous Texture Resolver
+-- Animation & Live Texture Resolver
 -- ============================================================================
 local displayTimer = 0;
-local DISPLAY_DURATION = 7.0; -- seconds to stay visible
+local DISPLAY_DURATION = 7.0;
 local resolveTimer = 0;
+local suppressTimer = 0;
 
-frame:SetScript("OnUpdate", function()
-    -- Native notice suppression maintenance
-    SuppressNativeLootNotice();
+toastFrame:SetScript("OnUpdate", function()
+    -- Suppress native right-hand popup periodically
+    suppressTimer = suppressTimer + arg1;
+    if suppressTimer >= 1.0 then
+        suppressTimer = 0;
+        SuppressNativeLootNotice();
+    end
 
-    -- Display duration & fade
+    -- Toast display countdown & smooth fade out
     if displayTimer > 0 then
         displayTimer = displayTimer - arg1;
         if displayTimer <= 0 then
-            frame:Hide();
-            frame.pendingQuery = nil;
-            frame.pendingName = nil;
+            toastFrame:Hide();
+            toastFrame.pendingQuery = nil;
+            toastFrame.pendingName = nil;
         elseif displayTimer < 0.5 then
-            -- Fade out over last 0.5s
             local alpha = math.max(0, displayTimer / 0.5);
-            frame:SetAlpha(alpha);
+            toastFrame:SetAlpha(alpha);
         else
-            frame:SetAlpha(1.0);
+            toastFrame:SetAlpha(1.0);
         end
     end
 
-    -- Live texture & metadata resolver
-    if (frame.pendingQuery or frame.pendingName) and displayTimer > 0 then
+    -- Background texture & metadata resolver
+    if (toastFrame.pendingQuery or toastFrame.pendingName) and displayTimer > 0 then
         resolveTimer = resolveTimer + arg1;
         if resolveTimer >= 0.05 then
             resolveTimer = 0;
             local resolvedTex, resolvedLink, resolvedSlot = nil, nil, nil;
 
-            -- 1. Try GetItemInfo if link/query exists
-            if frame.pendingQuery and GetItemInfo then
-                local iName, iLink, iQual, _, _, _, _, equipLoc, itemTex = GetItemInfo(frame.pendingQuery);
+            -- 1. Try GetItemInfo
+            if toastFrame.pendingQuery and GetItemInfo then
+                local iName, iLink, iQual, _, _, _, _, equipLoc, itemTex = GetItemInfo(toastFrame.pendingQuery);
                 if itemTex and itemTex ~= "" then
                     resolvedTex = itemTex;
                     resolvedLink = iLink;
@@ -500,24 +712,24 @@ frame:SetScript("OnUpdate", function()
                         local qc = QUALITY_COLORS[iQual];
                         nameText:SetTextColor(qc[1], qc[2], qc[3]);
                         iconGlow:SetVertexColor(qc[1], qc[2], qc[3], 0.90);
-                        frame:SetBackdropBorderColor(qc[1], qc[2], qc[3], 0.95);
+                        toastFrame:SetBackdropBorderColor(qc[1], qc[2], qc[3], 0.95);
                     end
                 end
             end
 
             -- 2. Try Bags or Inventory
-            if (not resolvedTex) and frame.pendingName then
-                local bLink, bTex, bSlot = FindItemInBagsOrInventory(frame.pendingName);
+            if (not resolvedTex) and toastFrame.pendingName then
+                local bLink, bTex = FindItemInBagsOrInventory(toastFrame.pendingName);
                 if bTex then
                     resolvedTex = bTex;
                     resolvedLink = bLink;
                 end
             end
 
-            -- 3. Apply resolved texture
+            -- 3. Apply resolved texture to both toast and run log
             if resolvedTex and resolvedTex ~= "" then
                 iconTex:SetTexture(resolvedTex);
-                if resolvedLink then frame.itemLink = resolvedLink; end
+                if resolvedLink then toastFrame.itemLink = resolvedLink; end
                 if resolvedSlot and subText:GetText() then
                     local currentSub = subText:GetText();
                     if string.find(currentSub, "New in", 1, true) or string.find(currentSub, "Neu", 1, true) then
@@ -527,17 +739,27 @@ frame:SetScript("OnUpdate", function()
                     end
                 end
 
-                -- Save to persistent item cache
-                if frame.pendingName then
+                -- Save to persistent cache
+                if toastFrame.pendingName then
                     local cache = GetItemCache();
-                    local lower = string.lower(frame.pendingName);
+                    local lower = string.lower(toastFrame.pendingName);
                     cache[lower] = cache[lower] or {};
                     cache[lower].tex = resolvedTex;
                     if resolvedLink then cache[lower].link = resolvedLink; end
+
+                    -- Update run loot entry if pending
+                    for _, entry in ipairs(runLoot) do
+                        if entry.name == toastFrame.pendingName then
+                            entry.tex = resolvedTex;
+                            if resolvedLink then entry.link = resolvedLink; end
+                            break;
+                        end
+                    end
+                    UpdateLootLog();
                 end
 
-                frame.pendingQuery = nil;
-                frame.pendingName = nil;
+                toastFrame.pendingQuery = nil;
+                toastFrame.pendingName = nil;
             end
         end
     end
@@ -546,12 +768,10 @@ end);
 -- ============================================================================
 -- Main Show Routine
 -- ============================================================================
-function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, itemSlot)
+function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew)
     if not name or name == "" then return; end
-    -- Exclude Neck pieces: Neck is player's class ability amulet, NOT a boss drop!
-    if IsNeckPiece(name, itemLink, slotLabel, itemSlot) then return; end
+    if IsNeckPiece(name, itemLink, slotLabel) then return; end
 
-    -- Suppress native right-hand notice immediately
     SuppressNativeLootNotice();
 
     local lowerName = string.lower(name);
@@ -579,11 +799,10 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, it
 
     -- Step 3: Check bags or equipped gear right now
     if not texture or texture == "" then
-        local bLink, bTex, bSlot = FindItemInBagsOrInventory(name);
+        local bLink, bTex = FindItemInBagsOrInventory(name);
         if bTex then
             texture = bTex;
             if bLink and not itemLink then itemLink = bLink; end
-            if bSlot and not itemSlot then itemSlot = bSlot; end
         end
     end
 
@@ -615,7 +834,7 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, it
 
     iconTex:SetTexture(texture);
     iconGlow:SetVertexColor(r, g, b, 0.90);
-    frame:SetBackdropBorderColor(r, g, b, 0.95);
+    toastFrame:SetBackdropBorderColor(r, g, b, 0.95);
 
     nameText:SetText(name);
     nameText:SetTextColor(r, g, b);
@@ -626,34 +845,43 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew, it
     end
     subText:SetText(sub);
 
-    frame.itemName = name;
-    frame.itemLink = itemLink;
-    frame.itemQuality = quality;
-    frame.subDetail = sub;
-    frame.itemSlot = itemSlot;
+    toastFrame.itemName = name;
+    toastFrame.itemLink = itemLink;
+    toastFrame.itemQuality = quality;
+    toastFrame.subDetail = sub;
 
-    -- If texture was a fallback or item link is still unknown, queue for live background resolver
     if isFallback or (not itemLink) then
-        frame.pendingQuery = itemLink or name;
-        frame.pendingName = name;
+        toastFrame.pendingQuery = itemLink or name;
+        toastFrame.pendingName = name;
         resolveTimer = 0;
     else
-        frame.pendingQuery = nil;
-        frame.pendingName = nil;
+        toastFrame.pendingQuery = nil;
+        toastFrame.pendingName = nil;
     end
 
     displayTimer = DISPLAY_DURATION;
-    frame:SetAlpha(1.0);
-    frame:Show();
+    toastFrame:SetAlpha(1.0);
+    toastFrame:Show();
+
+    -- Add to Left-Hand Run Loot Log
+    AddRunLootEntry(name, itemLink, texture, quality, isNew);
 
     PlaySound("QUESTCOMPLETED");
 end
 
 -- ============================================================================
--- Chat Message Interception
+-- Chat Message Interception (ONLY True Enemy Boss Drops)
 -- ============================================================================
 local function ParseLootMessage(message)
     if type(message) ~= "string" then return; end
+
+    -- STRICT GUARD: If player is currently picking an Augment or leveling up, IGNORE!
+    if AZS_GetPhase then
+        local phase = AZS_GetPhase();
+        if phase == "choosing" or phase == "level_up" then
+            return;
+        end
+    end
 
     local body = nil;
     for _, prefix in ipairs(LOOT_PREFIXES) do
@@ -714,78 +942,9 @@ local function ParseLootMessage(message)
         end
     end
 
-    if IsNeckPiece(name, itemLink, slotLabel, nil) then return; end
+    if IsNeckPiece(name, itemLink, slotLabel) then return; end
 
     LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew);
-end
-
--- ============================================================================
--- Equipment Watcher (Detect newly equipped boss drops / armor / jewelry in run)
--- ============================================================================
--- Watch all armor and weapon slots (slot 7 = Legs / Pants!)
--- Slot 2 (Neck) is strictly the starting class ability amulet and excluded.
-local GEAR_SLOTS = { 1, 3, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18 };
-local SLOT_NAMES = {
-    [1]  = "Head",
-    [3]  = "Shoulder",
-    [5]  = "Chest",
-    [6]  = "Waist",
-    [7]  = "Legs",     -- Pants!
-    [8]  = "Feet",
-    [9]  = "Wrist",
-    [10] = "Hands",
-    [11] = "Ring",
-    [12] = "Ring",
-    [13] = "Trinket",
-    [14] = "Trinket",
-    [15] = "Back",
-    [16] = "Main Hand",
-    [17] = "Off Hand",
-    [18] = "Ranged",
-};
-
-local knownGear = {};
-local initializedGear = false;
-
-local function IsInActiveRun()
-    if AZS_GetPhase then
-        local phase = AZS_GetPhase();
-        if phase and phase ~= "ready" then
-            return true;
-        end
-    end
-    if AZS_RUN and AZS_RUN.t and tonumber(AZS_RUN.t) > 0 then
-        return true;
-    end
-    return false;
-end
-
-local function CheckEquippedGear()
-    if not GetInventoryItemLink then return; end
-
-    for _, slot in ipairs(GEAR_SLOTS) do
-        local link = GetInventoryItemLink("player", slot);
-        local oldLink = knownGear[slot];
-
-        if link and link ~= oldLink then
-            knownGear[slot] = link;
-            if initializedGear and IsInActiveRun() then
-                -- A new boss drop piece was equipped!
-                local _, _, name = string.find(link, "%[(.-)%]");
-                local texture = GetInventoryItemTexture and GetInventoryItemTexture("player", slot);
-                local _, _, hexColor = string.find(link, "|c%x%x(%x%x%x%x%x%x)");
-                local quality = (hexColor and HEX_TO_QUALITY[string.lower(hexColor)]) or 4;
-                local slotName = SLOT_NAMES[slot] or "Equipment";
-
-                if not IsNeckPiece(name, link, slotName, slot) then
-                    LootUI:ShowAlert(name or "Boss Drop", link, texture, quality, slotName, false, slot);
-                end
-            end
-        elseif not link then
-            knownGear[slot] = nil;
-        end
-    end
-    initializedGear = true;
 end
 
 -- ============================================================================
@@ -802,39 +961,49 @@ eventFrame:RegisterEvent("CHAT_MSG_ADDON");
 
 eventFrame:SetScript("OnEvent", function()
     if event == "CHAT_MSG_LOOT" or event == "CHAT_MSG_SYSTEM" then
+        -- Check for new run reset message
+        if arg1 and (string.find(arg1, "Move to begin", 1, true) or string.find(arg1, "Betretet das Gebiet", 1, true)) then
+            runLoot = {};
+            UpdateLootLog();
+        end
         ParseLootMessage(arg1);
     elseif event == "UNIT_INVENTORY_CHANGED" then
         if arg1 == "player" then
-            CheckEquippedGear();
+            -- ONLY quietly scan items into cache for tooltips/textures. NEVER trigger alerts on equip!
             ScanAllPlayerItems();
         end
     elseif event == "BAG_UPDATE" then
         ScanAllPlayerItems();
     elseif event == "CHAT_MSG_ADDON" then
         if arg1 == "AZSZONE" then
-            -- Reset gear baseline for new run & suppress native loot
-            knownGear = {};
-            initializedGear = false;
-            CheckEquippedGear();
+            -- Reset run loot log for new zone/run & suppress native loot
+            runLoot = {};
+            UpdateLootLog();
             SuppressNativeLootNotice();
         end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
-        -- Restore saved position
+        -- Restore saved positions
         if BordoUIDB and BordoUIDB.lootAlertPos and BordoUIDB.lootAlertPos.point then
-            BordoUI:RestorePosition(frame, BordoUIDB.lootAlertPos);
+            BordoUI:RestorePosition(toastFrame, BordoUIDB.lootAlertPos);
         else
-            frame:ClearAllPoints();
-            frame:SetPoint("TOP", UIParent, "TOP", 0, -175);
+            toastFrame:ClearAllPoints();
+            toastFrame:SetPoint("TOP", UIParent, "TOP", 0, -175);
         end
-        CheckEquippedGear();
+        PlaceLootLog();
         ScanAllPlayerItems();
         SuppressNativeLootNotice();
     end
 end);
 
 -- ============================================================================
--- Test Helper
+-- Commands & Testing
 -- ============================================================================
+function BordoUI:ClearRunLoot()
+    runLoot = {};
+    UpdateLootLog();
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Cleared current run loot list.");
+end
+
 function BordoUI:TestLootAlert(kind)
     kind = string.lower(kind or "");
     if kind == "pants" or kind == "hosen" or kind == "legs" or kind == "beine" then
@@ -846,7 +1015,7 @@ function BordoUI:TestLootAlert(kind)
             "Legs (Pants · Tier 0.5)",
             true
         );
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview: |cffa335ee[Wildheart Pants]|r (Legs).");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Previewed Boss Drop: |cffa335ee[Wildheart Pants]|r (Legs).");
     elseif kind == "helm" or kind == "kopf" or kind == "head" then
         LootUI:ShowAlert(
             "Crown of Destruction",
@@ -856,7 +1025,7 @@ function BordoUI:TestLootAlert(kind)
             "Head (Crown)",
             false
         );
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview: |cffa335ee[Crown of Destruction]|r (Head).");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Previewed Boss Drop: |cffa335ee[Crown of Destruction]|r (Head).");
     else
         LootUI:ShowAlert(
             "Band of Accuria",
@@ -866,6 +1035,6 @@ function BordoUI:TestLootAlert(kind)
             "Finger (Ring · Rank IV)",
             true
         );
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Triggered Boss Loot Alert preview: |cffa335ee[Band of Accuria]|r (Ring). Type '/bordo testloot pants' for pants test.");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Previewed Boss Drop: |cffa335ee[Band of Accuria]|r (Ring). Try '/bordo testloot pants' for pants.");
     end
 end
