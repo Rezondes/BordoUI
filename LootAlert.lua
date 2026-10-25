@@ -1,28 +1,21 @@
 --[[
-    Bordo UI - Modern Boss Loot Alert & Run Loot Log (LootAlert.lua)
+    Bordo UI - Modern Boss Loot Toast (LootAlert.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
 
-    1. Top-Center Boss Loot Toast ("Mitte oben, über dem Charakter"):
-       - Prominent 40x40 Authentic Item Icon with Quality Border & Glow
-       - "BOSS LOOT" header in gold
-       - Item Name in full Quality Color (Uncommon, Rare, Epic, Legendary)
-       - Item Slot / Subtitle / Collection status (e.g. "Legs · Epic", "Finger · New in collection!")
-       - ONLY triggers on true enemy boss drops (CHAT_MSG_LOOT / CHAT_MSG_SYSTEM).
-       - Never triggers on Augment choices or level-up upgrades!
-       - Excludes starting ability Neck amulets.
-       - Smooth 7-second display with fade-out.
-       - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootAlertPos).
-
-    2. Left-Hand Run Loot Log ("Links wo höchster Krit ist"):
-       - Sleek panel docked under "Höchster Krit" (SurvivorUICrits) or This Run (SurvivorUIRun)
-       - Lists all equipment & jewelry dropped in the current run (newest first)
-       - Each entry displays the authentic item icon, quality color, drop time, and count
-       - Interactive hover tooltip and Shift-Click link insertion
-       - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootListPos)
-       - Resets cleanly when a new run begins (AZSZONE or "Move to begin")
-
-    3. Native Right-Side Loot Suppression:
-       - Continuously ensures AZS_SetHudShown("loot", false) so no duplicate window appears on the right.
+    Displays a prominent, modern Loot Toast above the player character
+    ("Mitte oben, über dem Charakter") when a boss drops equipment or jewelry:
+    - 40x40 Authentic Item Icon with Quality Border & Glow
+    - "BOSS LOOT" header in gold
+    - Item Name in full Quality Color (Uncommon, Rare, Epic, Legendary)
+    - Item Slot / Subtitle / Collection status (e.g. "Legs · Epic", "Finger · New in collection!")
+    - ONLY triggers on true enemy boss drops (CHAT_MSG_LOOT / CHAT_MSG_SYSTEM)
+    - Strictly excludes Augment choices and level-up upgrades
+    - Excludes player starting ability Neck amulets
+    - Live Asynchronous Icon Resolution: Scans bags, equipment, and WoW cache so authentic item icons (Pants, Rings, etc.) always appear immediately
+    - Keyword Fallbacks: Instant slot-appropriate icons (Pants -> Pants icon, etc.) so generic box icons are never shown
+    - Suppresses the native Azeroth Survivors right-side loot notice (AZS_SetHudShown("loot", false))
+    - Movable with Alt+Drag or /bordo unlock (saved in BordoUIDB.lootAlertPos)
+    - Testable with /bordo loot, /bordo testloot, /bordo testloot pants
 ]]--
 
 BordoUI = BordoUI or {};
@@ -199,7 +192,7 @@ local function SuppressNativeLootNotice()
 end
 
 -- ============================================================================
--- 1. Center Boss Loot Toast
+-- Center Boss Loot Toast ("Mitte oben, über dem Charakter")
 -- ============================================================================
 local toastFrame = CreateFrame("Button", "BordoUI_LootAlertFrame", UIParent);
 LootUI.frame = toastFrame;
@@ -322,223 +315,6 @@ toastFrame:SetScript("OnClick", function()
         toastFrame:Hide();
     end
 end);
-
--- ============================================================================
--- 2. Left-Hand Run Loot Log ("Links wo höchster Krit ist")
--- ============================================================================
-local LOG_WIDTH = 220;
-local ROW_HEIGHT = 20;
-local MAX_LOG_ROWS = 8;
-local runLoot = {}; -- { name, link, tex, quality, isNew, time, count }
-
-local logFrame = CreateFrame("Button", "BordoUI_LootLogFrame", UIParent);
-LootUI.logFrame = logFrame;
-logFrame:SetWidth(LOG_WIDTH);
-logFrame:SetHeight(48);
-logFrame:SetFrameStrata("MEDIUM");
-logFrame:SetFrameLevel(15);
-logFrame:SetClampedToScreen(true);
-logFrame:SetMovable(true);
-logFrame:EnableMouse(true);
-logFrame:RegisterForDrag("LeftButton");
-logFrame:Hide();
-
-logFrame:SetBackdrop({
-    bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
-    edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-    tile     = true,
-    tileSize = 12,
-    edgeSize = 8,
-    insets   = { left = 2, right = 2, top = 2, bottom = 2 }
-});
-logFrame:SetBackdropColor(0.04, 0.04, 0.07, 0.88);
-logFrame:SetBackdropBorderColor(0.28, 0.28, 0.32, 0.95);
-
-logFrame:SetScript("OnDragStart", function()
-    if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
-        logFrame:StartMoving();
-    end
-end);
-
-logFrame:SetScript("OnDragStop", function()
-    logFrame:StopMovingOrSizing();
-    if BordoUIDB then
-        local point, _, relPoint, x, y = logFrame:GetPoint();
-        BordoUIDB.lootListPos = { point = point, relativePoint = relPoint, x = x, y = y };
-    end
-end);
-
-local logTitle = logFrame:CreateFontString(nil, "OVERLAY");
-logTitle:SetFont(FONT_PATH, 11, "OUTLINE");
-logTitle:SetPoint("TOPLEFT", logFrame, "TOPLEFT", 8, -6);
-logTitle:SetTextColor(1.0, 0.82, 0.0);
-logTitle:SetText("Loot");
-
-local logRows = {};
-
-local function CreateLogRow(i)
-    local row = CreateFrame("Button", nil, logFrame);
-    row:SetWidth(LOG_WIDTH - 16);
-    row:SetHeight(ROW_HEIGHT);
-    row:SetPoint("TOPLEFT", logFrame, "TOPLEFT", 8, -22 - (i - 1) * ROW_HEIGHT);
-    row:EnableMouse(true);
-    row:RegisterForClicks("LeftButtonUp", "RightButtonUp");
-
-    row.icon = row:CreateTexture(nil, "ARTWORK");
-    row.icon:SetWidth(16);
-    row.icon:SetHeight(16);
-    row.icon:SetPoint("LEFT", row, "LEFT", 2, 0);
-    row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92);
-
-    row.iconBorder = row:CreateTexture(nil, "OVERLAY");
-    row.iconBorder:SetTexture(FLAT);
-    row.iconBorder:SetPoint("TOPLEFT", row.icon, "TOPLEFT", -1, 1);
-    row.iconBorder:SetPoint("BOTTOMRIGHT", row.icon, "BOTTOMRIGHT", 1, -1);
-    row.iconBorder:SetVertexColor(0, 0, 0, 1);
-
-    row.name = row:CreateFontString(nil, "OVERLAY");
-    row.name:SetFont(FONT_PATH, 10, "OUTLINE");
-    row.name:SetPoint("LEFT", row.icon, "RIGHT", 6, 0);
-    row.name:SetWidth(128);
-    row.name:SetHeight(12);
-    row.name:SetJustifyH("LEFT");
-    row.name:SetTextColor(1, 1, 1);
-
-    row.time = row:CreateFontString(nil, "OVERLAY");
-    row.time:SetFont(FONT_PATH, 9, "OUTLINE");
-    row.time:SetPoint("RIGHT", row, "RIGHT", -2, 0);
-    row.time:SetTextColor(0.75, 0.75, 0.75);
-
-    row:SetScript("OnEnter", function()
-        if this.itemLink then
-            GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
-            GameTooltip:SetHyperlink(this.itemLink);
-            GameTooltip:Show();
-        elseif this.itemName then
-            GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
-            local r, g, b = 1, 1, 1;
-            if this.itemQuality and QUALITY_COLORS[this.itemQuality] then
-                r = QUALITY_COLORS[this.itemQuality][1];
-                g = QUALITY_COLORS[this.itemQuality][2];
-                b = QUALITY_COLORS[this.itemQuality][3];
-            end
-            GameTooltip:SetText(this.itemName, r, g, b);
-            GameTooltip:Show();
-        end
-    end);
-    row:SetScript("OnLeave", function() GameTooltip:Hide(); end);
-    row:SetScript("OnClick", function()
-        if IsShiftKeyDown() and ChatFrameEditBox and ChatFrameEditBox:IsShown() and this.itemLink then
-            ChatFrameEditBox:Insert(this.itemLink);
-        end
-    end);
-
-    logRows[i] = row;
-    return row;
-end
-
-local function PlaceLootLog()
-    if BordoUIDB and BordoUIDB.lootListPos and BordoUIDB.lootListPos.point then
-        BordoUI:RestorePosition(logFrame, BordoUIDB.lootListPos);
-        return;
-    end
-    logFrame:ClearAllPoints();
-    local crits = getglobal("SurvivorUICrits");
-    local run = getglobal("SurvivorUIRun");
-    if crits and crits:IsShown() then
-        logFrame:SetPoint("TOPLEFT", crits, "BOTTOMLEFT", 0, -8);
-    elseif run and run:IsShown() then
-        logFrame:SetPoint("TOPLEFT", run, "BOTTOMLEFT", 0, -8);
-    else
-        logFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -260);
-    end
-end
-
-local function UpdateLootLog()
-    local n = table.getn(runLoot);
-    if n == 0 and not BordoUI.isMovingUnlocked then
-        logFrame:Hide();
-        return;
-    end
-
-    if n > 0 then
-        logTitle:SetText(string.format("Loot (%d)", n));
-    else
-        logTitle:SetText("Loot (Drag Me)");
-    end
-
-    local displayCount = math.min(n, MAX_LOG_ROWS);
-    for i = 1, MAX_LOG_ROWS do
-        local row = logRows[i] or CreateLogRow(i);
-        if i <= displayCount then
-            local entry = runLoot[i];
-            row.itemName = entry.name;
-            row.itemLink = entry.link;
-            row.itemQuality = entry.quality;
-
-            local qc = QUALITY_COLORS[entry.quality] or QUALITY_COLORS[4];
-            local r, g, b = qc[1], qc[2], qc[3];
-
-            row.icon:SetTexture(entry.tex or "Interface\\Icons\\INV_Misc_Gift_01");
-            row.name:SetText(entry.name);
-            row.name:SetTextColor(r, g, b);
-
-            local extra = entry.time or "";
-            if entry.count and entry.count > 1 then
-                extra = "x" .. entry.count .. " " .. extra;
-            end
-            if entry.isNew then
-                extra = "|cff7dff7dnew|r " .. extra;
-            end
-            row.time:SetText(extra);
-            row:Show();
-        else
-            row:Hide();
-        end
-    end
-
-    local finalHeight = 24 + math.max(1, displayCount) * ROW_HEIGHT + 6;
-    logFrame:SetHeight(finalHeight);
-    PlaceLootLog();
-    logFrame:Show();
-end
-
-local function AddRunLootEntry(name, itemLink, texture, quality, isNew)
-    local runSeconds = (AZS_GetRunTime and AZS_GetRunTime()) or (AZS_RUN and tonumber(AZS_RUN.t)) or 0;
-    local timeStr = "";
-    if runSeconds and runSeconds > 0 then
-        timeStr = string.format("%d:%02d", math.floor(runSeconds / 60), math.mod(math.floor(runSeconds), 60));
-    end
-
-    local found = nil;
-    for _, entry in ipairs(runLoot) do
-        if entry.name == name then
-            found = entry;
-            break;
-        end
-    end
-
-    if found then
-        found.count = (found.count or 1) + 1;
-        found.time = timeStr;
-        if texture and texture ~= "" and (not found.tex or string.find(found.tex, "Gift_01", 1, true)) then
-            found.tex = texture;
-        end
-    else
-        local entry = {
-            name    = name,
-            link    = itemLink,
-            tex     = texture,
-            quality = quality or 4,
-            isNew   = isNew,
-            time    = timeStr,
-            count   = 1,
-        };
-        table.insert(runLoot, 1, entry);
-    end
-
-    UpdateLootLog();
-end
 
 -- ============================================================================
 -- Item Cache & Bag Scanning (Background Knowledge Only - Never triggers alert)
@@ -726,7 +502,7 @@ toastFrame:SetScript("OnUpdate", function()
                 end
             end
 
-            -- 3. Apply resolved texture to both toast and run log
+            -- 3. Apply resolved texture to toast
             if resolvedTex and resolvedTex ~= "" then
                 iconTex:SetTexture(resolvedTex);
                 if resolvedLink then toastFrame.itemLink = resolvedLink; end
@@ -746,16 +522,6 @@ toastFrame:SetScript("OnUpdate", function()
                     cache[lower] = cache[lower] or {};
                     cache[lower].tex = resolvedTex;
                     if resolvedLink then cache[lower].link = resolvedLink; end
-
-                    -- Update run loot entry if pending
-                    for _, entry in ipairs(runLoot) do
-                        if entry.name == toastFrame.pendingName then
-                            entry.tex = resolvedTex;
-                            if resolvedLink then entry.link = resolvedLink; end
-                            break;
-                        end
-                    end
-                    UpdateLootLog();
                 end
 
                 toastFrame.pendingQuery = nil;
@@ -863,9 +629,6 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew)
     toastFrame:SetAlpha(1.0);
     toastFrame:Show();
 
-    -- Add to Left-Hand Run Loot Log
-    AddRunLootEntry(name, itemLink, texture, quality, isNew);
-
     PlaySound("QUESTCOMPLETED");
 end
 
@@ -961,11 +724,6 @@ eventFrame:RegisterEvent("CHAT_MSG_ADDON");
 
 eventFrame:SetScript("OnEvent", function()
     if event == "CHAT_MSG_LOOT" or event == "CHAT_MSG_SYSTEM" then
-        -- Check for new run reset message
-        if arg1 and (string.find(arg1, "Move to begin", 1, true) or string.find(arg1, "Betretet das Gebiet", 1, true)) then
-            runLoot = {};
-            UpdateLootLog();
-        end
         ParseLootMessage(arg1);
     elseif event == "UNIT_INVENTORY_CHANGED" then
         if arg1 == "player" then
@@ -976,20 +734,16 @@ eventFrame:SetScript("OnEvent", function()
         ScanAllPlayerItems();
     elseif event == "CHAT_MSG_ADDON" then
         if arg1 == "AZSZONE" then
-            -- Reset run loot log for new zone/run & suppress native loot
-            runLoot = {};
-            UpdateLootLog();
             SuppressNativeLootNotice();
         end
     elseif event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
-        -- Restore saved positions
+        -- Restore saved position
         if BordoUIDB and BordoUIDB.lootAlertPos and BordoUIDB.lootAlertPos.point then
             BordoUI:RestorePosition(toastFrame, BordoUIDB.lootAlertPos);
         else
             toastFrame:ClearAllPoints();
             toastFrame:SetPoint("TOP", UIParent, "TOP", 0, -175);
         end
-        PlaceLootLog();
         ScanAllPlayerItems();
         SuppressNativeLootNotice();
     end
@@ -998,12 +752,6 @@ end);
 -- ============================================================================
 -- Commands & Testing
 -- ============================================================================
-function BordoUI:ClearRunLoot()
-    runLoot = {};
-    UpdateLootLog();
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Cleared current run loot list.");
-end
-
 function BordoUI:TestLootAlert(kind)
     kind = string.lower(kind or "");
     if kind == "pants" or kind == "hosen" or kind == "legs" or kind == "beine" then

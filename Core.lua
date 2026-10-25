@@ -272,10 +272,7 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( BordoUI.TestLootAlert ) then
             BordoUI:TestLootAlert(val);
         end
-    elseif ( cmd == "clearloot" ) then
-        if ( BordoUI.ClearRunLoot ) then
-            BordoUI:ClearRunLoot();
-        end
+
     elseif ( cmd == "test" or cmd == "preview" ) then
         BordoUI.TestBossPreview = not BordoUI.TestBossPreview;
         local st = BordoUI.TestBossPreview and "enabled (Hogger test boss)" or "disabled";
@@ -505,7 +502,6 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = BordoUI_ChatBox, name = "Chat Box (Drag Me)", key = "chatPos" },
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
 		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
-		{ frame = BordoUI_LootLogFrame, name = "Run Loot Log (Drag Me)", key = "lootListPos" },
     };
     for i = 1, table.getn(targets) do
         local t = targets[i];
@@ -551,7 +547,6 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.microDockPos = nil;
 	BordoUIDB.tooltipPos = nil;
 	BordoUIDB.lootAlertPos = nil;
-	BordoUIDB.lootListPos = nil;
     BordoUIDB.centerHudPos = nil;
     BordoUIDB.multPanelPos = nil;
     if ( AZSHelperDB ) then
@@ -586,18 +581,7 @@ function BordoUI:ResetToDefaultLayout()
 		BordoUI_LootAlertFrame:ClearAllPoints();
 		BordoUI_LootAlertFrame:SetPoint("TOP", UIParent, "TOP", 0, -175);
 	end
-	if ( BordoUI_LootLogFrame ) then
-		BordoUI_LootLogFrame:ClearAllPoints();
-		local crits = getglobal("SurvivorUICrits");
-		local run = getglobal("SurvivorUIRun");
-		if ( crits and crits:IsShown() ) then
-			BordoUI_LootLogFrame:SetPoint("TOPLEFT", crits, "BOTTOMLEFT", 0, -8);
-		elseif ( run and run:IsShown() ) then
-			BordoUI_LootLogFrame:SetPoint("TOPLEFT", run, "BOTTOMLEFT", 0, -8);
-		else
-			BordoUI_LootLogFrame:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -260);
-		end
-	end
+
     if ( Minimap ) then
         Minimap:ClearAllPoints();
         Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -12);

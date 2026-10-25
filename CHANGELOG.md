@@ -4,6 +4,19 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.4] - 2026-10-25
+
+### Removed & Streamlined
+- **Removed Left Loot Log Window:**
+  - Completely removed the secondary left-side loot panel (`BordoUI_LootLogFrame`) to eliminate screen clutter and overlaps.
+  - The clean, modern top-center toast directly above the character (`BordoUI_LootAlertFrame`) is now the single, dedicated notification for all boss drops.
+- **Strict Enemy Boss Drop Filtering Maintained:**
+  - Boss loot notifications trigger exclusively on true enemy drops (`CHAT_MSG_LOOT` / `CHAT_MSG_SYSTEM`).
+  - Augments, level-up choices, and Neck ability amulets remain strictly excluded.
+  - Native right-side engine popup remains cleanly suppressed (`AZS_SetHudShown("loot", false)`).
+
+---
+
 ## [2.7.3] - 2026-10-25
 
 ### Fixed & Added
