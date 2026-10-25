@@ -1,7 +1,8 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.7.1-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.7.4-brightgreen.svg)](https://github.com)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/threenox/BordoUI/total.svg?color=blue)](https://github.com/threenox/BordoUI/releases)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
 [![Mod](https://img.shields.io/badge/Mod-Azeroth%20Survivors-purple.svg)](https://github.com)
@@ -71,6 +72,13 @@
 - Highest crit records and damage breakdown table via `StatsTable.lua` (`/bordo table`).
 - Modern death recap popup window via `DeathRecap.lua`.
 
+### 9. 🎁 Top-Center Boss Loot Toast (`LootAlert.lua`)
+- **Centered Boss Drop Alert:** Displays a prominent, high-visibility loot toast directly above your character when an enemy boss drops equipment or jewelry.
+- **Authentic Item Icons & Quality Borders:** Real item textures (Pants, Rings, Helmets, Weapons) with glowing borders matched to item rarity (Uncommon, Rare, Epic, Legendary).
+- **Clean & Focused:** Exclusively triggers on actual enemy boss drops. Level-up choices, augments, and starting amulets are cleanly filtered out.
+- **Suppressed Game Engine Popups:** Automatically hides the game's default right-side popup (`AZS_SetHudShown("loot", false)`) so loot remains unified and uncluttered.
+- **Fully Movable:** Alt-drag or `/bordo unlock` to position anywhere on screen.
+
 ---
 
 ## ⌨️ Slash Commands
@@ -80,7 +88,27 @@
 | `/bordo` or `/azs` | Toggle Attack & Crit Statistics table |
 | `/bordo lock` / `/lock` | Lock all UI windows in place (prevents dragging) |
 | `/bordo unlock` / `/unlock` | Unlock all UI windows for free dragging |
+| `/bordo testloot` | Preview Boss Loot Toast with an Epic Ring (`[Band of Accuria]`) |
+| `/bordo testloot pants` | Preview Boss Loot Toast with Epic Pants (`[Wildheart Pants]`) |
+| `/bordo testloot helm` | Preview Boss Loot Toast with an Epic Headpiece (`[Crown of Destruction]`) |
 | `/bordo plates` / `/plates` | Force enable teammate & enemy overhead nameplates |
 | `/bordo party` / `/bparty` | Toggle Party Frames |
 | `/bordo party test` | Toggle Party Frames simulated test mode |
 | `/bordo reset` | Reset all UI window positions to default |
+
+---
+
+## 🙏 Credits & Acknowledgments
+
+Bordo UI stands on the shoulders of giants and wouldn't be possible without the incredible work of the Azeroth Survivors and Vanilla WoW addon community:
+
+- **[Survivor UI](https://github.com/morderous/survivor-ui) by [morderous](https://github.com/morderous):**
+  A huge, heartfelt thank you to **morderous** for creating the exceptional [Survivor UI](https://github.com/morderous/survivor-ui). Several components, custom artwork assets (`.tga` files in `Art/`), architecture design, and core layout implementations (such as `AbilityTooltip`, `BuildList`, `CharacterPane`, and `PartyFrames`) originate from or build upon Survivor UI, used and distributed under the terms of the **GNU General Public License v3.0 (GPL-3.0)**.
+- **Azeroth Survivors Team:** For developing an outstanding game mode and exposing custom client/server API hooks (`AZS_*`).
+- **Ellesmere:** For UI layout, spacing, and styling inspiration.
+
+---
+
+## 📄 License
+
+This project is licensed under the **GNU General Public License v3.0 (GPL-3.0)**. See the [LICENSE](LICENSE) file for the full license text.
