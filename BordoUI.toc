@@ -18,3 +18,4 @@ PartyFrames.lua
 Nameplates.lua
 MapPins.lua
 DeathRecap.lua
+LootAlert.lua

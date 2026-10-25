@@ -268,6 +268,10 @@ SlashCmdList["BORDOU"] = function(msg)
                 DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss timer list shown.");
             end
         end
+    elseif ( cmd == "loot" or cmd == "testloot" ) then
+        if ( BordoUI.TestLootAlert ) then
+            BordoUI:TestLootAlert();
+        end
     elseif ( cmd == "test" or cmd == "preview" ) then
         BordoUI.TestBossPreview = not BordoUI.TestBossPreview;
         local st = BordoUI.TestBossPreview and "enabled (Hogger test boss)" or "disabled";
@@ -496,6 +500,7 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = BordoUI_MinimapDock, name = "Minimap Action Buttons (Drag Me)", key = "minimapDockPos" },
         { frame = BordoUI_ChatBox, name = "Chat Box (Drag Me)", key = "chatPos" },
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
+		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
     };
     for i = 1, table.getn(targets) do
         local t = targets[i];
@@ -540,6 +545,7 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.tallyPos = nil;
     BordoUIDB.microDockPos = nil;
 	BordoUIDB.tooltipPos = nil;
+	BordoUIDB.lootAlertPos = nil;
     BordoUIDB.centerHudPos = nil;
     BordoUIDB.multPanelPos = nil;
     if ( AZSHelperDB ) then
@@ -570,6 +576,10 @@ function BordoUI:ResetToDefaultLayout()
         ChatFrame1:ClearAllPoints();
         ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
     end
+	if ( BordoUI_LootAlertFrame ) then
+		BordoUI_LootAlertFrame:ClearAllPoints();
+		BordoUI_LootAlertFrame:SetPoint("TOP", UIParent, "TOP", 0, -175);
+	end
     if ( Minimap ) then
         Minimap:ClearAllPoints();
         Minimap:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -12);
