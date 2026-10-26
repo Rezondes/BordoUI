@@ -372,10 +372,13 @@ function SurvivorUI_LairMarks(lairs)
     local marks = {};
     lairs = lairs or (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
     local places = {};
-    for index = 1, table.getn(lairs) do
-        local l = lairs[index];
-        local idx = (l and (l.index or l[1])) or index;
-        table.insert(places, tonumber(idx) or index);
+    for k, l in pairs(lairs) do
+        if type(l) == "table" then
+            local idx = tonumber(l.index or l[1]) or tonumber(k);
+            if idx then
+                table.insert(places, idx);
+            end
+        end
     end
     table.sort(places);
     for rank = 1, table.getn(places) do
@@ -390,7 +393,7 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
     end
     local column = math.mod(mark - 1, 4);
     local line = math.floor((mark - 1) / 4);
-    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks.tga");
     texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
         texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);

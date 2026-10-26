@@ -368,9 +368,25 @@ local function PointArrow(texture, angle)
     texture:SetTexCoord(col / CELLS, (col + 1) / CELLS, row / CELLS, (row + 1) / CELLS);
 end
 
+local function WrapAngle(angle)
+    while angle > math.pi do
+        angle = angle - 2 * math.pi;
+    end
+    while angle < -math.pi do
+        angle = angle + 2 * math.pi;
+    end
+    return angle;
+end
+
 for i = 1, 6 do
     local seg = CreateFrame("Frame", nil, segmentBar);
     seg:SetHeight(16);
+    seg:EnableMouse(true);
+    seg:SetScript("OnMouseUp", function()
+        if this.targetBoss and TargetByName then
+            TargetByName(this.targetBoss, true);
+        end
+    end);
 
     local bg = seg:CreateTexture(nil, "BACKGROUND");
     bg:SetTexture(FLAT);
@@ -383,8 +399,16 @@ for i = 1, 6 do
     mark:SetPoint("LEFT", seg, "LEFT", 1, 0);
     seg.mark = mark;
 
+    local shadow = seg:CreateTexture(nil, "ARTWORK");
+    shadow:SetTexture(ART .. "GuardianArrow.tga");
+    shadow:SetVertexColor(0, 0, 0, 0.85);
+    shadow:SetWidth(15);
+    shadow:SetHeight(15);
+    shadow:SetPoint("CENTER", seg, "CENTER", 4, 0);
+    seg.shadow = shadow;
+
     local arrow = seg:CreateTexture(nil, "OVERLAY");
-    arrow:SetTexture(ART .. "GuardianArrow");
+    arrow:SetTexture(ART .. "GuardianArrow.tga");
     arrow:SetWidth(13);
     arrow:SetHeight(13);
     arrow:SetPoint("CENTER", seg, "CENTER", 4, 0);
@@ -424,7 +448,7 @@ local lastWalkX, lastWalkY;
 local walkedHeading = 0;
 local function UpdatePlayerHeading()
     if ( AZS_RUN and AZS_RUN.pf ) then
-        return tonumber(AZS_RUN.pf) or 0;
+        return -tonumber(AZS_RUN.pf);
     end
     local hx, hy = GetPlayerMapPosition("player");
     if ( hx and hy and (hx > 0 or hy > 0) ) then
@@ -660,9 +684,20 @@ function TrackerUI:Update()
     end
 
     -- Guardians / Lairs
-    local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
-    local numLairs = table.getn(lairs);
-    local marks = SurvivorUI_LairMarks(lairs);
+    local rawLairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
+    local marks = SurvivorUI_LairMarks and SurvivorUI_LairMarks(rawLairs) or {};
+    local lairList = {};
+    for k, v in pairs(rawLairs) do
+        if type(v) == "table" then
+            table.insert(lairList, v);
+        end
+    end
+    table.sort(lairList, function(a, b)
+        local pa = tonumber(a.index or a[1]) or 0;
+        local pb = tonumber(b.index or b[1]) or 0;
+        return pa < pb;
+    end);
+    local numLairs = table.getn(lairList);
     local px = (run and tonumber(run.px)) or 0;
     local py = (run and tonumber(run.py)) or 0;
     local pFacing = UpdatePlayerHeading();
@@ -670,8 +705,9 @@ function TrackerUI:Update()
     -- Check achievement 4/4 before 8:00
     local totalSlain = 0;
     for i = 1, numLairs do
-        local l = lairs[i];
-        if ( l and (l.active == false or l.active == 0) ) then
+        local l = lairList[i];
+        local st = l.state or l[2];
+        if ( l.active == false or l.active == 0 or st == "empty" ) then
             totalSlain = totalSlain + 1;
         end
     end
@@ -689,43 +725,68 @@ function TrackerUI:Update()
         for i = 1, 6 do
             local seg = guardianSegments[i];
             if ( i <= numLairs ) then
-                local lair = lairs[i];
-                local markId = marks[tonumber(lair.index or lair[1]) or i] or i;
+                local lair = lairList[i];
+                local place = tonumber(lair.index or lair[1]) or i;
+                local markId = marks[place] or (math.mod(i - 1, 8) + 1);
 
                 seg:ClearAllPoints();
                 seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 2), 0);
                 seg:SetWidth(segW);
 
-                local isActive = (lair.active == true or lair.active == 1);
-                local isAwake = (lair.awake == true or lair.awake == 1);
+                local state = lair.state or lair[2];
+                local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
+                local isActive = (state ~= "empty" and (lair.active == nil or lair.active == true or lair.active == 1));
 
-                SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
+                if ( SurvivorUI_SetLairMark ) then
+                    SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
+                end
+
+                seg.targetBoss = lair.name or lair[3];
 
                 if ( isAwake ) then
                     -- Fighting / Awake in orange
                     seg.bg:SetVertexColor(1.0, 0.55, 0.15, 0.85);
                     seg.arrow:Hide();
+                    if ( seg.shadow ) then seg.shadow:Hide(); end
                     seg.timer:Show();
                     seg.timer:SetText("FIGHT");
                 elseif ( isActive ) then
-                    -- Spawned / Alive in light green with Rotational Arrow pointing to boss
+                    -- Spawned / Alive in light green with live 3D Directional Arrow
                     seg.bg:SetVertexColor(0.70, 0.92, 0.55, 0.85);
                     seg.timer:Hide();
+
+                    local lx = tonumber(lair.x or lair[6]) or 0;
+                    local ly = tonumber(lair.y or lair[7]) or 0;
+                    local east = py - ly;
+                    local south = px - lx;
+                    local bearing = math.atan2(east, -south);
+                    local relAngle = bearing - pFacing;
+
+                    PointArrow(seg.arrow, relAngle);
+                    if ( seg.shadow ) then
+                        PointArrow(seg.shadow, relAngle);
+                        seg.shadow:Show();
+                    end
                     seg.arrow:Show();
 
-                    local lx = tonumber(lair.x or lair[2]) or 0;
-                    local ly = tonumber(lair.y or lair[3]) or 0;
-                    local bearing = math.atan2(ly - py, lx - px);
-                    local relAngle = bearing - pFacing;
-                    PointArrow(seg.arrow, relAngle);
+                    -- Tint gold when walking/facing towards the boss (within ~15 degrees)
+                    local ahead = math.abs(WrapAngle(relAngle)) < 0.26;
+                    if ( ahead ) then
+                        seg.arrow:SetVertexColor(1.00, 0.85, 0.25, 1.0);
+                    else
+                        seg.arrow:SetVertexColor(1.00, 1.00, 1.00, 1.0);
+                    end
                 else
                     -- Slain / Respawning in red with countdown
                     seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
                     seg.arrow:Hide();
+                    if ( seg.shadow ) then seg.shadow:Hide(); end
                     seg.timer:Show();
-                    local respawnTime = tonumber(lair.respawn or lair.left) or 0;
+
+                    local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
+                    local respawnTime = (tonumber(lair.left or lair.respawn or lair[5]) or 0) - since;
                     if ( respawnTime > 0 ) then
-                        seg.timer:SetText(FormatClock(respawnTime));
+                        seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
                     else
                         seg.timer:SetText("0:39");
                     end

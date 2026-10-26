@@ -21,7 +21,7 @@ local SurvivorUI_FONT_BUMP = 0
 -- From the game's addon API (AZS_SPELLS); without it nothing shows. Hold Alt
 -- and drag to move; /sui build hides it.
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
+local ART = "Interface\\AddOns\\BordoUI\\Art\\"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 local WIDTH = 224
 local ROW_HEIGHT = 18
@@ -636,7 +636,7 @@ local function PlaceReach(row, symbol, tint)
 	if symbol and place then
 		if row.symbol ~= symbol then
 			row.symbol = symbol
-			row.glass:SetTexture(ART..symbol)
+			row.glass:SetTexture(ART..symbol..".tga")
 		end
 		-- Square between the column's two dividers, on whole pixels: 15 free
 		-- between them, 3 either side of the 9 of the symbol.
