@@ -357,7 +357,7 @@ local guardianSegments = {};
 local segmentBar = CreateFrame("Frame", nil, frame);
 segmentBar:SetPoint("TOPLEFT", guardiansHeader, "BOTTOMLEFT", 0, -2);
 segmentBar:SetPoint("TOPRIGHT", guardiansHeader, "BOTTOMRIGHT", 0, -2);
-segmentBar:SetHeight(16);
+segmentBar:SetHeight(18);
 
 local function PointArrow(texture, angle)
     local cells = CELLS * CELLS;
@@ -380,7 +380,7 @@ end
 
 for i = 1, 6 do
     local seg = CreateFrame("Frame", nil, segmentBar);
-    seg:SetHeight(16);
+    seg:SetHeight(18);
     seg:EnableMouse(true);
     seg:SetScript("OnMouseUp", function()
         if this.targetBoss and TargetByName then
@@ -394,9 +394,9 @@ for i = 1, 6 do
     seg.bg = bg;
 
     local mark = seg:CreateTexture(nil, "ARTWORK");
-    mark:SetWidth(13);
-    mark:SetHeight(13);
-    mark:SetPoint("LEFT", seg, "LEFT", 1, 0);
+    mark:SetWidth(14);
+    mark:SetHeight(14);
+    mark:SetPoint("LEFT", seg, "LEFT", 2, 0);
     seg.mark = mark;
 
     local shadow = seg:CreateTexture(nil, "ARTWORK");
@@ -404,19 +404,19 @@ for i = 1, 6 do
     shadow:SetVertexColor(0, 0, 0, 0.85);
     shadow:SetWidth(15);
     shadow:SetHeight(15);
-    shadow:SetPoint("CENTER", seg, "CENTER", 4, 0);
+    shadow:SetPoint("CENTER", seg, "CENTER", 7, 0);
     seg.shadow = shadow;
 
     local arrow = seg:CreateTexture(nil, "OVERLAY");
     arrow:SetTexture(ART .. "GuardianArrow.tga");
     arrow:SetWidth(13);
     arrow:SetHeight(13);
-    arrow:SetPoint("CENTER", seg, "CENTER", 4, 0);
+    arrow:SetPoint("CENTER", seg, "CENTER", 7, 0);
     seg.arrow = arrow;
 
     local timer = seg:CreateFontString(nil, "OVERLAY");
-    timer:SetFont(FONT_PATH, 9, "OUTLINE");
-    timer:SetPoint("RIGHT", seg, "RIGHT", -2, 0);
+    timer:SetFont(FONT_PATH, 10, "OUTLINE");
+    timer:SetPoint("RIGHT", seg, "RIGHT", -3, 0);
     timer:SetTextColor(1, 1, 1);
     seg.timer = timer;
 
@@ -721,7 +721,7 @@ function TrackerUI:Update()
     end
 
     if ( numLairs > 0 ) then
-        local segW = (barW - (numLairs - 1) * 2) / numLairs;
+        local segW = (barW - (numLairs - 1) * 3) / numLairs;
         for i = 1, 6 do
             local seg = guardianSegments[i];
             if ( i <= numLairs ) then
@@ -730,7 +730,7 @@ function TrackerUI:Update()
                 local markId = marks[place] or (math.mod(i - 1, 8) + 1);
 
                 seg:ClearAllPoints();
-                seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 2), 0);
+                seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 3), 0);
                 seg:SetWidth(segW);
 
                 local state = lair.state or lair[2];
