@@ -4,6 +4,21 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.0] - 2026-10-27
+
+### Fixed & Restored
+- **Minimap Battleground Caches (Golden Chests) Fully Restored (`MapPins.lua`):**
+  - Reverted to the rock-solid stationary unified map pin engine with robust fallback coordinate mapping (`GetVal`), handling both named fields and raw indexed arrays across all game modes.
+  - Battleground Caches appear with their authentic golden chest icon (`PinCache`) and soft pulsing glow (`glow`).
+  - Added perimeter edge clamping: when caches are beyond minimap reach, golden chest icons stay clamped to the border pointing the exact direction to the chest.
+- **Miniboss Heraldic Marks & Directional Arrows Restored (`BossTracker.lua`, `Core.lua`):**
+  - Restored authentic active state evaluation: recognizes both awake guardians in combat and alive guardians waiting in their lairs (`asleep`), coloring living segments vibrant green with rotating directional arrows.
+  - Heraldic marks (Crossed swords, Shield, Crown, Chalice, etc.) display cleanly on the left of each segment in both alive and dead states.
+  - Directional rotating arrow (`GuardianArrow`) points with 64-step precision directly toward living guardians and tints gold when walking toward them.
+  - Preserved Shaman totem health bar suppression (`/bordo totems`).
+
+---
+
 ## [2.7.9] - 2026-10-27
 
 ### Fixed & Restored

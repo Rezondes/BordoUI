@@ -22,25 +22,6 @@ local TrackerUI = {};
 BordoUI.BossTracker = TrackerUI;
 
 local ART = "Interface\\AddOns\\BordoUI\\Art\\";
-
-local function SetLairMark(texture, mark, dim)
-    if ( not mark or not texture ) then
-        if ( texture ) then texture:Hide(); end
-        return;
-    end
-    local column = math.mod(mark - 1, 4);
-    local line = math.floor((mark - 1) / 4);
-    texture:SetTexture(ART .. "LairMarks");
-    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
-    if ( dim ) then
-        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
-    else
-        texture:SetVertexColor(1, 1, 1, 1);
-    end
-    texture:Show();
-end
-SurvivorUI_SetLairMark = SetLairMark;
-
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground";
 local FONT_PATH = "Fonts\\ARIALN.TTF";
 local CELLS = 8; -- 8x8 arrow sheet = 64 angles
@@ -376,7 +357,7 @@ local guardianSegments = {};
 local segmentBar = CreateFrame("Frame", nil, frame);
 segmentBar:SetPoint("TOPLEFT", guardiansHeader, "BOTTOMLEFT", 0, -2);
 segmentBar:SetPoint("TOPRIGHT", guardiansHeader, "BOTTOMRIGHT", 0, -2);
-segmentBar:SetHeight(18);
+segmentBar:SetHeight(16);
 
 local function PointArrow(texture, angle)
     local cells = CELLS * CELLS;
@@ -413,7 +394,6 @@ for i = 1, 6 do
     seg.bg = bg;
 
     local mark = seg:CreateTexture(nil, "OVERLAY");
-    mark:SetTexture(ART .. "LairMarks");
     mark:SetWidth(14);
     mark:SetHeight(14);
     mark:SetPoint("LEFT", seg, "LEFT", 2, 0);
@@ -424,14 +404,14 @@ for i = 1, 6 do
     shadow:SetVertexColor(0, 0, 0, 0.85);
     shadow:SetWidth(15);
     shadow:SetHeight(15);
-    shadow:SetPoint("CENTER", seg, "CENTER", 7, 0);
+    shadow:SetPoint("CENTER", seg, "CENTER", 6, 0);
     seg.shadow = shadow;
 
     local arrow = seg:CreateTexture(nil, "OVERLAY");
     arrow:SetTexture(ART .. "GuardianArrow");
     arrow:SetWidth(13);
     arrow:SetHeight(13);
-    arrow:SetPoint("CENTER", seg, "CENTER", 7, 0);
+    arrow:SetPoint("CENTER", seg, "CENTER", 6, 0);
     seg.arrow = arrow;
 
     local timer = seg:CreateFontString(nil, "OVERLAY");
@@ -468,7 +448,7 @@ local lastWalkX, lastWalkY;
 local walkedHeading = 0;
 local function UpdatePlayerHeading()
     if ( AZS_RUN and AZS_RUN.pf ) then
-        return -tonumber(AZS_RUN.pf);
+        return -tonumber(AZS_RUN.pf) or 0;
     end
     local hx, hy = GetPlayerMapPosition("player");
     if ( hx and hy and (hx > 0 or hy > 0) ) then
@@ -755,9 +735,11 @@ function TrackerUI:Update()
 
                 local state = lair.state or lair[2];
                 local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
-                local isActive = (state ~= "empty" and (lair.active == nil or lair.active == true or lair.active == 1));
+                local isActive = (state == "asleep" or state == "awake" or (state ~= "empty" and state ~= nil) or lair.active == true or lair.active == 1);
 
-                SetLairMark(seg.mark, markId, not isActive);
+                if ( SurvivorUI_SetLairMark ) then
+                    SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
+                end
 
                 seg.targetBoss = lair.name or lair[3];
 
@@ -773,8 +755,8 @@ function TrackerUI:Update()
                     seg.bg:SetVertexColor(0.70, 0.92, 0.55, 0.85);
                     seg.timer:Hide();
 
-                    local lx = tonumber(lair.x or lair[6]) or 0;
-                    local ly = tonumber(lair.y or lair[7]) or 0;
+                    local lx = tonumber(lair.x or lair[6] or lair[2]) or 0;
+                    local ly = tonumber(lair.y or lair[7] or lair[3]) or 0;
                     local east = py - ly;
                     local south = px - lx;
                     local bearing = math.atan2(east, -south);
