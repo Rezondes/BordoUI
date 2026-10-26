@@ -4,6 +4,19 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.9] - 2026-10-27
+
+### Fixed & Restored
+- **Minimap Chests / Caches Restored (`MapPins.lua`):**
+  - Fully restored the authentic, zero-drift `MapPins.lua` engine from SurvivorUI.
+  - Battleground Caches (chests) now appear directly on the minimap with their golden chest icon (`PinCache`), accurate yard distance, cost, and edge clamping when out of reach.
+  - Guardian Lairs project reliably onto the minimap with their respective heraldic charges.
+- **Boss Heraldic Marks & Directional Arrows Fixed (`BossTracker.lua`, `Core.lua`):**
+  - Cleaned up texture path resolution: eliminated asynchronous `GetTexture()` overrides that were improperly pointing textures to nonexistent paths.
+  - Directional rotating arrows (`GuardianArrow`) and heraldic lair marks (`LairMarks`) are now cleanly loaded and visible in their respective tracker segments.
+
+---
+
 ## [2.7.8] - 2026-10-27
 
 ### Fixed & Resolved

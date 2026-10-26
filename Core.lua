@@ -155,29 +155,16 @@ function BordoUI:ToggleLock()
     return newState;
 end
 -- =========================================================================
--- Universal Window Lock Button Engine & Resilient Texture Applicator
+-- Universal Window Lock Button Engine & Texture Applicator
 -- =========================================================================
-local ADDON_FOLDER = "BordoUI";
-local debugStr = debugstack and debugstack(1, 1, 0) or "";
-local _, _, foundFolder = string.find(debugStr, "[Aa][Dd][Dd][Oo][Nn][Ss]\\([^\\]+)");
-if foundFolder and foundFolder ~= "" then
-    ADDON_FOLDER = foundFolder;
-end
-BordoUI.Folder = ADDON_FOLDER;
+local ART = "Interface\\AddOns\\BordoUI\\Art\\";
 
 function BordoUI_ApplyTexture(tex, name, sub)
     if not tex or not name then return; end
     sub = sub or "Art";
     local clean = string.gsub(name, "%.[tT][gG][aA]$", "");
     clean = string.gsub(clean, "%.[bB][lL][pP]$", "");
-
-    tex:SetTexture("Interface\\AddOns\\" .. ADDON_FOLDER .. "\\" .. sub .. "\\" .. clean);
-    if (not tex:GetTexture() or tex:GetTexture() == "") and ADDON_FOLDER ~= "BordoUI" then
-        tex:SetTexture("Interface\\AddOns\\BordoUI\\" .. sub .. "\\" .. clean);
-    end
-    if not tex:GetTexture() or tex:GetTexture() == "" then
-        tex:SetTexture("Interface\\AddOns\\SurvivorUI\\" .. sub .. "\\" .. clean);
-    end
+    tex:SetTexture("Interface\\AddOns\\BordoUI\\" .. sub .. "\\" .. clean);
 end
 
 BordoUI.LockButtons = {};
@@ -187,10 +174,10 @@ function BordoUI:UpdateAllLockButtons()
         local btn = BordoUI.LockButtons[i];
         if btn and btn.tex then
             if isLocked then
-                BordoUI_ApplyTexture(btn.tex, "Lock");
+                btn.tex:SetTexture(ART .. "Lock");
                 btn.tex:SetVertexColor(0.85, 0.85, 0.85, 0.85);
             else
-                BordoUI_ApplyTexture(btn.tex, "Unlock");
+                btn.tex:SetTexture(ART .. "Unlock");
                 btn.tex:SetVertexColor(0.30, 1.00, 0.40, 1.00);
             end
         end
@@ -416,7 +403,7 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
     end
     local column = math.mod(mark - 1, 4);
     local line = math.floor((mark - 1) / 4);
-    BordoUI_ApplyTexture(texture, "LairMarks");
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
     texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
         texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
