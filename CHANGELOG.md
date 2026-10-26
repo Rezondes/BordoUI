@@ -4,6 +4,17 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.8] - 2026-10-27
+
+### Fixed & Resolved
+- **Lair Marks & Directional Arrows Rendering (`BossTracker.lua`, `Core.lua`, `ThemeUI.lua`, `MapPins.lua`):**
+  - Resolved texture loading issue in World of Warcraft 1.12.1 client: stripped `.tga` extension from all `SetTexture()` calls to comply with Vanilla client engine expectations (engine automatically resolves `.blp` and `.tga`).
+  - Added resilient `ApplyTexture` and `BordoUI_ApplyTexture` helpers with dynamic addon folder detection (`debugstack`) and multi-path fallbacks (`BordoUI` & `SurvivorUI`).
+  - Switched `seg.mark` to `"OVERLAY"` layer so heraldic charges (Swords, Shield, Crown, Chalice, etc.) always render above background fills.
+  - Directional arrows (`GuardianArrow`) and heraldic marks are now 100% reliable across all client configurations and extraction folder names.
+
+---
+
 ## [2.7.6] - 2026-10-26
 
 ### Fixed & Improved

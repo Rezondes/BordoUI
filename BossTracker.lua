@@ -21,7 +21,44 @@ BordoUI = BordoUI or {};
 local TrackerUI = {};
 BordoUI.BossTracker = TrackerUI;
 
-local ART = "Interface\\AddOns\\BordoUI\\Art\\";
+local ADDON_FOLDER = "BordoUI";
+local debugStr = debugstack and debugstack(1, 1, 0) or "";
+local _, _, foundFolder = string.find(debugStr, "[Aa][Dd][Dd][Oo][Nn][Ss]\\([^\\]+)");
+if foundFolder and foundFolder ~= "" then
+    ADDON_FOLDER = foundFolder;
+end
+
+local function ApplyTexture(tex, name)
+    if not tex or not name then return; end
+    local clean = string.gsub(name, "%.[tT][gG][aA]$", "");
+    clean = string.gsub(clean, "%.[bB][lL][pP]$", "");
+    tex:SetTexture("Interface\\AddOns\\" .. ADDON_FOLDER .. "\\Art\\" .. clean);
+    if (not tex:GetTexture() or tex:GetTexture() == "") and ADDON_FOLDER ~= "BordoUI" then
+        tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\" .. clean);
+    end
+    if not tex:GetTexture() or tex:GetTexture() == "" then
+        tex:SetTexture("Interface\\AddOns\\SurvivorUI\\Art\\" .. clean);
+    end
+end
+
+local function SetLairMark(texture, mark, dim)
+    if ( not mark or not texture ) then
+        if ( texture ) then texture:Hide(); end
+        return;
+    end
+    local column = math.mod(mark - 1, 4);
+    local line = math.floor((mark - 1) / 4);
+    ApplyTexture(texture, "LairMarks");
+    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
+    if ( dim ) then
+        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
+    else
+        texture:SetVertexColor(1, 1, 1, 1);
+    end
+    texture:Show();
+end
+SurvivorUI_SetLairMark = SetLairMark;
+
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground";
 local FONT_PATH = "Fonts\\ARIALN.TTF";
 local CELLS = 8; -- 8x8 arrow sheet = 64 angles
@@ -393,14 +430,14 @@ for i = 1, 6 do
     bg:SetAllPoints(seg);
     seg.bg = bg;
 
-    local mark = seg:CreateTexture(nil, "ARTWORK");
+    local mark = seg:CreateTexture(nil, "OVERLAY");
     mark:SetWidth(14);
     mark:SetHeight(14);
     mark:SetPoint("LEFT", seg, "LEFT", 2, 0);
     seg.mark = mark;
 
     local shadow = seg:CreateTexture(nil, "ARTWORK");
-    shadow:SetTexture(ART .. "GuardianArrow.tga");
+    ApplyTexture(shadow, "GuardianArrow");
     shadow:SetVertexColor(0, 0, 0, 0.85);
     shadow:SetWidth(15);
     shadow:SetHeight(15);
@@ -408,7 +445,7 @@ for i = 1, 6 do
     seg.shadow = shadow;
 
     local arrow = seg:CreateTexture(nil, "OVERLAY");
-    arrow:SetTexture(ART .. "GuardianArrow.tga");
+    ApplyTexture(arrow, "GuardianArrow");
     arrow:SetWidth(13);
     arrow:SetHeight(13);
     arrow:SetPoint("CENTER", seg, "CENTER", 7, 0);
@@ -737,9 +774,7 @@ function TrackerUI:Update()
                 local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
                 local isActive = (state ~= "empty" and (lair.active == nil or lair.active == true or lair.active == 1));
 
-                if ( SurvivorUI_SetLairMark ) then
-                    SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
-                end
+                SetLairMark(seg.mark, markId, not isActive);
 
                 seg.targetBoss = lair.name or lair[3];
 
@@ -762,8 +797,15 @@ function TrackerUI:Update()
                     local bearing = math.atan2(east, -south);
                     local relAngle = bearing - pFacing;
 
+                    if ( not seg.arrow:GetTexture() or seg.arrow:GetTexture() == "" ) then
+                        ApplyTexture(seg.arrow, "GuardianArrow");
+                    end
                     PointArrow(seg.arrow, relAngle);
                     if ( seg.shadow ) then
+                        if ( not seg.shadow:GetTexture() or seg.shadow:GetTexture() == "" ) then
+                            ApplyTexture(seg.shadow, "GuardianArrow");
+                            seg.shadow:SetVertexColor(0, 0, 0, 0.85);
+                        end
                         PointArrow(seg.shadow, relAngle);
                         seg.shadow:Show();
                     end

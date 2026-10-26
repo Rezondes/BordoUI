@@ -29,11 +29,11 @@ AZSHelper = AZSHelper or {};
 local MEDIA = "Interface\\AddOns\\BordoUI\\Media\\";
 local ART = "Interface\\AddOns\\BordoUI\\Art\\";
 
-local BAG = MEDIA .. "bag.tga";
-local GLOW = MEDIA .. "glow.tga";
+local BAG = MEDIA .. "bag";
+local GLOW = MEDIA .. "glow";
 local ARROW = "Interface\\Minimap\\MinimapArrow";
-local PIN_LAIR = ART .. "PinLair.tga";
-local PACE_GLOW = ART .. "PaceGlow.tga";
+local PIN_LAIR = ART .. "PinLair";
+local PACE_GLOW = ART .. "PaceGlow";
 
 local PIN_SIZE = 14;
 local BOSS_PIN_SIZE = 18;

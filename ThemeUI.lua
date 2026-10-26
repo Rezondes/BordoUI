@@ -688,7 +688,11 @@ local function UnitFrame(unit, name, side, dropdown)
 		shield.fill:SetTexture(FLAT)
 		shield.fill:SetVertexColor(0.59, 0.82, 1, 0.45)
 		shield.stripes = shield:CreateTexture(nil, "BORDER")
-		shield.stripes:SetTexture("Interface\\AddOns\\BordoUI\\Art\\ShieldStripes.tga")
+		if BordoUI_ApplyTexture then
+			BordoUI_ApplyTexture(shield.stripes, "ShieldStripes")
+		else
+			shield.stripes:SetTexture("Interface\\AddOns\\BordoUI\\Art\\ShieldStripes")
+		end
 		shield.edge = shield:CreateTexture(nil, "ARTWORK")
 		shield.edge:SetTexture(FLAT)
 		shield.edge:SetVertexColor(0.9, 0.97, 1, 1)
@@ -948,7 +952,11 @@ end
 UI.bottomBar = UI.tallyFrame
 -- Red Skull Icon for Kills
 UI.killsSkull = UI.tallyFrame:CreateTexture(nil, "ARTWORK")
-UI.killsSkull:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Kills.tga")
+if BordoUI_ApplyTexture then
+	BordoUI_ApplyTexture(UI.killsSkull, "Kills")
+else
+	UI.killsSkull:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Kills")
+end
 UI.killsSkull:SetWidth(15)
 UI.killsSkull:SetHeight(15)
 UI.killsSkull:SetPoint("LEFT", UI.tallyFrame, "LEFT", 8, 0)
@@ -963,18 +971,30 @@ UI.goldSlot:SetWidth(15)
 UI.goldSlot:SetHeight(15)
 UI.goldSlot:SetPoint("LEFT", UI.killsText, "RIGHT", 18, 0)
 UI.goldGlow = UI.goldSlot:CreateTexture(nil, "BACKGROUND")
-UI.goldGlow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow.tga")
+if BordoUI_ApplyTexture then
+	BordoUI_ApplyTexture(UI.goldGlow, "PaceGlow")
+else
+	UI.goldGlow:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceGlow")
+end
 UI.goldGlow:SetBlendMode("ADD")
 UI.goldGlow:SetVertexColor(1.0, 0.82, 0.20)
 UI.goldGlow:SetPoint("CENTER", UI.goldSlot, "CENTER", 0, 0)
 UI.goldGlow:Hide()
 UI.goldCoin = UI.goldSlot:CreateTexture(nil, "ARTWORK")
-UI.goldCoin:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Coin.tga")
+if BordoUI_ApplyTexture then
+	BordoUI_ApplyTexture(UI.goldCoin, "Coin")
+else
+	UI.goldCoin:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Coin")
+end
 UI.goldCoin:SetPoint("CENTER", UI.goldSlot, "CENTER", 0, 0)
 UI.goldCoin:SetWidth(15)
 UI.goldCoin:SetHeight(15)
 UI.goldSpark = UI.goldSlot:CreateTexture(nil, "OVERLAY")
-UI.goldSpark:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceSpark.tga")
+if BordoUI_ApplyTexture then
+	BordoUI_ApplyTexture(UI.goldSpark, "PaceSpark")
+else
+	UI.goldSpark:SetTexture("Interface\\AddOns\\BordoUI\\Art\\PaceSpark")
+end
 UI.goldSpark:SetBlendMode("ADD")
 UI.goldSpark:SetVertexColor(1.0, 0.95, 0.70)
 UI.goldSpark:SetPoint("CENTER", UI.goldSlot, "TOPRIGHT", -2, -2)
