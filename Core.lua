@@ -294,6 +294,14 @@ SlashCmdList["BORDOU"] = function(msg)
             if ( ShowNameplates ) then pcall(ShowNameplates); end
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
+    elseif ( cmd == "totem" or cmd == "totems" ) then
+        BordoUIDB = BordoUIDB or {};
+        if ( BordoUIDB.hideTotems == nil ) then
+            BordoUIDB.hideTotems = true;
+        end
+        BordoUIDB.hideTotems = not BordoUIDB.hideTotems;
+        local st = BordoUIDB.hideTotems and "|cff55ff55[HIDDEN]|r" or "|cffff3333[SHOWN]|r";
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Totem health bars are now " .. st .. ".");
     elseif ( cmd == "lock" ) then
         BordoUI:ToggleMoveMode(false);
         BordoUI:SetLocked(true);
@@ -307,6 +315,7 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Force-enable Teammate (green) & Enemy nameplates");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Toggle Shaman totem health bars (hidden by default)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");

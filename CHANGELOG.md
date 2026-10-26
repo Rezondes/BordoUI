@@ -4,6 +4,17 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.6] - 2026-10-26
+
+### Fixed & Improved
+- **Shaman Totem Health Bar Suppression (`Nameplates.lua`):**
+  - Completely hides nameplates and floating HP bars for all Shaman totems (e.g. *Searing Totem*, *Magma Totem*, *Healing Stream Totem*, *Totem der Verbrennung*, etc.) so massive totem clusters no longer clutter the screen with dozens of red bars.
+  - Safely excludes hostile Grimtotem Tauren enemy mobs.
+  - Automatically restores nameplate visuals when frames are recycled for enemies or teammates.
+  - Added toggle command `/bordo totems` (hidden by default).
+
+---
+
 ## [2.7.4] - 2026-10-25
 
 ### Removed & Streamlined
