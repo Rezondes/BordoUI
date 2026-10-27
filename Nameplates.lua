@@ -1,6 +1,7 @@
 -- =========================================================================
 -- AZSHelper: Nameplates.lua
 -- Modern, Rectangular Enemy Nameplates with High-Visibility Boss & Miniboss Highlighting
+-- Threat & Healthbar Filtering: All Enemies / Bosses & Elites Only / Disabled
 -- Compatible with WoW 1.12.1 (Interface 11200 / Lua 5.0)
 -- =========================================================================
 
@@ -88,7 +89,7 @@ local function IsTeammate(unitName)
     return false, nil, nil;
 end
 
--- Identify if a unit name belongs to a Shaman totem
+-- Identify if a unit name belongs to a Shaman totem (100% pure ASCII safe)
 local function IsTotem(name)
     if ( not name or name == "" ) then return false; end
     local lower = string.lower(name);
@@ -100,13 +101,8 @@ local function IsTotem(name)
         return false;
     end
     
-    -- Exact totem match (English, German, Spanish, Russian, Chinese, Korean)
-    if ( lower == "totem" or lower == "tótem" or lower == "тотем" or lower == "图腾" or lower == "토템" ) then
-        return true;
-    end
-    
-    -- Substring patterns: ends with "totem", begins with "totem ", German compound, etc.
-    if ( string.find(lower, "totem$", 1) or string.find(lower, "^totem ", 1) or string.find(lower, "^tótem ", 1) or string.find(lower, "^тотем ", 1) or string.find(lower, "%-totem", 1) ) then
+    -- Match "totem" in any form
+    if ( lower == "totem" or string.find(lower, "totem", 1, true) ) then
         return true;
     end
     
@@ -237,7 +233,49 @@ local function SetupNameplateElements(frame)
     frame.azsElementsReady = true;
 end
 
--- Dynamic Styling on each Nameplate according to Unit Classification
+-- Completely hide a filtered-out nameplate in WoW 1.12.1 (alpha 0, size 0.001)
+local function HideNameplateFrame(frame)
+    frame.isFilteredOut = true;
+    local healthBar = frame.azsHealthBar;
+    if ( not healthBar ) then return; end
+    local borderFrame = healthBar.azsBorder;
+    local nameText = frame.azsNameText;
+    local levelText = frame.azsLevelText;
+    
+    healthBar:SetStatusBarTexture("");
+    healthBar:SetAlpha(0);
+    healthBar:SetWidth(0.001);
+    healthBar:SetHeight(0.001);
+    healthBar:Hide();
+    if ( borderFrame ) then borderFrame:Hide(); end
+    if ( healthBar.azsBg ) then healthBar.azsBg:Hide(); end
+    if ( healthBar.azsHpText ) then healthBar.azsHpText:Hide(); end
+    if ( nameText ) then nameText:Hide(); end
+    if ( levelText ) then levelText:Hide(); end
+    frame:SetAlpha(0);
+end
+
+-- Restore a previously filtered-out nameplate to full visibility
+local function RestoreNameplateFrame(frame)
+    frame.isFilteredOut = nil;
+    frame.isTotemPlate = nil;
+    local healthBar = frame.azsHealthBar;
+    if ( not healthBar ) then return; end
+    local borderFrame = healthBar.azsBorder;
+    local nameText = frame.azsNameText;
+    local levelText = frame.azsLevelText;
+    
+    healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
+    healthBar:SetAlpha(1);
+    healthBar:Show();
+    if ( borderFrame ) then borderFrame:Show(); end
+    if ( healthBar.azsBg ) then healthBar.azsBg:Show(); end
+    if ( nameText ) then nameText:Show(); end
+    if ( levelText ) then levelText:Show(); end
+    frame:SetAlpha(1);
+end
+
+-- Dynamic Styling on each Nameplate according to Unit Classification & Filters
 local function StyleNameplate(frame)
     SetupNameplateElements(frame);
     if ( not frame.azsElementsReady or not frame.azsHealthBar ) then return; end
@@ -254,7 +292,7 @@ local function StyleNameplate(frame)
     if ( not curName or curName == "" ) then return; end
     
     local cleanName = frame.azsCleanName;
-    if ( not string.find(curName, "|c") and not string.find(curName, "%[") and not string.find(curName, "%+") and not string.find(curName, "🛡") and not string.find(curName, "👑") ) then
+    if ( not string.find(curName, "|c") and not string.find(curName, "%[") and not string.find(curName, "%+") ) then
         cleanName = curName;
         frame.azsCleanName = curName;
     end
@@ -262,58 +300,11 @@ local function StyleNameplate(frame)
         cleanName = curName;
     end
     
-    -- Shaman Totem Check: completely hide HP bar and plate to eliminate clutter
-    local isTotem = IsTotem(cleanName);
-    local hideTotems = ShouldHideTotems();
-    if ( isTotem and hideTotems ) then
-        frame.isTotemPlate = true;
-        healthBar:SetStatusBarTexture("");
-        healthBar:SetAlpha(0);
-        healthBar:SetWidth(0.001);
-        healthBar:SetHeight(0.001);
-        healthBar:Hide();
-        if ( borderFrame ) then borderFrame:Hide(); end
-        if ( healthBar.azsBg ) then healthBar.azsBg:Hide(); end
-        if ( healthBar.azsHpText ) then healthBar.azsHpText:Hide(); end
-        if ( nameText ) then nameText:Hide(); end
-        if ( levelText ) then levelText:Hide(); end
-        frame:SetAlpha(0);
-        return;
-    elseif ( frame.isTotemPlate ) then
-        -- Frame recycled for normal unit or totems unhidden
-        frame.isTotemPlate = nil;
-        healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
-        healthBar:SetAlpha(1);
-        healthBar:Show();
-        if ( borderFrame ) then borderFrame:Show(); end
-        if ( healthBar.azsBg ) then healthBar.azsBg:Show(); end
-        nameText:Show();
-        if ( levelText ) then levelText:Show(); end
-        frame:SetAlpha(1);
-    end
-    
-    local kind = GetUnitClassification(cleanName);
-    local isTarget = (UnitExists("target") and UnitName("target") == cleanName);
-    
-    -- Calculate HP percentage
-    local val = healthBar:GetValue() or 0;
-    local _, maxVal = healthBar:GetMinMaxValues();
-    if ( not maxVal or maxVal <= 0 ) then maxVal = 100; end
-    local pct = math.floor((val / maxVal) * 100);
-    
-    -- Position Text cleanly above the bar
-    nameText:ClearAllPoints();
-    nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
-    
-    if ( levelText ) then
-        levelText:ClearAllPoints();
-        levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
-    end
-    
     -- ---------------------------------------------------------------------
     -- CLASSIFICATION 0: TEAMMATES & PARTY MEMBERS (Vibrant Green Health Bar!)
     -- ---------------------------------------------------------------------
     local isAlly, allyToken, allyRealName = IsTeammate(cleanName);
+    local isTarget = (UnitExists("target") and UnitName("target") == cleanName);
     if ( not isAlly and isTarget and UnitIsFriend("player", "target") ) then
         isAlly = true;
         allyToken = "target";
@@ -321,6 +312,19 @@ local function StyleNameplate(frame)
     end
     
     if ( isAlly ) then
+        local showFriendly = true;
+        if ( BordoUIDB and BordoUIDB.friendlyNameplates == false ) then
+            showFriendly = false;
+        end
+        if ( not showFriendly ) then
+            HideNameplateFrame(frame);
+            return;
+        end
+        
+        if ( frame.isFilteredOut ) then
+            RestoreNameplateFrame(frame);
+        end
+        
         healthBar:SetWidth(130);
         healthBar:SetHeight(15);
         frame:SetFrameLevel(75);
@@ -339,21 +343,31 @@ local function StyleNameplate(frame)
             end
         end
         
+        nameText:ClearAllPoints();
+        nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
         nameText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
+        
         local isLeader = allyToken and UnitIsPartyLeader(allyToken);
         if ( isLeader ) then
-            nameText:SetText("|cffffd100👑 |cff55ff55" .. (allyRealName or cleanName) .. "|r");
+            nameText:SetText("|cffffd100[LEADER] |cff55ff55" .. (allyRealName or cleanName) .. "|r");
         else
-            nameText:SetText("|cff55ff55🛡️ " .. (allyRealName or cleanName) .. "|r");
+            nameText:SetText("|cff55ff55[ALLY] " .. (allyRealName or cleanName) .. "|r");
         end
         
         if ( levelText ) then
+            levelText:ClearAllPoints();
+            levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
             levelText:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
             levelText:SetTextColor(0.40, 1.0, 0.40);
         end
         
         -- Calculate accurate HP for ally if unit token is available
-        local allyPct = pct;
+        local allyPct = 100;
+        local curHpVal = healthBar:GetValue() or 0;
+        local _, maxHpVal = healthBar:GetMinMaxValues();
+        if ( not maxHpVal or maxHpVal <= 0 ) then maxHpVal = 100; end
+        allyPct = math.floor((curHpVal / maxHpVal) * 100);
+        
         if ( allyToken and UnitExists(allyToken) ) then
             local curHp = UnitHealth(allyToken) or 0;
             local maxHp = UnitHealthMax(allyToken) or 100;
@@ -366,16 +380,76 @@ local function StyleNameplate(frame)
                 healthBar.azsHpText:SetText(string.format("%d%%", allyPct));
             end
         else
-            if ( pct <= 0 ) then
+            if ( allyPct <= 0 ) then
                 healthBar.azsHpText:SetText("|cffff2222DEAD|r");
             else
-                healthBar.azsHpText:SetText(string.format("%d%%", pct));
+                healthBar.azsHpText:SetText(string.format("%d%%", allyPct));
             end
         end
         healthBar.azsHpText:Show();
         return;
     end
-
+    
+    -- Shaman Totem Check: completely hide HP bar and plate to eliminate clutter
+    local isTotem = IsTotem(cleanName);
+    local hideTotems = ShouldHideTotems();
+    if ( isTotem and hideTotems ) then
+        HideNameplateFrame(frame);
+        return;
+    end
+    
+    -- ---------------------------------------------------------------------
+    -- ENEMY NAMEPLATE FILTERING: All Enemies / Bosses & Elites Only / Disabled
+    -- ---------------------------------------------------------------------
+    local kind = GetUnitClassification(cleanName);
+    local isBossOrElite = (kind == "final" or kind == "boss" or kind == "guardian" or kind == "elite");
+    
+    -- Fallback Elite Detection: check if level has "+" (e.g. 60+) or "??"
+    if ( not isBossOrElite and levelText ) then
+        local lTxt = levelText:GetText();
+        if ( lTxt and (string.find(lTxt, "%+") or string.find(lTxt, "%?%?")) ) then
+            isBossOrElite = true;
+            if ( kind == "normal" ) then
+                kind = "elite";
+            end
+        end
+    end
+    
+    local filter = (BordoUI and BordoUI.GetNameplateFilter and BordoUI:GetNameplateFilter()) or "all";
+    local allowTarget = (isTarget and (not BordoUIDB or BordoUIDB.nameplateShowTarget ~= false));
+    
+    if ( filter == "off" ) then
+        if ( not allowTarget ) then
+            HideNameplateFrame(frame);
+            return;
+        end
+    elseif ( filter == "bosses" ) then
+        if ( not isBossOrElite and not allowTarget ) then
+            HideNameplateFrame(frame);
+            return;
+        end
+    end
+    
+    -- If previously filtered out, restore visual elements
+    if ( frame.isFilteredOut ) then
+        RestoreNameplateFrame(frame);
+    end
+    
+    -- Calculate HP percentage
+    local val = healthBar:GetValue() or 0;
+    local _, maxVal = healthBar:GetMinMaxValues();
+    if ( not maxVal or maxVal <= 0 ) then maxVal = 100; end
+    local pct = math.floor((val / maxVal) * 100);
+    
+    -- Position Text cleanly above the bar
+    nameText:ClearAllPoints();
+    nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
+    
+    if ( levelText ) then
+        levelText:ClearAllPoints();
+        levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
+    end
+    
     -- ---------------------------------------------------------------------
     -- CLASSIFICATION 1: FINAL BOSS (Huge, Glowing Magenta, Top Strata)
     -- ---------------------------------------------------------------------
@@ -394,7 +468,7 @@ local function StyleNameplate(frame)
         end
         
         nameText:SetFont("Fonts\\ARIALN.TTF", 12, "OUTLINE");
-        nameText:SetText("|cffff44ff👑 [FINAL BOSS] " .. cleanName .. " 👑|r");
+        nameText:SetText("|cffff44ff*** [FINAL BOSS] " .. cleanName .. " ***|r");
         
         if ( levelText ) then
             levelText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
@@ -422,7 +496,7 @@ local function StyleNameplate(frame)
         end
         
         nameText:SetFont("Fonts\\ARIALN.TTF", 11, "OUTLINE");
-        nameText:SetText("|cffff2020☠ [BOSS] " .. cleanName .. " ☠|r");
+        nameText:SetText("|cffff2020[BOSS] " .. cleanName .. "|r");
         
         if ( levelText ) then
             levelText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
@@ -450,7 +524,7 @@ local function StyleNameplate(frame)
         end
         
         nameText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
-        nameText:SetText("|cffffcc00★ [GUARDIAN] " .. cleanName .. " ★|r");
+        nameText:SetText("|cffffcc00[GUARDIAN] " .. cleanName .. "|r");
         
         if ( levelText ) then
             levelText:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
@@ -516,7 +590,6 @@ end
 
 -- Ensure native WoW 1.12.1 friendly and enemy nameplates are turned on
 local function EnsureNameplatesEnabled()
-    -- Native WoW 1.12.1 engine functions to toggle/show friendly & enemy nameplates
     if ( ShowFriendNameplates ) then
         pcall(ShowFriendNameplates);
     end
@@ -531,7 +604,357 @@ if ( BordoUI ) then
     BordoUI.EnsureNameplates = EnsureNameplatesEnabled;
 end
 
--- Continuous Scanner for Active Nameplates (Only styles already-visible nameplates, NEVER forces them on!)
+-- =========================================================================
+-- BordoUI Nameplate API & Filtering Controls
+-- =========================================================================
+
+function BordoUI:GetNameplateFilter()
+    if ( not BordoUIDB ) then return "all"; end
+    if ( not BordoUIDB.nameplateFilter ) then return "all"; end
+    return BordoUIDB.nameplateFilter;
+end
+
+function BordoUI:SetNameplateFilter(filter)
+    BordoUIDB = BordoUIDB or {};
+    if ( filter ~= "all" and filter ~= "bosses" and filter ~= "off" ) then
+        filter = "all";
+    end
+    BordoUIDB.nameplateFilter = filter;
+    
+    if ( filter == "all" or filter == "bosses" ) then
+        if ( ShowNameplates ) then pcall(ShowNameplates); end
+    end
+    
+    self:UpdateNameplatesWindowUI();
+    
+    local msg = "";
+    if ( filter == "all" ) then
+        msg = "|cff00ccffBordo UI|r: Enemy Nameplates: |cff55ff55[ALL ENEMIES]|r (Trash adds, elites & bosses shown)";
+    elseif ( filter == "bosses" ) then
+        msg = "|cff00ccffBordo UI|r: Enemy Nameplates: |cffffd100[BOSSES & ELITES ONLY]|r (Normal trash adds hidden!)";
+    elseif ( filter == "off" ) then
+        msg = "|cff00ccffBordo UI|r: Enemy Nameplates: |cffff3333[DISABLED]|r (All enemy healthbars hidden)";
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(msg);
+end
+
+function BordoUI:CycleNameplateFilter()
+    local cur = self:GetNameplateFilter();
+    local nxt = "all";
+    if ( cur == "all" ) then
+        nxt = "bosses";
+    elseif ( cur == "bosses" ) then
+        nxt = "off";
+    else
+        nxt = "all";
+    end
+    self:SetNameplateFilter(nxt);
+end
+
+function BordoUI:ToggleFriendlyNameplates()
+    BordoUIDB = BordoUIDB or {};
+    if ( BordoUIDB.friendlyNameplates == nil ) then
+        BordoUIDB.friendlyNameplates = true;
+    end
+    BordoUIDB.friendlyNameplates = not BordoUIDB.friendlyNameplates;
+    
+    if ( BordoUIDB.friendlyNameplates ) then
+        if ( ShowFriendNameplates ) then pcall(ShowFriendNameplates); end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate Nameplates: |cff55ff55[ENABLED]|r (Vibrant green ally bars)");
+    else
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate Nameplates: |cffff3333[DISABLED]|r");
+    end
+    self:UpdateNameplatesWindowUI();
+end
+
+function BordoUI:ToggleTotemsHidden()
+    BordoUIDB = BordoUIDB or {};
+    if ( BordoUIDB.hideTotems == nil ) then
+        BordoUIDB.hideTotems = true;
+    end
+    BordoUIDB.hideTotems = not BordoUIDB.hideTotems;
+    local st = BordoUIDB.hideTotems and "|cff55ff55[HIDDEN]|r" or "|cffffaa00[SHOWN]|r";
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Shaman Totem health bars are now " .. st .. ".");
+    self:UpdateNameplatesWindowUI();
+end
+
+function BordoUI:ToggleTargetNameplate()
+    BordoUIDB = BordoUIDB or {};
+    if ( BordoUIDB.nameplateShowTarget == nil ) then
+        BordoUIDB.nameplateShowTarget = true;
+    end
+    BordoUIDB.nameplateShowTarget = not BordoUIDB.nameplateShowTarget;
+    local st = BordoUIDB.nameplateShowTarget and "|cff55ff55[SHOWN]|r" or "|cffff3333[FILTERED]|r";
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Target Nameplate Override is now " .. st .. ".");
+    self:UpdateNameplatesWindowUI();
+end
+
+-- =========================================================================
+-- Modern Settings Window for Nameplates & Threat Filtering
+-- =========================================================================
+
+local npWin = nil;
+
+local function CreateStyledFilterButton(parent, label, x, y, width, height, onClick)
+    local btn = CreateFrame("Button", nil, parent);
+    btn:SetWidth(width);
+    btn:SetHeight(height);
+    btn:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y);
+    
+    btn:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true,
+        tileSize = 8,
+        edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+    });
+    btn:SetBackdropColor(0.06, 0.06, 0.09, 0.90);
+    btn:SetBackdropBorderColor(0.20, 0.20, 0.26, 0.95);
+    
+    local txt = btn:CreateFontString(nil, "OVERLAY");
+    txt:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
+    txt:SetPoint("CENTER", btn, "CENTER", 0, 0);
+    txt:SetText(label);
+    txt:SetTextColor(0.70, 0.70, 0.70);
+    btn.text = txt;
+    
+    local hl = btn:CreateTexture(nil, "HIGHLIGHT");
+    hl:SetAllPoints(btn);
+    hl:SetTexture("Interface\\Buttons\\CheckButtonHilight");
+    hl:SetBlendMode("ADD");
+    hl:SetAlpha(0.25);
+    
+    btn:SetScript("OnClick", function()
+        PlaySound("igMainMenuOptionCheckBoxOn");
+        if ( onClick ) then onClick(btn); end
+    end);
+    
+    btn:SetScript("OnEnter", function()
+        btn:SetBackdropBorderColor(0.0, 0.8, 1.0, 1.0);
+    end);
+    
+    btn:SetScript("OnLeave", function()
+        if ( BordoUI and BordoUI.UpdateNameplatesWindowUI ) then
+            BordoUI:UpdateNameplatesWindowUI();
+        end
+    end);
+    
+    return btn;
+end
+
+function BordoUI:CreateNameplatesSettingsWindow()
+    if ( npWin ) then return npWin; end
+    
+    npWin = CreateFrame("Frame", "BordoUI_NameplatesWindow", UIParent);
+    npWin:SetWidth(380);
+    npWin:SetHeight(185);
+    npWin:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+    npWin:SetFrameStrata("HIGH");
+    npWin:SetFrameLevel(25);
+    npWin:SetClampedToScreen(true);
+    npWin:SetMovable(true);
+    npWin:EnableMouse(true);
+    npWin:RegisterForDrag("LeftButton");
+    
+    npWin:SetScript("OnDragStart", function()
+        if (not (BordoUIDB and BordoUIDB.locked)) or IsAltKeyDown() or IsShiftKeyDown() then
+            npWin:StartMoving();
+        end
+    end);
+    npWin:SetScript("OnDragStop", function()
+        npWin:StopMovingOrSizing();
+        local pt, _, relPt, x, y = npWin:GetPoint();
+        BordoUIDB = BordoUIDB or {};
+        BordoUIDB.nameplatesFramePos = { point = pt, relativePoint = relPt, x = x, y = y };
+    end);
+    
+    npWin:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true,
+        tileSize = 12,
+        edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+    });
+    npWin:SetBackdropColor(0.04, 0.04, 0.07, 0.96);
+    npWin:SetBackdropBorderColor(0.18, 0.18, 0.24, 0.95);
+    npWin:Hide();
+    
+    -- Window Title & Subtitle
+    local title = npWin:CreateFontString(nil, "OVERLAY");
+    title:SetFont("Fonts\\ARIALN.TTF", 12, "OUTLINE");
+    title:SetPoint("TOPLEFT", npWin, "TOPLEFT", 12, -8);
+    title:SetText("|cff00ccffBordo UI|r |cffffd100Nameplates & Threat Filter|r");
+    
+    local subtitle = npWin:CreateFontString(nil, "OVERLAY");
+    subtitle:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
+    subtitle:SetPoint("TOPLEFT", npWin, "TOPLEFT", 12, -23);
+    subtitle:SetTextColor(0.65, 0.65, 0.65);
+    subtitle:SetText("Filter enemy healthbars: keep Bosses & Elites visible while hiding add clutter.");
+    npWin.subtitle = subtitle;
+    
+    -- Close Button
+    local closeBtn = CreateFrame("Button", nil, npWin);
+    closeBtn:SetWidth(18);
+    closeBtn:SetHeight(18);
+    closeBtn:SetPoint("TOPRIGHT", npWin, "TOPRIGHT", -6, -6);
+    local closeTxt = closeBtn:CreateFontString(nil, "OVERLAY");
+    closeTxt:SetFont("Fonts\\ARIALN.TTF", 11, "OUTLINE");
+    closeTxt:SetPoint("CENTER", closeBtn, "CENTER", 0, 0);
+    closeTxt:SetText("X");
+    closeTxt:SetTextColor(0.7, 0.7, 0.7);
+    closeBtn:SetScript("OnEnter", function() closeTxt:SetTextColor(1, 0.2, 0.2); end);
+    closeBtn:SetScript("OnLeave", function() closeTxt:SetTextColor(0.7, 0.7, 0.7); end);
+    closeBtn:SetScript("OnClick", function() npWin:Hide(); PlaySound("igMainMenuClose"); end);
+    
+    -- Section 1 Header: Enemy Healthbar Filter
+    local sec1 = npWin:CreateFontString(nil, "OVERLAY");
+    sec1:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
+    sec1:SetPoint("TOPLEFT", npWin, "TOPLEFT", 12, -42);
+    sec1:SetText("|cffffd100ENEMY HEALTHBAR FILTER|r");
+    
+    -- Row 1: 3 Filter Buttons
+    npWin.btnAll = CreateStyledFilterButton(npWin, "All Enemies", 12, -58, 114, 26, function()
+        BordoUI:SetNameplateFilter("all");
+    end);
+    
+    npWin.btnBosses = CreateStyledFilterButton(npWin, "Bosses & Elites", 133, -58, 114, 26, function()
+        BordoUI:SetNameplateFilter("bosses");
+    end);
+    
+    npWin.btnOff = CreateStyledFilterButton(npWin, "Disabled", 254, -58, 114, 26, function()
+        BordoUI:SetNameplateFilter("off");
+    end);
+    
+    -- Section 2 Header: Display Options
+    local sec2 = npWin:CreateFontString(nil, "OVERLAY");
+    sec2:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
+    sec2:SetPoint("TOPLEFT", npWin, "TOPLEFT", 12, -95);
+    sec2:SetText("|cffffd100DISPLAY OPTIONS|r");
+    
+    -- Row 2: 3 Display Option Buttons
+    npWin.btnTeammates = CreateStyledFilterButton(npWin, "Teammates: ON", 12, -112, 114, 24, function()
+        BordoUI:ToggleFriendlyNameplates();
+    end);
+    
+    npWin.btnTotems = CreateStyledFilterButton(npWin, "Totems: HIDE", 133, -112, 114, 24, function()
+        BordoUI:ToggleTotemsHidden();
+    end);
+    
+    npWin.btnTarget = CreateStyledFilterButton(npWin, "Target Bar: ON", 254, -112, 114, 24, function()
+        BordoUI:ToggleTargetNameplate();
+    end);
+    
+    -- Status Line
+    local status = npWin:CreateFontString(nil, "OVERLAY");
+    status:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
+    status:SetPoint("TOPLEFT", npWin, "TOPLEFT", 12, -145);
+    status:SetText("Filter: |cff55ff55All Enemies|r");
+    npWin.statusText = status;
+    
+    -- Hint Line
+    local hint = npWin:CreateFontString(nil, "OVERLAY");
+    hint:SetFont("Fonts\\ARIALN.TTF", 8, "OUTLINE");
+    hint:SetPoint("TOPLEFT", npWin, "TOPLEFT", 12, -164);
+    hint:SetTextColor(0.50, 0.50, 0.50);
+    hint:SetText("Minimap Dock: Right-Click icon to quick-cycle   -   Shift-Click for teammates");
+    
+    return npWin;
+end
+
+function BordoUI:UpdateNameplatesWindowUI()
+    if ( not npWin ) then return; end
+    
+    local filter = self:GetNameplateFilter();
+    
+    -- Update Filter Buttons
+    local btns = {
+        { btn = npWin.btnAll, key = "all", label = "All Enemies", activeColor = { 0.0, 0.8, 1.0, 1.0 } },
+        { btn = npWin.btnBosses, key = "bosses", label = "Bosses & Elites", activeColor = { 1.0, 0.82, 0.0, 1.0 } },
+        { btn = npWin.btnOff, key = "off", label = "Disabled", activeColor = { 1.0, 0.3, 0.3, 1.0 } }
+    };
+    
+    for i = 1, table.getn(btns) do
+        local item = btns[i];
+        local b = item.btn;
+        if ( b ) then
+            if ( filter == item.key ) then
+                b:SetBackdropColor(0.12, 0.22, 0.32, 0.95);
+                b:SetBackdropBorderColor(item.activeColor[1], item.activeColor[2], item.activeColor[3], item.activeColor[4]);
+                b.text:SetTextColor(item.activeColor[1], item.activeColor[2], item.activeColor[3]);
+            else
+                b:SetBackdropColor(0.06, 0.06, 0.09, 0.90);
+                b:SetBackdropBorderColor(0.20, 0.20, 0.26, 0.95);
+                b.text:SetTextColor(0.65, 0.65, 0.65);
+            end
+        end
+    end
+    
+    -- Update Display Options
+    local friendly = (not BordoUIDB or BordoUIDB.friendlyNameplates ~= false);
+    if ( npWin.btnTeammates ) then
+        if ( friendly ) then
+            npWin.btnTeammates.text:SetText("|cff55ff55Teammates: ON|r");
+            npWin.btnTeammates:SetBackdropBorderColor(0.15, 0.85, 0.30, 0.95);
+        else
+            npWin.btnTeammates.text:SetText("|cffff3333Teammates: OFF|r");
+            npWin.btnTeammates:SetBackdropBorderColor(0.25, 0.25, 0.30, 0.90);
+        end
+    end
+    
+    local hideTotems = (not BordoUIDB or BordoUIDB.hideTotems ~= false);
+    if ( npWin.btnTotems ) then
+        if ( hideTotems ) then
+            npWin.btnTotems.text:SetText("|cff55ff55Totems: HIDE|r");
+            npWin.btnTotems:SetBackdropBorderColor(0.15, 0.85, 0.30, 0.95);
+        else
+            npWin.btnTotems.text:SetText("|cffffaa00Totems: SHOW|r");
+            npWin.btnTotems:SetBackdropBorderColor(0.25, 0.25, 0.30, 0.90);
+        end
+    end
+    
+    local showTarget = (not BordoUIDB or BordoUIDB.nameplateShowTarget ~= false);
+    if ( npWin.btnTarget ) then
+        if ( showTarget ) then
+            npWin.btnTarget.text:SetText("|cff55ff55Target Bar: ON|r");
+            npWin.btnTarget:SetBackdropBorderColor(0.15, 0.85, 0.30, 0.95);
+        else
+            npWin.btnTarget.text:SetText("|cffff3333Target Bar: OFF|r");
+            npWin.btnTarget:SetBackdropBorderColor(0.25, 0.25, 0.30, 0.90);
+        end
+    end
+    
+    -- Update Status Line
+    if ( npWin.statusText ) then
+        local filterLabel = (filter == "bosses" and "|cffffd100Bosses & Elites Only|r") or (filter == "off" and "|cffff3333Disabled|r") or "|cff55ff55All Enemies|r";
+        local addsLabel = (filter == "bosses" and "|cffff3333Hidden|r") or (filter == "off" and "|cffff3333Hidden|r") or "|cff55ff55Shown|r";
+        local allyLabel = (friendly and "|cff55ff55Visible|r") or "|cffff3333Hidden|r";
+        npWin.statusText:SetText("Filter: " .. filterLabel .. "   |cff555555-|r   Trash Adds: " .. addsLabel .. "   |cff555555-|r   Teammates: " .. allyLabel);
+    end
+end
+
+function BordoUI:ToggleNameplatesWindow()
+    local win = npWin or self:CreateNameplatesSettingsWindow();
+    if ( win:IsShown() ) then
+        win:Hide();
+        PlaySound("igMainMenuClose");
+    else
+        if ( BordoUIDB and BordoUIDB.nameplatesFramePos ) then
+            local pos = BordoUIDB.nameplatesFramePos;
+            win:ClearAllPoints();
+            win:SetPoint(pos.point or "CENTER", UIParent, pos.relativePoint or "CENTER", pos.x or 0, pos.y or 0);
+        end
+        self:UpdateNameplatesWindowUI();
+        win:Show();
+        PlaySound("igMainMenuOpen");
+    end
+end
+
+-- =========================================================================
+-- Continuous Scanner for Active Nameplates
+-- =========================================================================
+
 local scanFrame = CreateFrame("Frame", "AZSHelper_NameplateScanner");
 local scanElapsed = 0;
 

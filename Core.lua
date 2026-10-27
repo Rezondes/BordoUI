@@ -58,6 +58,10 @@ local defaults = {
     showParty = true,
     chestArrow = true,
     chestChat  = true,
+    nameplateFilter = "all",
+    friendlyNameplates = true,
+    hideTotems = true,
+    nameplateShowTarget = true,
 };
 local function InitDB()
     if ( not BordoUIDB ) then
@@ -330,14 +334,27 @@ SlashCmdList["BORDOU"] = function(msg)
         if ( BordoUI.TogglePartyFrames ) then
             BordoUI:TogglePartyFrames(val);
         end
-    elseif ( cmd == "plates" or cmd == "nameplates" or cmd == "teammates" ) then
-        if ( BordoUI.EnsureNameplates ) then
-            BordoUI:EnsureNameplates();
+    elseif ( cmd == "plates" or cmd == "nameplates" or cmd == "teammates" or cmd == "threat" ) then
+        if ( val == "all" or val == "boss" or val == "bosses" or val == "off" ) then
+            local targetFilter = (val == "boss" or val == "bosses") and "bosses" or val;
+            if ( BordoUI.SetNameplateFilter ) then
+                BordoUI:SetNameplateFilter(targetFilter);
+            end
+        elseif ( val == "cycle" ) then
+            if ( BordoUI.CycleNameplateFilter ) then
+                BordoUI:CycleNameplateFilter();
+            end
+        elseif ( val == "ally" or val == "party" or val == "friendly" ) then
+            if ( BordoUI.ToggleFriendlyNameplates ) then
+                BordoUI:ToggleFriendlyNameplates();
+            end
         else
-            if ( ShowFriendNameplates ) then pcall(ShowFriendNameplates); end
-            if ( ShowNameplates ) then pcall(ShowNameplates); end
+            if ( BordoUI.ToggleNameplatesWindow ) then
+                BordoUI:ToggleNameplatesWindow();
+            elseif ( BordoUI.EnsureNameplates ) then
+                BordoUI:EnsureNameplates();
+            end
         end
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
     elseif ( cmd == "totem" or cmd == "totems" ) then
         BordoUIDB = BordoUIDB or {};
         if ( BordoUIDB.hideTotems == nil ) then
@@ -358,7 +375,7 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Force-enable Teammate (green) & Enemy nameplates");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Open Nameplates Settings (/bordo plates all|bosses|off)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Toggle Shaman totem health bars (hidden by default)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
@@ -407,14 +424,29 @@ SlashCmdList["BORDOUNLOCK"] = function()
     BordoUI:SetLocked(false);
 end;
 SLASH_BORDOPLATES1 = "/plates";
-SlashCmdList["BORDOPLATES"] = function()
-    if ( BordoUI.EnsureNameplates ) then
-        BordoUI:EnsureNameplates();
+SlashCmdList["BORDOPLATES"] = function(msg)
+    local cmd = string.lower(msg or "");
+    local _, _, sub = string.find(cmd, "%s*(%S+)");
+    if ( sub == "all" or sub == "boss" or sub == "bosses" or sub == "off" ) then
+        local targetFilter = (sub == "boss" or sub == "bosses") and "bosses" or sub;
+        if ( BordoUI.SetNameplateFilter ) then
+            BordoUI:SetNameplateFilter(targetFilter);
+        end
+    elseif ( sub == "cycle" ) then
+        if ( BordoUI.CycleNameplateFilter ) then
+            BordoUI:CycleNameplateFilter();
+        end
+    elseif ( sub == "ally" or sub == "party" or sub == "friendly" ) then
+        if ( BordoUI.ToggleFriendlyNameplates ) then
+            BordoUI:ToggleFriendlyNameplates();
+        end
     else
-        if ( ShowFriendNameplates ) then pcall(ShowFriendNameplates); end
-        if ( ShowNameplates ) then pcall(ShowNameplates); end
+        if ( BordoUI.ToggleNameplatesWindow ) then
+            BordoUI:ToggleNameplatesWindow();
+        elseif ( BordoUI.EnsureNameplates ) then
+            BordoUI:EnsureNameplates();
+        end
     end
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
 end;
 -- Lair Marks Helpers (used by BossTracker, MapPins, Guardians)
 local MARK_KINDS = 8;
@@ -615,6 +647,7 @@ function BordoUI:ResetToDefaultLayout()
 	BordoUIDB.lootAlertPos = nil;
     BordoUIDB.centerHudPos = nil;
     BordoUIDB.multPanelPos = nil;
+    BordoUIDB.nameplatesFramePos = nil;
     if ( AZSHelperDB ) then
         AZSHelperDB.rowPos = nil;
         AZSHelperDB.bottomBarPos = nil;

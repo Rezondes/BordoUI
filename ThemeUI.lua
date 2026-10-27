@@ -1035,7 +1035,7 @@ PositionMicroButtons()
 -- C) MODERN MINIMAP ACTION DOCK (Character, Talents, Damage Meter)
 local minimapDock = CreateFrame("Frame", "BordoUI_MinimapDock", UIParent)
 minimapDock:SetWidth(28)
-minimapDock:SetHeight(116)
+minimapDock:SetHeight(145)
 minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -6, 0)
 minimapDock:SetFrameStrata("LOW")
 minimapDock:SetFrameLevel(10)
@@ -1163,6 +1163,20 @@ CreateSquareDockButton(
 			BordoUI:CycleDamageFilter()
 		elseif BordoUI and BordoUI.ToggleDamageNumbersWindow then
 			BordoUI:ToggleDamageNumbersWindow()
+		end
+	end
+)
+-- 5. Nameplates & Threat Filter Button
+CreateSquareDockButton(
+	minimapDock, 5, "Interface\\Icons\\INV_BannerPVP_02",
+	"Nameplates & Threat Filter", "Left-Click: Open Nameplates Settings\nRight-Click: Quick Cycle Filter (All / Bosses & Elites / Off)\nShift-Click: Toggle Friendly Plates",
+	function(button)
+		if IsShiftKeyDown() and BordoUI and BordoUI.ToggleFriendlyNameplates then
+			BordoUI:ToggleFriendlyNameplates()
+		elseif button == "RightButton" and BordoUI and BordoUI.CycleNameplateFilter then
+			BordoUI:CycleNameplateFilter()
+		elseif BordoUI and BordoUI.ToggleNameplatesWindow then
+			BordoUI:ToggleNameplatesWindow()
 		end
 	end
 )
