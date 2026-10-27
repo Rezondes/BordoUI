@@ -56,7 +56,7 @@ function BordoUI:GetDamageSettings()
             scale  = 0.85,
         };
     end
-    if ( s.standard.filter ~= "all" and s.standard.filter ~= "nodots" ) then
+    if ( s.standard.filter ~= "all" and s.standard.filter ~= "crits" and s.standard.filter ~= "off" ) then
         s.standard.filter = "all";
     end
     s.standard.font = "standard";
@@ -463,13 +463,18 @@ end
 -- Spawn or Stack Combat Text Line
 function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
     local s = self:GetDamageSettings();
-    if ( s.mode == "standard" ) then return; end -- SCT disabled in Standard mode
+    if ( s.mode == "standard" ) then
+        if ( s.standard.filter ~= "crits" or not isCrit ) then
+            return;
+        end
+    else
+        local cfg = s.sct;
+        if ( cfg.filter == "off" ) then return; end
+        if ( cfg.filter == "crits" and not isCrit ) then return; end
+    end
     
-    local cfg = s.sct;
-    if ( cfg.filter == "off" ) then return; end
-    if ( cfg.filter == "crits" and not isCrit ) then return; end
-    
-    local fontDef = FONTS[cfg.font] or FONTS.modern;
+    local cfg = (s.mode == "standard") and s.standard or s.sct;
+    local fontDef = FONTS[cfg.font] or (s.mode == "standard" and FONTS.standard or FONTS.modern);
     local fontPath = fontDef.path;
     local scale = tonumber(cfg.scale) or 0.85;
     
@@ -615,7 +620,7 @@ local sctTicker = CreateFrame("Frame", "BordoUI_SCT_Ticker");
 sctTicker:SetScript("OnUpdate", function()
     local dt = arg1 or 0.03;
     local s = BordoUI:GetDamageSettings();
-    if ( s.mode == "standard" ) then return; end
+    if ( s.mode == "standard" and s.standard.filter ~= "crits" ) then return; end
     
     local duration = 2.4;
     for i = 1, SCT.maxLines do
@@ -671,20 +676,26 @@ logWatcher:SetScript("OnEvent", function()
     local msg = arg1;
     if ( not msg ) then return; end
     local s = BordoUI:GetDamageSettings();
-    if ( s.mode == "standard" ) then return; end
-    if ( s.sct.filter == "off" ) then return; end
-    
-    local isPeriodic = (event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" or
-                        event == "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE" or
-                        event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
-    if ( isPeriodic and s.sct.filter == "nodots" ) then
-        return; -- Suppress DoT-spam
+    if ( s.mode == "standard" ) then
+        if ( s.standard.filter ~= "crits" ) then return; end
+    elseif ( s.sct.filter == "off" ) then
+        return;
     end
     
     local lower = string.lower(msg);
     local isCrit = (string.find(lower, "crit") ~= nil) or (string.find(lower, "krit") ~= nil);
-    if ( s.sct.filter == "crits" and not isCrit ) then
-        return; -- Suppress non-crits
+    if ( s.mode == "standard" and not isCrit ) then
+        return; -- In Standard mode with "crits" filter, strictly suppress non-crit spam
+    end
+    if ( s.mode ~= "standard" and s.sct.filter == "crits" and not isCrit ) then
+        return; -- Suppress non-crits in SCT mode
+    end
+    
+    local isPeriodic = (event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" or
+                        event == "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE" or
+                        event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
+    if ( s.mode ~= "standard" and isPeriodic and s.sct.filter == "nodots" ) then
+        return; -- Suppress DoT-spam in SCT mode
     end
     
     -- Extract Amount (Checks DoT "suffers/erleidet" then direct "for/fuer")
@@ -905,29 +916,51 @@ function BordoUI:ApplyDamageSettings()
     
     if ( s.mode == "standard" ) then
         local cfg = s.standard;
-        if ( cfg.filter ~= "all" and cfg.filter ~= "nodots" ) then
+        if ( cfg.filter ~= "all" and cfg.filter ~= "crits" and cfg.filter ~= "off" ) then
             cfg.filter = "all";
         end
         
-        -- 1. Enable native game engine CVars for Standard in-world overhead damage
-        if ( SetCVar ) then
-            pcall(SetCVar, "CombatDamage", "1");
-            pcall(SetCVar, "PetMeleeDamage", "1");
-            pcall(SetCVar, "PetSpellDamage", "1");
-            if ( cfg.filter == "nodots" ) then
-                pcall(SetCVar, "CombatLogPeriodicSpells", "0");
-            else
+        if ( cfg.filter == "all" ) then
+            -- Enable native game engine CVars for Standard in-world overhead damage
+            if ( SetCVar ) then
+                pcall(SetCVar, "CombatDamage", "1");
+                pcall(SetCVar, "PetMeleeDamage", "1");
+                pcall(SetCVar, "PetSpellDamage", "1");
                 pcall(SetCVar, "CombatLogPeriodicSpells", "1");
+                pcall(SetCVar, "SHOW_COMBAT_TEXT", "1");
+                pcall(SetCVar, "COMBAT_TEXT_FLOAT_MODE", "1");
             end
-            pcall(SetCVar, "SHOW_COMBAT_TEXT", "1");
-            pcall(SetCVar, "COMBAT_TEXT_FLOAT_MODE", "1");
-        end
-        
-        DAMAGE_TEXT_FONT = "Fonts\\SKURRI.TTF";
-        
-        -- Hide all SCT lines to avoid duplicate numbers
-        for i = 1, SCT.maxLines do
-            if ( SCT.lines[i] ) then SCT.lines[i]:Hide(); end
+            DAMAGE_TEXT_FONT = "Fonts\\SKURRI.TTF";
+            -- Hide all SCT lines to avoid duplicate numbers
+            for i = 1, SCT.maxLines do
+                if ( SCT.lines[i] ) then
+                    SCT.lines[i].active = false;
+                    SCT.lines[i]:Hide();
+                end
+            end
+        elseif ( cfg.filter == "crits" ) then
+            -- Suppress native non-crit white hit & DoT spam
+            if ( SetCVar ) then
+                pcall(SetCVar, "CombatDamage", "0");
+                pcall(SetCVar, "CombatLogPeriodicSpells", "0");
+                pcall(SetCVar, "PetMeleeDamage", "0");
+                pcall(SetCVar, "PetSpellDamage", "0");
+            end
+            DAMAGE_TEXT_FONT = "Fonts\\SKURRI.TTF";
+        else -- "off"
+            -- Completely disable all damage numbers
+            if ( SetCVar ) then
+                pcall(SetCVar, "CombatDamage", "0");
+                pcall(SetCVar, "CombatLogPeriodicSpells", "0");
+                pcall(SetCVar, "PetMeleeDamage", "0");
+                pcall(SetCVar, "PetSpellDamage", "0");
+            end
+            for i = 1, SCT.maxLines do
+                if ( SCT.lines[i] ) then
+                    SCT.lines[i].active = false;
+                    SCT.lines[i]:Hide();
+                end
+            end
         end
     else
         -- SCT Mode: Disable 3D numbers over ads and route through SCT beside character
@@ -978,17 +1011,27 @@ function BordoUI:TestDamageNumbers()
     if ( s.mode == "standard" ) then
         local cfg = s.standard;
         pcall(PlaySound, "igSpellCastStarted");
-        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: |cffffd100Standard Mode Active|r - Font: %s | Filter: %s | Scale: %.0f%%",
-            tostring(cfg.font or "standard"),
-            tostring(cfg.filter or "all"),
-            (tonumber(cfg.scale) or 0.85) * 100
+        DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: |cffffd100Standard Mode Active|r - Filter: %s",
+            tostring(cfg.filter or "all")
         ));
-        if ( UIErrorsFrame ) then
-            UIErrorsFrame:AddMessage(string.format("Standard Numbers: 777 hit, * 14,636 CRIT * (Font: %s)", tostring(cfg.font or "standard")), 1.0, 0.82, 0.0, 1.0, 2);
-        end
-        if ( CombatText_AddMessage and CombatText_StandardScroll ) then
-            CombatText_AddMessage("777", CombatText_StandardScroll, 1.0, 1.0, 1.0);
-            CombatText_AddMessage("* 14,636 CRIT *", CombatText_StandardScroll, 1.0, 0.82, 0.0, "crit");
+        if ( cfg.filter == "off" ) then
+            if ( UIErrorsFrame ) then
+                UIErrorsFrame:AddMessage("Damage Numbers Disabled", 1.0, 0.3, 0.3, 1.0, 2);
+            end
+        elseif ( cfg.filter == "crits" ) then
+            if ( UIErrorsFrame ) then
+                UIErrorsFrame:AddMessage("* 14,636 CRIT * (Only Crits Mode)", 1.0, 0.82, 0.0, 1.0, 2);
+            end
+            self:AddCombatNumber("Holy Shield", 14636, true, false, false);
+            self:AddCombatNumber("Shadow Bolt", 7349, true, false, false);
+        else
+            if ( UIErrorsFrame ) then
+                UIErrorsFrame:AddMessage("Standard Numbers: 777 hit, * 14,636 CRIT *", 1.0, 0.82, 0.0, 1.0, 2);
+            end
+            if ( CombatText_AddMessage and CombatText_StandardScroll ) then
+                CombatText_AddMessage("777", CombatText_StandardScroll, 1.0, 1.0, 1.0);
+                CombatText_AddMessage("* 14,636 CRIT *", CombatText_StandardScroll, 1.0, 0.82, 0.0, "crit");
+            end
         end
         return;
     end
@@ -1013,13 +1056,18 @@ end
 -- Quick Cycle Filter (Minimap Right-Click)
 function BordoUI:CycleDamageFilter()
     local s = self:GetDamageSettings();
-    local targetCfg = (s.mode == "standard") and s.standard or s.sct;
-    local nextFilter = (targetCfg.filter == "all") and "nodots" or ((targetCfg.filter == "nodots") and "crits" or ((targetCfg.filter == "crits") and "off" or "all"));
-    targetCfg.filter = nextFilter;
+    local nextFilter;
+    if ( s.mode == "standard" ) then
+        nextFilter = (s.standard.filter == "all") and "crits" or ((s.standard.filter == "crits") and "off" or "all");
+        s.standard.filter = nextFilter;
+    else
+        nextFilter = (s.sct.filter == "all") and "nodots" or ((s.sct.filter == "nodots") and "crits" or ((s.sct.filter == "crits") and "off" or "all"));
+        s.sct.filter = nextFilter;
+    end
     self:ApplyDamageSettings();
     
     local names = {
-        all    = "|cff55ff55All Numbers|r",
+        all    = "|cff55ff55All Damage|r",
         nodots = "|cff00ccffNo DoT-Spam|r",
         crits  = "|cffffd100Only Crits|r",
         off    = "|cffff4444Disabled|r",
@@ -1306,10 +1354,10 @@ function BordoUI:CreateDamageNumbersWindow()
     uiSections.hFilter = hFilter;
     
     local filters = {
-        { id = "all",    label = "All Damage",  desc = "Show all direct hits, periodic DoT ticks, and crits." },
-        { id = "nodots", label = "No DoT-Spam", desc = "Hide thousands of periodic DoT ticks; show only direct hits & crits!" },
-        { id = "crits",  label = "Only Crits",  desc = "Exclusively display big critical strikes (cleanest screen)." },
-        { id = "off",    label = "Disabled",    desc = "Completely disable damage numbers." },
+        { id = "all",    label = "All Damage",  desc = "Show all damage numbers (direct hits, periodic DoT ticks, and crits)." },
+        { id = "nodots", label = "No DoT-Spam", desc = "Hide periodic DoT ticks; show only direct hits & crits!" },
+        { id = "crits",  label = "Only Crits",  desc = "Exclusively display critical strikes! All non-crit white hits and spam are suppressed." },
+        { id = "off",    label = "Disabled",    desc = "Completely disable all damage numbers (zero floating text)." },
     };
     local fW = 84;
     uiSections.filterButtons = {};
@@ -1443,18 +1491,24 @@ function BordoUI:UpdateDamageWindowUI()
         uiSections.hFilter:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -89);
         uiSections.hFilter:Show();
         
-        local stdFilterW = 174;
+        -- 3 Filter Buttons: [ All Damage ] [ Only Crits ] [ Disabled ]
+        local stdW = 114;
         for i = 1, table.getn(uiSections.filterButtons) do
             local btn = uiSections.filterButtons[i];
             if ( btn.val == "all" ) then
-                btn:SetWidth(stdFilterW);
+                btn:SetWidth(stdW);
                 btn:ClearAllPoints();
                 btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -104);
                 btn:Show();
-            elseif ( btn.val == "nodots" ) then
-                btn:SetWidth(stdFilterW);
+            elseif ( btn.val == "crits" ) then
+                btn:SetWidth(stdW);
                 btn:ClearAllPoints();
-                btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12 + stdFilterW + 8, -104);
+                btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 133, -104);
+                btn:Show();
+            elseif ( btn.val == "off" ) then
+                btn:SetWidth(stdW);
+                btn:ClearAllPoints();
+                btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 254, -104);
                 btn:Show();
             else
                 btn:Hide();

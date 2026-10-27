@@ -4,6 +4,25 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.13] - 2026-10-27
+
+### Added & Refined
+- **Dedicated 3-Option Damage Filter for Standard Mode (`DamageFont.lua`):**
+  - Standard mode now presents exactly the three user-requested filter options:
+    - **All Damage** (`all`): Displays all in-world overhead damage numbers (direct hits, DoTs, crits, pets, totems).
+    - **Only Crits** (`crits`): Exclusively displays critical strikes! All non-crit white hits and spam are completely suppressed.
+    - **Disabled** (`off`): Completely silences all damage numbers on screen (zero floating text).
+  - Cleaned out the non-functional `No DoT-Spam` button from Standard mode.
+  - Three 114px wide pill buttons perfectly span across the 356px container width (`x = 12`, `x = 133`, `x = 254`) with 7px gaps.
+- **Active Hit-Spam Suppression in "Only Crits" Standard Mode:**
+  - In native WoW 1.12 C++ engine, `CombatDamage = "1"` renders all white hits over mobs with no engine filter. Setting `CombatDamage = "0"` when `Only Crits` is selected immediately eliminates all white hit spam.
+  - BordoUI's combat text engine catches incoming critical strikes (`isCrit == true`), displaying them in glowing gold (`* <amount> *`) with authentic spell icons.
+- **Minimap Quick-Cycle Filter Synchronization:**
+  - Right-clicking the Minimap dock button in Standard mode smoothly cycles: `All Damage` -> `Only Crits` -> `Disabled` -> `All Damage`.
+  - Window height remains locked at a compact **140px** with zero dead space.
+
+---
+
 ## [2.8.12] - 2026-10-27
 
 ### Fixed & Streamlined
@@ -91,7 +110,7 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
   - Resolved ad argument #2 to 'format' (string expected, got nil) when opening the Combat Text Settings window with legacy/uninitialized saved variables.
   - Bulletproofed GetDamageSettings() to guarantee fallback non-nil values for every key (mode, ariant, ilter, ont, scale, icons, stacking).
   - Added safe 	ostring(...) and 	onumber(...) fallbacks to all string.format calls in DamageFont.lua.
-  - Replaced multi-byte UTF-8 emojis (🛡, 💥, ⚔, ⚡, ♦) with clean standard ASCII to guarantee 100% rendering stability in WoW 1.12.1.
+  - Replaced multi-byte UTF-8 emojis (ðŸ›¡, ðŸ’¥, âš”, âš¡, â™¦) with clean standard ASCII to guarantee 100% rendering stability in WoW 1.12.1.
 
 ---
 
@@ -154,7 +173,7 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
     - *Nur Crits:* Exclusively displays large, satisfying critical strikes!
     - *Aus:* Completely disables floating combat numbers.
   - **Font Styles:** Switch seamlessly between Modern Sans (`modern.ttf`), Classic WoW (`FRIZQT__.TTF`), Arcade Narrow (`ARIALN.TTF`), Russo Bold (`RussoOne`), and Exo Sci-Fi (`Exo`).
-  - **Live Sizing & Scale:** 50% (Winzig), 70% (Kompakt), 85% (Standard), 100% (Groß), and 125% (Riesig).
+  - **Live Sizing & Scale:** 50% (Winzig), 70% (Kompakt), 85% (Standard), 100% (GroÃŸ), and 125% (Riesig).
   - **Instant Hit Simulation:** Integrated "Test-Treffer simulieren" button to test numbers, heals, and crits in real-time.
 - **Minimap Action Dock Button 4 (`ThemeUI.lua`):**
   - Added 4th dock button with `Ability_CriticalStrike` icon.
@@ -240,8 +259,8 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
   - Removed inventory change triggers that previously caused picked Augment rings (e.g. *Master Dragonslayer's Ring*) to falsely display as a Boss Loot alert.
   - Added strict phase verification (`AZS_GetPhase() ~= "choosing"`) so upgrade choices never trigger the alert.
   - The center Boss Loot toast now fires **exclusively** on true enemy boss item drops (`CHAT_MSG_LOOT` / `CHAT_MSG_SYSTEM`).
-- **New Run Loot Log Panel on Left Side ("Links wo höchster Krit ist"):**
-  - Added a dedicated, movable run loot panel (`BordoUI_LootLogFrame`) docked directly below *Höchster Krit* (`SurvivorUICrits`) or *This Run* (`SurvivorUIRun`).
+- **New Run Loot Log Panel on Left Side ("Links wo hÃ¶chster Krit ist"):**
+  - Added a dedicated, movable run loot panel (`BordoUI_LootLogFrame`) docked directly below *HÃ¶chster Krit* (`SurvivorUICrits`) or *This Run* (`SurvivorUIRun`).
   - Displays a clean history of all equipment, armor, and jewelry dropped in the current run (newest first).
   - Every row features the authentic item icon, item name in quality color, drop timestamp (`M:SS`), stack count (`x2`), and `new` collection tags.
   - Full mouseover tooltip (`GameTooltip:SetHyperlink`) and Shift-Click chat insertion.
@@ -342,10 +361,10 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
     - **Smart Affordability Glow:** The instant player gold meets or exceeds the chest price (`gold >= chest`), the cost text turns bright lime-green (`|cff33ff33`), and the coin activates a pulsating golden aura (`Art\PaceGlow.tga` & `Art\PaceSpark.tga`), making it obvious when a chest can be opened.
 - **Feature 2: Modern 4-Section Stats Window (`StatsWindow.lua`):**
   - Replaces the old multipliers box with a sleek, modern, 4-category Stats window matching the EllesmereUI/SurvivorUI reference:
-    - `─── Offense ───` (Orange/Red): Crit, Crit Dmg, Damage, Haste, Echo.
-    - `─── Defense ───` (Steel Blue): Health, Regen, Lifesteal, Armor, Kill Heal, Thorns, Lives.
-    - `─── Reach ───` (Purple): Area, Targets, Pickup.
-    - `─── Utility ───` (Emerald Green): Speed, Experience, Gold, Luck, Buff Power.
+    - `â”€â”€â”€ Offense â”€â”€â”€` (Orange/Red): Crit, Crit Dmg, Damage, Haste, Echo.
+    - `â”€â”€â”€ Defense â”€â”€â”€` (Steel Blue): Health, Regen, Lifesteal, Armor, Kill Heal, Thorns, Lives.
+    - `â”€â”€â”€ Reach â”€â”€â”€` (Purple): Area, Targets, Pickup.
+    - `â”€â”€â”€ Utility â”€â”€â”€` (Emerald Green): Speed, Experience, Gold, Luck, Buff Power.
   - Permanently visible on screen throughout survivor runs (no need to open the character pane with 'C').
   - Draggable with saved position (`BordoUIDB.statsPos`), scalable with mousewheel.
   - Interactive tooltips on hover detailing each stat's effect and breakdown of bonuses contributed by worn gear.
@@ -361,7 +380,7 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
       - When Slain / Dead: Crimson red background with live countdown timer until respawn (`0:39`, `1:51`, etc.).
       - When Spawned / Alive: Vibrant green background with a **live 3D rotational directional arrow** (`Art\GuardianArrow.tga` with 64 dynamic angles) pointing toward the guardian in the 3D world relative to hero facing. Arrow glows gold when facing or within 10 yards.
       - When In Combat: Amber background with health % / fight status.
-    - **Achievement Line:** Tracks "Slay 4 guardians before 8:00" progress (`4/4 by 8:00 • done`).
+    - **Achievement Line:** Tracks "Slay 4 guardians before 8:00" progress (`4/4 by 8:00 â€¢ done`).
     - **Elites Counter:** Live counter for active elite mobs.
 - **Feature 4: Build List (6/6) & Jewelry Panel (`BuildList.lua` + `AbilityTooltip.lua`):**
   - **Build List:**
@@ -378,7 +397,7 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
     - Dedicated `Jewelry` section directly underneath the build list displaying 5 equipped gear slots (Neck, Ring 1, Ring 2, Trinket 1, Trinket 2).
     - Color-coded borders and backgrounds matching item quality (Legendary Orange, Epic Purple, Rare Blue, Uncommon Green, Common Grey).
     - Displays item name/type + roman rank (e.g. `Evisce. IV`, `Ring II`, `Trinket I`).
-    - Automatically parses rolled stats into concise tag lines (e.g. `+69% DMG • 77% SPLASH`, `8.8% DMG RED • +35% HP`, `+13% CRIT`, `72% THORNS`).
+    - Automatically parses rolled stats into concise tag lines (e.g. `+69% DMG â€¢ 77% SPLASH`, `8.8% DMG RED â€¢ +35% HP`, `+13% CRIT`, `72% THORNS`).
     - Hovering any jewelry piece displays full item tooltip.
 - **Minimap Pins Dual-Engine (`MapPins.lua`):**
   - Fully upgraded minimap pins to show **BOTH** Caches (`Art\PinCache.tga`) and Boss/Guardian Lairs (`Art\PinLair.tga` + `Art\LairMarks.tga`).
@@ -388,7 +407,7 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ### Maintained & Integrated
 - **Teammate Green Health Bars:**
-  - Overhead Nameplates: Friendly group members feature bright lime-green health bars (`0.12, 0.95, 0.22`) with `🛡️` or `👑` badges.
+  - Overhead Nameplates: Friendly group members feature bright lime-green health bars (`0.12, 0.95, 0.22`) with `ðŸ›¡ï¸` or `ðŸ‘‘` badges.
   - Party Frames: Sleek unit frames with green health bars (`0.15, 0.88, 0.25`), 3D portraits, and leader crowns.
 - **Damage Font & Highest Crit Record:**
   - Clean floating combat text via `DamageFont.lua`.

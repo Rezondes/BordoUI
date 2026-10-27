@@ -1155,7 +1155,7 @@ CreateSquareDockButton(
 -- 4. Damage Numbers & Styles Button
 CreateSquareDockButton(
 	minimapDock, 4, "Interface\\Icons\\Ability_CriticalStrike",
-	"Damage Numbers & Styles", "Left-Click: Configure Styles & Scrolling Text\nRight-Click: Quick Cycle (All / No DoTs / Crits / Off)\nShift-Click: Toggle Mode (Standard / Scrolling SCT)",
+	"Damage Numbers & Styles", "Left-Click: Configure Combat Text Settings\nRight-Click: Quick Cycle Damage Filter\nShift-Click: Toggle Mode (Standard / Scrolling SCT)",
 	function(button)
 		if IsShiftKeyDown() and BordoUI and BordoUI.ToggleDamageMotion then
 			BordoUI:ToggleDamageMotion()
