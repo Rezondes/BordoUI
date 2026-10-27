@@ -4,6 +4,24 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.1.2] - 2026-10-27
+
+### Fixed
+- **Co-op boss-only nameplates:** target override now uses the individual plate's target marker instead of mob-name equality, so every add sharing the selected mob's name no longer passes the filter.
+
+## [2.1.1] - 2026-10-27
+
+### Changed
+- **Totem nameplates:** removed the Totems control from the Nameplates window and made totem healthbars permanently hidden, overriding old saved settings.
+
+## [2.1.0] - 2026-10-27
+
+### Added
+- **Per-window visibility controls:** use /bordo window list and /bordo window <name> [on|off]; choices are saved between runs.
+
+### Removed
+- **Chest proximity radar:** removed its centered yellow arrow and Chest: … yd label. Minimap chest pins remain unchanged.
+
 ## [2.0.0] - 2026-10-27 (Bordo 2.0 Major Feature Expansion)
 
 ### Added
@@ -460,3 +478,17 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ## [2.5.0] - 2026-10-23
 - Initial Teammate Green Nameplates & Party Frames release.
+# Version 2.2.0
+- Replaced the Talents & Build minimap dock shortcut with a Windows button.
+- Added a two-column window panel with persistent individual ON/OFF controls for Bordo UI windows.
+- Kept `/bordo window <name> [on|off]` available as a keyboard alternative.
+
+# Version 2.2.1
+- Re-apply friendly and enemy nameplate settings on world entry and when a co-op run enters the playing phase.
+- Make Bosses & Elites filtering strict, so targeted trash adds remain hidden in solo and co-op.
+- Hide unknown nameplates while they are being initialized in filtered modes and scan more frequently to prevent visible flashes.
+
+# Version 2.2.2
+- Limited the Windows panel and `/bordo window list` to Stats, Highest Crit, Build & Jewelry, Chat Box, Death Recap, Run Summary and Loot Alert.
+- Reduced the panel height to fit the seven controls.
+

@@ -106,7 +106,6 @@ local ZONE_ALIASES = {
     ["wald von elwynn"] = "Elwynn Forest",
     ["elwynn forest"] = "Elwynn Forest",
     ["duskwood"] = "Duskwood",
-    ["dÃ¤mmerwald"] = "Duskwood",
     ["daemmerwald"] = "Duskwood",
     ["wsg"] = "Warsong Gulch",
     ["warsong gulch"] = "Warsong Gulch",
@@ -259,12 +258,14 @@ local timelineContainer = CreateFrame("Frame", nil, frame);
 timelineContainer:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, -48);
 timelineContainer:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, -48);
 timelineContainer:SetHeight(18);
+timelineContainer:SetWidth(204);
 
 local timelineBar = CreateFrame("StatusBar", nil, timelineContainer);
 timelineBar:SetPoint("BOTTOMLEFT", timelineContainer, "BOTTOMLEFT", 0, 2);
 timelineBar:SetPoint("BOTTOMRIGHT", timelineContainer, "BOTTOMRIGHT", 0, 2);
 timelineBar:SetHeight(6);
-timelineBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
+timelineBar:SetWidth(204);
+timelineBar:SetStatusBarTexture(FLAT);
 timelineBar:SetStatusBarColor(0.30, 0.85, 0.35, 1.0);
 timelineBar:SetMinMaxValues(0, 1200);
 timelineBar:SetValue(0);
@@ -541,7 +542,10 @@ function TrackerUI:Update()
     timelineBar:SetValue(math.min(t, totalTime));
 
     -- Boss Rows & Timeline Ticks
-    local barW = timelineBar:GetWidth() or 204;
+    local barW = timelineBar:GetWidth();
+    if not barW or barW <= 10 then
+        barW = 204;
+    end
     local foundNext = false;
 
     for i = 1, 6 do
@@ -594,6 +598,15 @@ function TrackerUI:Update()
                         tick:SetWidth(2);
                     end
 
+                    tick.label:ClearAllPoints();
+                    if x > barW - 24 then
+                        tick.label:SetPoint("BOTTOMRIGHT", tick, "TOPRIGHT", 0, 1);
+                    elseif x < 24 then
+                        tick.label:SetPoint("BOTTOMLEFT", tick, "TOPLEFT", 0, 1);
+                    else
+                        tick.label:SetPoint("BOTTOM", tick, "TOP", 0, 1);
+                    end
+
                     if bState == "dead" then
                         tick.line:SetVertexColor(0.30, 0.90, 0.40, 0.95);
                         tick.label:SetText(FormatClock(bAt));
@@ -603,8 +616,9 @@ function TrackerUI:Update()
                         tick.label:SetText("FIGHT");
                         tick.label:SetTextColor(1.00, 0.55, 0.15);
                     elseif not foundNext and bAt >= t then
+                        foundNext = true;
                         tick.line:SetVertexColor(1.00, 0.82, 0.20, 0.95);
-                        tick.label:SetText(FormatClock(math.max(0, bAt - t)));
+                        tick.label:SetText(FormatClock(bAt));
                         tick.label:SetTextColor(1.00, 0.82, 0.20);
                     else
                         tick.line:SetVertexColor(0.85, 0.85, 0.85, 0.80);

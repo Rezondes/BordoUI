@@ -740,6 +740,16 @@ local function InitStatsWindow()
     end
     BordoUI:UpdateHighestCrit();
 end
+function BordoUI_ToggleStatsWindow()
+    if BordoUI and BordoUI.SetWindowEnabled then
+        local current = BordoUI:IsWindowEnabled("stats");
+        BordoUI:SetWindowEnabled("stats", not current);
+    else
+        if frame:IsShown() then frame:Hide(); else frame:Show(); end
+    end
+end
+BordoUI.ToggleStatsWindow = BordoUI_ToggleStatsWindow;
+
 local loader = CreateFrame("Frame");
 loader:RegisterEvent("PLAYER_ENTERING_WORLD");
 loader:RegisterEvent("VARIABLES_LOADED");

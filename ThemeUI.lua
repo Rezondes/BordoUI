@@ -1124,18 +1124,12 @@ CreateSquareDockButton(
 		end
 	end
 )
--- 2. Talents & Build Button
+-- 2. Windows Button (replaces the old Talents & Build shortcut)
 CreateSquareDockButton(
-	minimapDock, 2, "Interface\\Icons\\Spell_Nature_NatureTouchGrow",
-	"Talents & Build", "Left-Click: Toggle Build & Jewelry List\nShift-Click: Open Blizzard Talent Tree",
+	minimapDock, 2, "Interface\\Icons\\INV_Misc_Gear_01",
+	"Windows", "Left-Click: Open Bordo UI window controls",
 	function()
-		if IsShiftKeyDown() and ToggleTalentFrame then
-			ToggleTalentFrame()
-		elseif SurvivorUI_ToggleBuild then
-			SurvivorUI_ToggleBuild()
-		elseif ToggleTalentFrame then
-			ToggleTalentFrame()
-		end
+		if BordoUI and BordoUI.ToggleWindowsPanel then BordoUI:ToggleWindowsPanel() end
 	end
 )
 -- 3. Damage Meter Button

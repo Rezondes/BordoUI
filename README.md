@@ -1,7 +1,7 @@
 # Bordo UI - Modern UI Suite for Azeroth Survivors
 
 [![Interface](https://img.shields.io/badge/Interface-11200-blue.svg)](https://github.com)
-[![Version](https://img.shields.io/badge/Version-2.7.7-brightgreen.svg)](https://github.com)
+[![Version](https://img.shields.io/badge/Version-2.2.2-brightgreen.svg)](https://github.com)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/threenox/BordoUI/total.svg?color=blue)](https://github.com/threenox/BordoUI/releases)
 [![Game](https://img.shields.io/badge/Game-World%20of%20Warcraft%201.12.1-orange.svg)](https://github.com)
@@ -92,9 +92,12 @@
 | `/bordo testloot pants` | Preview Boss Loot Toast with Epic Pants (`[Wildheart Pants]`) |
 | `/bordo testloot helm` | Preview Boss Loot Toast with an Epic Headpiece (`[Crown of Destruction]`) |
 | `/bordo plates` / `/plates` | Force enable teammate & enemy overhead nameplates |
-| `/bordo totems` | Toggle Shaman totem health bars (hidden by default) |
+| `/bordo totems` | Confirm totem health bars stay permanently hidden |
 | `/bordo party` / `/bparty` | Toggle Party Frames |
 | `/bordo party test` | Toggle Party Frames simulated test mode |
+| `/bordo window list` | List all per-window controls |
+| `/bordo window <name> [on|off]` | Toggle a window; setting is saved |
+| Window names | `hud`, `stats`, `crit`, `table`, `boss`, `bossbar`, `build`, `party`, `kills`, `meter`, `dock`, `chat`, `procs`, `plates`, `damage`, `lowhp`, `character`, `death`, `runrecap`, `loot` |
 | `/bordo reset` | Reset all UI window positions to default |
 
 ---

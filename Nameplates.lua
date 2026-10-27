@@ -110,9 +110,11 @@ local function IsTotem(name)
 end
 
 local function ShouldHideTotems()
-    if ( not BordoUIDB ) then return true; end
-    if ( BordoUIDB.hideTotems == nil ) then return true; end -- Default: true (hide totems)
-    return BordoUIDB.hideTotems;
+    -- Always hide totem nameplates, even if an older SavedVariables file
+    -- contains hideTotems = false.
+    BordoUIDB = BordoUIDB or {};
+    BordoUIDB.hideTotems = true;
+    return true;
 end
 
 -- Identify if a frame is a WoW 1.12.1 Blizzard Nameplate
@@ -179,16 +181,17 @@ local function SetupNameplateElements(frame)
     
     if ( not healthBar ) then return; end
     
-    -- Permanently hide default curved Blizzard border and glow
+    -- Hide the stock art without destroying the game's target marker state.
+    -- The target glow's shown state identifies the one targeted plate, which
+    -- matters when several co-op adds share the same name.
     if ( defaultBorder ) then
         defaultBorder:SetTexture("");
         defaultBorder:Hide();
         defaultBorder.Show = function() end;
     end
     if ( defaultGlow ) then
-        defaultGlow:SetTexture("");
-        defaultGlow:Hide();
-        defaultGlow.Show = function() end;
+        frame.azsTargetGlow = defaultGlow;
+        defaultGlow:SetAlpha(0);
     end
     
     -- Flat modern status bar texture
@@ -285,11 +288,21 @@ local function StyleNameplate(frame)
     local levelText = frame.azsLevelText;
     local borderFrame = healthBar.azsBorder;
     
-    if ( not nameText ) then return; end
+    local filter = (BordoUI and BordoUI.GetNameplateFilter and BordoUI:GetNameplateFilter()) or "all";
+    if ( not nameText ) then
+        if ( filter ~= "all" ) then HideNameplateFrame(frame); end
+        return;
+    end
     
     -- Extract clean mob name (before our custom prefixes)
     local curName = nameText:GetText();
-    if ( not curName or curName == "" ) then return; end
+    if ( not curName or curName == "" ) then
+        -- In filtered modes, suppress a newly spawned plate before its name
+        -- becomes available. The scanner revisits our filtered plates and
+        -- restores it later if it resolves to a boss, elite, guardian or ally.
+        if ( filter ~= "all" ) then HideNameplateFrame(frame); end
+        return;
+    end
     
     local cleanName = frame.azsCleanName;
     if ( not string.find(curName, "|c") and not string.find(curName, "%[") and not string.find(curName, "%+") ) then
@@ -304,7 +317,10 @@ local function StyleNameplate(frame)
     -- CLASSIFICATION 0: TEAMMATES & PARTY MEMBERS (Vibrant Green Health Bar!)
     -- ---------------------------------------------------------------------
     local isAlly, allyToken, allyRealName = IsTeammate(cleanName);
-    local isTarget = (UnitExists("target") and UnitName("target") == cleanName);
+    -- Use the per-plate target marker. Name matching is unsafe in co-op:
+    -- every mob with the same display name would otherwise pass the filter.
+    local isTarget = frame.azsTargetGlow and frame.azsTargetGlow:IsShown() or false;
+    if ( frame.azsTargetGlow ) then frame.azsTargetGlow:SetAlpha(0); end
     if ( not isAlly and isTarget and UnitIsFriend("player", "target") ) then
         isAlly = true;
         allyToken = "target";
@@ -415,7 +431,6 @@ local function StyleNameplate(frame)
         end
     end
     
-    local filter = (BordoUI and BordoUI.GetNameplateFilter and BordoUI:GetNameplateFilter()) or "all";
     local allowTarget = (isTarget and (not BordoUIDB or BordoUIDB.nameplateShowTarget ~= false));
     
     if ( filter == "off" ) then
@@ -424,7 +439,9 @@ local function StyleNameplate(frame)
             return;
         end
     elseif ( filter == "bosses" ) then
-        if ( not isBossOrElite and not allowTarget ) then
+        -- Boss/Elite mode is strict, including in co-op: targeting an ordinary
+        -- add must never briefly reveal its healthbar.
+        if ( not isBossOrElite ) then
             HideNameplateFrame(frame);
             return;
         end
@@ -590,7 +607,8 @@ end
 
 -- Ensure native WoW 1.12.1 friendly and enemy nameplates are turned on
 local function EnsureNameplatesEnabled()
-    if ( ShowFriendNameplates ) then
+    local friendlyEnabled = (not BordoUIDB or BordoUIDB.friendlyNameplates ~= false);
+    if ( friendlyEnabled and ShowFriendNameplates ) then
         pcall(ShowFriendNameplates);
     end
     if ( ShowNameplates ) then
@@ -603,6 +621,28 @@ end
 if ( BordoUI ) then
     BordoUI.EnsureNameplates = EnsureNameplatesEnabled;
 end
+
+-- Co-op switches its nameplate state when a run begins. Re-apply our choice
+-- on world entry and when the game phase transitions into active play.
+local nameplateStartup = CreateFrame("Frame", "BordoUI_NameplateStartup");
+nameplateStartup:RegisterEvent("VARIABLES_LOADED");
+nameplateStartup:RegisterEvent("PLAYER_ENTERING_WORLD");
+local lastNameplatePhase = nil;
+local phaseElapsed = 0;
+nameplateStartup:SetScript("OnEvent", function()
+    EnsureNameplatesEnabled();
+    lastNameplatePhase = nil;
+end);
+nameplateStartup:SetScript("OnUpdate", function()
+    phaseElapsed = phaseElapsed + (arg1 or 0.1);
+    if ( phaseElapsed < 0.25 ) then return; end
+    phaseElapsed = 0;
+    local phase = AZS_GetPhase and AZS_GetPhase() or nil;
+    if ( phase == "playing" and lastNameplatePhase ~= "playing" ) then
+        EnsureNameplatesEnabled();
+    end
+    lastNameplatePhase = phase;
+end);
 
 -- =========================================================================
 -- BordoUI Nameplate API & Filtering Controls
@@ -664,17 +704,6 @@ function BordoUI:ToggleFriendlyNameplates()
     else
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate Nameplates: |cffff3333[DISABLED]|r");
     end
-    self:UpdateNameplatesWindowUI();
-end
-
-function BordoUI:ToggleTotemsHidden()
-    BordoUIDB = BordoUIDB or {};
-    if ( BordoUIDB.hideTotems == nil ) then
-        BordoUIDB.hideTotems = true;
-    end
-    BordoUIDB.hideTotems = not BordoUIDB.hideTotems;
-    local st = BordoUIDB.hideTotems and "|cff55ff55[HIDDEN]|r" or "|cffffaa00[SHOWN]|r";
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Shaman Totem health bars are now " .. st .. ".");
     self:UpdateNameplatesWindowUI();
 end
 
@@ -834,15 +863,11 @@ function BordoUI:CreateNameplatesSettingsWindow()
     sec2:SetText("|cffffd100DISPLAY OPTIONS|r");
     
     -- Row 2: 3 Display Option Buttons
-    npWin.btnTeammates = CreateStyledFilterButton(npWin, "Teammates: ON", 12, -112, 114, 24, function()
+    npWin.btnTeammates = CreateStyledFilterButton(npWin, "Teammates: ON", 12, -112, 172, 24, function()
         BordoUI:ToggleFriendlyNameplates();
     end);
     
-    npWin.btnTotems = CreateStyledFilterButton(npWin, "Totems: HIDE", 133, -112, 114, 24, function()
-        BordoUI:ToggleTotemsHidden();
-    end);
-    
-    npWin.btnTarget = CreateStyledFilterButton(npWin, "Target Bar: ON", 254, -112, 114, 24, function()
+    npWin.btnTarget = CreateStyledFilterButton(npWin, "Target Bar: ON", 196, -112, 172, 24, function()
         BordoUI:ToggleTargetNameplate();
     end);
     
@@ -903,17 +928,6 @@ function BordoUI:UpdateNameplatesWindowUI()
         end
     end
     
-    local hideTotems = (not BordoUIDB or BordoUIDB.hideTotems ~= false);
-    if ( npWin.btnTotems ) then
-        if ( hideTotems ) then
-            npWin.btnTotems.text:SetText("|cff55ff55Totems: HIDE|r");
-            npWin.btnTotems:SetBackdropBorderColor(0.15, 0.85, 0.30, 0.95);
-        else
-            npWin.btnTotems.text:SetText("|cffffaa00Totems: SHOW|r");
-            npWin.btnTotems:SetBackdropBorderColor(0.25, 0.25, 0.30, 0.90);
-        end
-    end
-    
     local showTarget = (not BordoUIDB or BordoUIDB.nameplateShowTarget ~= false);
     if ( npWin.btnTarget ) then
         if ( showTarget ) then
@@ -961,7 +975,7 @@ local scanElapsed = 0;
 scanFrame:SetScript("OnUpdate", function()
     local elapsed = arg1 or 0.05;
     scanElapsed = scanElapsed + elapsed;
-    if ( scanElapsed < 0.05 ) then return; end
+    if ( scanElapsed < 0.02 ) then return; end
     scanElapsed = 0;
     
     local frames = { WorldFrame:GetChildren() };

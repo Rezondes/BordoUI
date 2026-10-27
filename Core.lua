@@ -5,7 +5,7 @@
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.3.0";
+BordoUI.version = "2.2.2";
 -- Unit & Mob Tooltip Relocation: Anchor world/unit/add tooltips to bottom-left next to ChatFrame1
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
 tipAnchor:SetWidth(200);
@@ -231,9 +231,6 @@ eventFrame:SetScript("OnEvent", function()
             if ( BordoUI_ProcTrackerFrame and BordoUIDB and BordoUIDB.procTrackerPos ) then
                 BordoUI:RestorePosition(BordoUI_ProcTrackerFrame, BordoUIDB.procTrackerPos);
             end
-            if ( BordoUI_ChestRadarFrame and BordoUIDB and BordoUIDB.chestRadarPos ) then
-                BordoUI:RestorePosition(BordoUI_ChestRadarFrame, BordoUIDB.chestRadarPos);
-            end
         end
     end
 end);
@@ -288,6 +285,28 @@ SlashCmdList["BORDOU"] = function(msg)
                 DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Boss timer list shown.");
             end
         end
+    elseif ( cmd == "window" or cmd == "windows" ) then
+        if BordoUI.HandleWindowCommand then BordoUI:HandleWindowCommand(val); end
+    elseif ( cmd == "stats" or cmd == "statswindow" ) then
+        if BordoUI.SetWindowEnabled then
+            local current = BordoUI:IsWindowEnabled("stats");
+            local target;
+            if val == "on" then target = true;
+            elseif val == "off" then target = false;
+            else target = not current; end
+            BordoUI:SetWindowEnabled("stats", target);
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats Window " .. (target and "|cff55ff55[SHOWN]|r" or "|cffff3333[HIDDEN]|r") .. ".");
+        end
+    elseif ( cmd == "crit" or cmd == "highestcrit" ) then
+        if BordoUI.SetWindowEnabled then
+            local current = BordoUI:IsWindowEnabled("crit");
+            local target;
+            if val == "on" then target = true;
+            elseif val == "off" then target = false;
+            else target = not current; end
+            BordoUI:SetWindowEnabled("crit", target);
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Highest Crit Window " .. (target and "|cff55ff55[SHOWN]|r" or "|cffff3333[HIDDEN]|r") .. ".");
+        end
     elseif ( cmd == "loot" or cmd == "testloot" ) then
         if ( BordoUI.TestLootAlert ) then
             BordoUI:TestLootAlert(val);
@@ -307,14 +326,6 @@ SlashCmdList["BORDOU"] = function(msg)
     elseif ( cmd == "testprocs" or cmd == "testproc" ) then
         if ( BordoUI.TestProcTracker ) then
             BordoUI:TestProcTracker();
-        end
-    elseif ( cmd == "chestradar" or cmd == "radar" ) then
-        if ( BordoUI.ToggleChestRadar ) then
-            BordoUI:ToggleChestRadar();
-        end
-    elseif ( cmd == "testchest" ) then
-        if ( BordoUI.TestChestRadar ) then
-            BordoUI:TestChestRadar();
         end
     elseif ( cmd == "runrecap" or cmd == "recap" or cmd == "testrecap" ) then
         if ( BordoUI.ToggleRunRecap ) then
@@ -357,12 +368,8 @@ SlashCmdList["BORDOU"] = function(msg)
         end
     elseif ( cmd == "totem" or cmd == "totems" ) then
         BordoUIDB = BordoUIDB or {};
-        if ( BordoUIDB.hideTotems == nil ) then
-            BordoUIDB.hideTotems = true;
-        end
-        BordoUIDB.hideTotems = not BordoUIDB.hideTotems;
-        local st = BordoUIDB.hideTotems and "|cff55ff55[HIDDEN]|r" or "|cffff3333[SHOWN]|r";
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Totem health bars are now " .. st .. ".");
+        BordoUIDB.hideTotems = true;
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Totem health bars are permanently hidden.");
     elseif ( cmd == "lock" ) then
         BordoUI:ToggleMoveMode(false);
         BordoUI:SetLocked(true);
@@ -376,10 +383,13 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Open Nameplates Settings (/bordo plates all|bosses|off)");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Toggle Shaman totem health bars (hidden by default)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Totem health bars stay permanently hidden");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo meter|r - Toggle BordoUI Damage Meter");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo stats [on|off]|r - Toggle 4-Section Stats Window");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo crit [on|off]|r - Toggle Highest Crit Window");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo window|r - Open Window Control Panel (toggle any window ON/OFF)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset all window positions to defaults");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo recap|r - View Death Recap & Recent Damage");
@@ -599,7 +609,6 @@ function BordoUI:ToggleMoveMode(enable)
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
 		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
 		{ frame = BordoUI_ProcTrackerFrame, name = "Procs & Buffs HUD (Drag Me)", key = "procTrackerPos" },
-		{ frame = BordoUI_ChestRadarFrame, name = "Chest Radar (Drag Me)", key = "chestRadarPos" },
     };
     for i = 1, table.getn(targets) do
         local t = targets[i];
