@@ -93,14 +93,14 @@ local function Span()
     for a = 1, table.getn(places) do
         for b = a + 1, table.getn(places) do
             local p, q = places[a], places[b];
-            local pmx = Share(p.mx or p[9] or p[3]);
-            local qmx = Share(q.mx or q[9] or q[3]);
-            local pmy = Share(p.my or p[10] or p[4]);
-            local qmy = Share(q.my or q[10] or q[4]);
-            local px = tonumber(p.x or p[6] or p[1]);
-            local qx = tonumber(q.x or q[6] or q[1]);
-            local py = tonumber(p.y or p[7] or p[2]);
-            local qy = tonumber(q.y or q[7] or q[2]);
+            local pmx = Share(p.mx or (p.index and p[9]) or p[5]);
+            local qmx = Share(q.mx or (q.index and q[9]) or q[5]);
+            local pmy = Share(p.my or (p.index and p[10]) or p[6]);
+            local qmy = Share(q.my or (q.index and q[10]) or q[6]);
+            local px = tonumber(p.x or (p.index and p[6]) or p[2]);
+            local qx = tonumber(q.x or (q.index and q[6]) or q[2]);
+            local py = tonumber(p.y or (p.index and p[7]) or p[3]);
+            local qy = tonumber(q.y or (q.index and q[7]) or q[3]);
             if ( pmx and qmx and pmy and qmy and px and qx and py and qy ) then
                 local dmx, dmy = math.abs(pmx - qmx), math.abs(pmy - qmy);
                 if ( dmx > known.baseAcross and dmx > NEAREST ) then
@@ -148,13 +148,13 @@ local function HeroPlace()
 end
 
 local function WayTo(place, px, py, heroX, heroY, span)
-    local x = tonumber(place.x or place[6] or place[1]);
-    local y = tonumber(place.y or place[7] or place[2]);
+    local x = tonumber(place.x or (place.index and place[6]) or place[2]);
+    local y = tonumber(place.y or (place.index and place[7]) or place[3]);
     if ( px and x and y ) then
         return WorldWay(px, py, x, y);
     end
-    local mx = Share(place.mx or place[9] or place[3]);
-    local my = Share(place.my or place[10] or place[4]);
+    local mx = Share(place.mx or (place.index and place[9]) or place[5]);
+    local my = Share(place.my or (place.index and place[10]) or place[6]);
     if ( heroX and span and mx and my ) then
         return (mx - heroX) * span.across, (my - heroY) * span.down;
     end
@@ -285,7 +285,13 @@ local function Update()
             local yardsAcross = MinimapYards();
             
             -- 1. Battleground Caches (Golden Chests)
-            local chests = AZS_CHESTS or {};
+            local rawChests = AZS_CHESTS or {};
+            local chests = {};
+            for k, v in pairs(rawChests) do
+                if ( type(v) == 'table' ) then
+                    table.insert(chests, v);
+                end
+            end
             local cacheSize = SurvivorUI_PinSize("cache");
             for index = 1, table.getn(chests) do
                 local chest = chests[index];
@@ -298,7 +304,12 @@ local function Update()
                     pin.art:SetVertexColor(1, 1, 1, 1);
                     pin.glow:Hide();
                     pin.title = "Battleground Cache";
-                    pin.note = "Gold and power cache";
+                    local cost = (AZS_RUN and AZS_RUN.chest) and tonumber(AZS_RUN.chest) or nil;
+                    if ( cost and cost > 0 ) then
+                        pin.note = string.format("Cost: %d Gold", cost);
+                    else
+                        pin.note = "Gold and power cache";
+                    end
                     pin.flagged = nil;
                     Place(pin, east, south, yardsAcross, cacheSize);
                 end
@@ -324,7 +335,7 @@ local function Update()
                 local lair = lairs[index];
                 local east, south = WayTo(lair, px, py, heroX, heroY, span);
                 local state = lair.state or lair[2];
-                local isAlive = (state ~= "empty" and state ~= nil and lair.active ~= false);
+                local isAlive = (state ~= "empty" and (lair.active == true or lair.active == 1 or (state and state ~= "empty") or (lair.id and tonumber(lair.id) > 0)));
                 
                 if ( east and south ) then
                     shown = shown + 1;
