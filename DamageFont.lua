@@ -694,7 +694,7 @@ function BordoUI:CreateDamageNumbersWindow()
     
     dmgFrame = CreateFrame("Frame", "BordoUI_DamageNumbersFrame", UIParent);
     dmgFrame:SetWidth(380);
-    dmgFrame:SetHeight(470);
+    dmgFrame:SetHeight(370);
     dmgFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 20);
     dmgFrame:SetFrameStrata("HIGH");
     dmgFrame:SetFrameLevel(22);
@@ -959,6 +959,7 @@ function BordoUI:CreateDamageNumbersWindow()
     statusText:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, curY);
     statusText:SetTextColor(0.60, 0.85, 0.60);
     dmgFrame.statusText = statusText;
+    dmgFrame:SetHeight(math.abs(curY) + 16);
     
     BordoUI:UpdateDamageWindowUI();
     return dmgFrame;

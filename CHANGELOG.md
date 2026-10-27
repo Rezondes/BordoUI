@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.8] - 2026-10-27
+
+### Improved & Cleaned
+- **Trimmed Combat Text Settings Window (`DamageFont.lua`):**
+  - Removed over 100px of wasted empty black space at the bottom of the options window.
+  - Dynamically snaps the bottom border with clean 16px padding right after the active status text line (`Active: Standard | All Hits | ...`).
+  - Window is now compact, clean, and uses only the exact space required by its interactive controls.
+
+---
+
 ## [2.8.7] - 2026-10-27
 
 ### Added & Fixed
