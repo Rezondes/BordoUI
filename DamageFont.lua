@@ -51,20 +51,16 @@ function BordoUI:GetDamageSettings()
     -- 1. Standard Profile (Overhead In-World 3D Numbers)
     if ( not s.standard or type(s.standard) ~= "table" ) then
         s.standard = {
-            filter = s.filter or "all",
+            filter = "all",
             font   = "standard",
-            scale  = s.scale or 0.85,
+            scale  = 0.85,
         };
     end
-    if ( s.standard.filter ~= "all" and s.standard.filter ~= "nodots" and s.standard.filter ~= "crits" and s.standard.filter ~= "off" ) then
+    if ( s.standard.filter ~= "all" and s.standard.filter ~= "nodots" ) then
         s.standard.filter = "all";
     end
-    if ( not FONTS[s.standard.font] ) then
-        s.standard.font = "standard";
-    end
-    if ( not s.standard.scale or type(s.standard.scale) ~= "number" or s.standard.scale <= 0 ) then
-        s.standard.scale = 0.85;
-    end
+    s.standard.font = "standard";
+    s.standard.scale = 0.85;
     
     -- 2. Scrolling SCT Profile (Side Stacked Beside Character)
     if ( not s.sct or type(s.sct) ~= "table" ) then
@@ -222,13 +218,7 @@ local function CreateSCTLine(id)
     line.iconFrame = iconFrame;
     line.icon = icon;
     
-    -- Icon Border
-    local border = iconFrame:CreateTexture(nil, "OVERLAY");
-    border:SetWidth(20);
-    border:SetHeight(20);
-    border:SetPoint("CENTER", iconFrame, "CENTER", 0, 0);
-    border:SetTexture("Interface\\Tooltips\\UI-Tooltip-Border");
-    border:SetVertexColor(0.3, 0.3, 0.35, 0.8);
+
     
     -- Spell Name Text (Variant 2: xCT+ Compact)
     local nameText = line:CreateFontString(nil, "OVERLAY");
@@ -915,43 +905,25 @@ function BordoUI:ApplyDamageSettings()
     
     if ( s.mode == "standard" ) then
         local cfg = s.standard;
-        local fontDef = FONTS[cfg.font] or FONTS.standard;
-        local fontPath = fontDef.path;
-        local scale = tonumber(cfg.scale) or 0.85;
+        if ( cfg.filter ~= "all" and cfg.filter ~= "nodots" ) then
+            cfg.filter = "all";
+        end
         
-        -- 1. Enable native game engine CVars based on Standard filter
+        -- 1. Enable native game engine CVars for Standard in-world overhead damage
         if ( SetCVar ) then
-            if ( cfg.filter == "off" ) then
-                pcall(SetCVar, "CombatDamage", "0");
+            pcall(SetCVar, "CombatDamage", "1");
+            pcall(SetCVar, "PetMeleeDamage", "1");
+            pcall(SetCVar, "PetSpellDamage", "1");
+            if ( cfg.filter == "nodots" ) then
                 pcall(SetCVar, "CombatLogPeriodicSpells", "0");
-                pcall(SetCVar, "SHOW_COMBAT_TEXT", "0");
-            elseif ( cfg.filter == "crits" ) then
-                pcall(SetCVar, "CombatDamage", "0");
-                pcall(SetCVar, "SHOW_COMBAT_TEXT", "1");
-                pcall(SetCVar, "PetSpellDamage", "1");
-            elseif ( cfg.filter == "nodots" ) then
-                pcall(SetCVar, "CombatDamage", "1");
-                pcall(SetCVar, "CombatLogPeriodicSpells", "0");
-                pcall(SetCVar, "PetMeleeDamage", "1");
-                pcall(SetCVar, "PetSpellDamage", "1");
-                pcall(SetCVar, "SHOW_COMBAT_TEXT", "1");
-            else -- all
-                pcall(SetCVar, "CombatDamage", "1");
+            else
                 pcall(SetCVar, "CombatLogPeriodicSpells", "1");
-                pcall(SetCVar, "PetMeleeDamage", "1");
-                pcall(SetCVar, "PetSpellDamage", "1");
-                pcall(SetCVar, "SHOW_COMBAT_TEXT", "1");
             end
+            pcall(SetCVar, "SHOW_COMBAT_TEXT", "1");
             pcall(SetCVar, "COMBAT_TEXT_FLOAT_MODE", "1");
         end
         
-        DAMAGE_TEXT_FONT = fontPath;
-        
-        if ( CombatText ) then CombatText:SetScale(scale); end
-        if ( CombatTextFont ) then
-            local fontSize = math.max(12, math.floor(18 * (scale / 0.75)));
-            CombatTextFont:SetFont(fontPath, fontSize, "OUTLINE");
-        end
+        DAMAGE_TEXT_FONT = "Fonts\\SKURRI.TTF";
         
         -- Hide all SCT lines to avoid duplicate numbers
         for i = 1, SCT.maxLines do
@@ -1465,49 +1437,44 @@ function BordoUI:UpdateDamageWindowUI()
         end
         if ( previewWidgets.box ) then previewWidgets.box:Hide(); end
         
-        -- Section 2: Damage Filter
+        -- Section 2: Damage Filter (Spam Reduction)
         uiSections.hFilter:SetText("2. DAMAGE FILTER (SPAM REDUCTION):");
         uiSections.hFilter:ClearAllPoints();
         uiSections.hFilter:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -89);
+        uiSections.hFilter:Show();
+        
+        local stdFilterW = 174;
         for i = 1, table.getn(uiSections.filterButtons) do
             local btn = uiSections.filterButtons[i];
-            btn:ClearAllPoints();
-            btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12 + (i - 1) * (fW + 6), -104);
-            btn:Show();
+            if ( btn.val == "all" ) then
+                btn:SetWidth(stdFilterW);
+                btn:ClearAllPoints();
+                btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -104);
+                btn:Show();
+            elseif ( btn.val == "nodots" ) then
+                btn:SetWidth(stdFilterW);
+                btn:ClearAllPoints();
+                btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12 + stdFilterW + 8, -104);
+                btn:Show();
+            else
+                btn:Hide();
+            end
         end
         
-        -- Section 3: Font Family
-        uiSections.hFont:SetText("3. FONT FAMILY:");
-        uiSections.hFont:ClearAllPoints();
-        uiSections.hFont:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -132);
-        for i = 1, table.getn(uiSections.fontButtons) do
-            local btn = uiSections.fontButtons[i];
-            btn:ClearAllPoints();
-            btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12 + (i - 1) * (ftW + 5), -147);
-            btn:Show();
+        -- Hide Font Family, Size Scale, Test Button, and Status Text in Standard Mode
+        if ( uiSections.hFont ) then uiSections.hFont:Hide(); end
+        if ( uiSections.fontButtons ) then
+            for i = 1, table.getn(uiSections.fontButtons) do uiSections.fontButtons[i]:Hide(); end
         end
-        
-        -- Section 4: Size & Scale
-        uiSections.hScale:SetText("4. SIZE & SCALE:");
-        uiSections.hScale:ClearAllPoints();
-        uiSections.hScale:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -175);
-        for i = 1, table.getn(uiSections.scaleButtons) do
-            local btn = uiSections.scaleButtons[i];
-            btn:ClearAllPoints();
-            btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12 + (i - 1) * (ftW + 5), -190);
-            btn:Show();
+        if ( uiSections.hScale ) then uiSections.hScale:Hide(); end
+        if ( uiSections.scaleButtons ) then
+            for i = 1, table.getn(uiSections.scaleButtons) do uiSections.scaleButtons[i]:Hide(); end
         end
+        if ( uiSections.testBtn ) then uiSections.testBtn:Hide(); end
+        if ( dmgFrame.statusText ) then dmgFrame.statusText:Hide(); end
         
-        -- Action: Test Button
-        uiSections.testBtn:ClearAllPoints();
-        uiSections.testBtn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -222);
-        
-        -- Status Text
-        dmgFrame.statusText:ClearAllPoints();
-        dmgFrame.statusText:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -252);
-        
-        -- Fit height snugly: 272px!
-        dmgFrame:SetHeight(272);
+        -- Snug compact height: exactly 140px!
+        dmgFrame:SetHeight(140);
         
     else
         -- SCT Mode: Show Variant Header, Variant Buttons, and Preview Box
@@ -1535,8 +1502,12 @@ function BordoUI:UpdateDamageWindowUI()
         uiSections.hFilter:SetText("3. DAMAGE FILTER (SPAM REDUCTION):");
         uiSections.hFilter:ClearAllPoints();
         uiSections.hFilter:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -186);
+        uiSections.hFilter:Show();
+        
+        local fW = 84;
         for i = 1, table.getn(uiSections.filterButtons) do
             local btn = uiSections.filterButtons[i];
+            btn:SetWidth(fW);
             btn:ClearAllPoints();
             btn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12 + (i - 1) * (fW + 6), -201);
             btn:Show();
@@ -1546,6 +1517,8 @@ function BordoUI:UpdateDamageWindowUI()
         uiSections.hFont:SetText("4. FONT FAMILY:");
         uiSections.hFont:ClearAllPoints();
         uiSections.hFont:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -229);
+        uiSections.hFont:Show();
+        local ftW = 55;
         for i = 1, table.getn(uiSections.fontButtons) do
             local btn = uiSections.fontButtons[i];
             btn:ClearAllPoints();
@@ -1557,6 +1530,7 @@ function BordoUI:UpdateDamageWindowUI()
         uiSections.hScale:SetText("5. SIZE & SCALE:");
         uiSections.hScale:ClearAllPoints();
         uiSections.hScale:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -272);
+        uiSections.hScale:Show();
         for i = 1, table.getn(uiSections.scaleButtons) do
             local btn = uiSections.scaleButtons[i];
             btn:ClearAllPoints();
@@ -1567,13 +1541,15 @@ function BordoUI:UpdateDamageWindowUI()
         -- Action: Test Button
         uiSections.testBtn:ClearAllPoints();
         uiSections.testBtn:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -319);
+        uiSections.testBtn:Show();
         
         -- Status Text
         dmgFrame.statusText:ClearAllPoints();
         dmgFrame.statusText:SetPoint("TOPLEFT", dmgFrame, "TOPLEFT", 12, -349);
+        dmgFrame.statusText:Show();
         
-        -- Fit height snugly: 368px!
-        dmgFrame:SetHeight(368);
+        -- Fit height snugly: 370px!
+        dmgFrame:SetHeight(370);
     end
     
     -- Update Button Highlighting matching the ACTIVE mode's own profile

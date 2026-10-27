@@ -4,6 +4,23 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.12] - 2026-10-27
+
+### Fixed & Streamlined
+- **SCT Spell Icons Visual Artifact Fix ("Cage / Line in Middle"):**
+  - Removed the stretched 9-slice `UI-Tooltip-Border` overlay texture from `CreateSCTLine` that created unsightly vertical bars across spell icons.
+  - Icons now render with 100% clarity, crispness, and zero overlay distortion.
+- **Ultra-Compact Standard Mode Window Layout:**
+  - Standard view now strictly consists of:
+    - **1. COMBAT TEXT SYSTEM:** `[ Standard ]` and `[ Scrolling Text (SCT) ]`
+    - **2. DAMAGE FILTER (SPAM REDUCTION):** Two balanced wide buttons: `[ All Damage ]` and `[ No DoT-Spam ]`
+  - Font Family, Size & Scale, Test Button, and Status Line are completely removed from the Standard view.
+  - Window automatically contracts to an ultra-compact **140px** height with zero wasted black space below.
+- **Enforced All Damage Default in Standard Mode:**
+  - Standard mode defaults directly to Blizzard's native all-damage in-world overhead numbers (`CombatDamage = "1"`, `PetSpellDamage = "1"`, `PetMeleeDamage = "1"`, `CombatLogPeriodicSpells = "1"`).
+
+---
+
 ## [2.8.11] - 2026-10-27
 
 ### Fixed & Enhanced
