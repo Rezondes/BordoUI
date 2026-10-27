@@ -531,26 +531,13 @@ if ( BordoUI ) then
     BordoUI.EnsureNameplates = EnsureNameplatesEnabled;
 end
 
--- Continuous Scanner for Active Nameplates
+-- Continuous Scanner for Active Nameplates (Only styles already-visible nameplates, NEVER forces them on!)
 local scanFrame = CreateFrame("Frame", "AZSHelper_NameplateScanner");
 local scanElapsed = 0;
-local checkTimer = 0;
-local hasInitialRun = false;
 
 scanFrame:SetScript("OnUpdate", function()
     local elapsed = arg1 or 0.05;
     scanElapsed = scanElapsed + elapsed;
-    checkTimer = checkTimer + elapsed;
-    
-    -- Ensure friendly nameplates are active on load and periodically checked in group
-    if ( not hasInitialRun or checkTimer >= 4.0 ) then
-        checkTimer = 0;
-        hasInitialRun = true;
-        if ( GetNumPartyMembers() > 0 or GetNumRaidMembers() > 0 ) then
-            EnsureNameplatesEnabled();
-        end
-    end
-    
     if ( scanElapsed < 0.05 ) then return; end
     scanElapsed = 0;
     
@@ -561,15 +548,4 @@ scanFrame:SetScript("OnUpdate", function()
             StyleNameplate(f);
         end
     end
-end);
-
--- Auto-enable friendly player nameplates so teammates are immediately visible
-local npAutoFrame = CreateFrame("Frame", "BordoUI_NameplateAutoFrame");
-npAutoFrame:RegisterEvent("PLAYER_ENTERING_WORLD");
-npAutoFrame:RegisterEvent("PARTY_MEMBERS_CHANGED");
-npAutoFrame:RegisterEvent("RAID_ROSTER_UPDATE");
-npAutoFrame:RegisterEvent("PLAYER_ALIVE");
-
-npAutoFrame:SetScript("OnEvent", function()
-    EnsureNameplatesEnabled();
 end);

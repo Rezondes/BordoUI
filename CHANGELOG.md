@@ -4,6 +4,17 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.3] - 2026-10-27
+
+### Fixed
+- **Fixed Co-op Nameplate Re-enabling Bug (`Nameplates.lua`):**
+  - Completely removed the 4-second periodic party/raid timer (`checkTimer >= 4.0`) that was constantly forcing `ShowNameplates()` back on in Co-op mode.
+  - Removed aggressive `PARTY_MEMBERS_CHANGED` and `RAID_ROSTER_UPDATE` auto-enable hooks.
+  - Pressing `V` now turns Enemy Nameplates OFF and keeps them off permanently until pressed again, in both Singleplayer and Co-op.
+  - Pressing `Shift+V` now toggles Friendly Nameplates (teammates, pets) without any background interference.
+
+---
+
 ## [2.8.2] - 2026-10-27
 
 ### Added & Improved
