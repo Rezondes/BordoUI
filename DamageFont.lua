@@ -26,11 +26,12 @@ local FONT_PATH = "Fonts\\ARIALN.TTF";
 
 -- Available Font Assets
 local FONTS = {
-    modern  = { name = "Modern Sans",  path = "Interface\\AddOns\\BordoUI\\Media\\modern.ttf" },
-    classic = { name = "Classic WoW",  path = "Fonts\\FRIZQT__.TTF" },
-    arcade  = { name = "Arcade Narrow",path = "Fonts\\ARIALN.TTF" },
-    russo   = { name = "Russo Bold",   path = "Interface\\AddOns\\BordoUI\\Fonts\\RussoOne-Regular.ttf" },
-    exo     = { name = "Exo Sci-Fi",   path = "Interface\\AddOns\\BordoUI\\Fonts\\Exo-SemiBold.ttf" },
+    standard= { name = "Standard (Original)", path = "Fonts\\SKURRI.TTF" },
+    modern  = { name = "Modern Sans",         path = "Interface\\AddOns\\BordoUI\\Media\\modern.ttf" },
+    classic = { name = "Classic WoW",         path = "Fonts\\FRIZQT__.TTF" },
+    arcade  = { name = "Arcade Narrow",       path = "Fonts\\ARIALN.TTF" },
+    russo   = { name = "Russo Bold",          path = "Interface\\AddOns\\BordoUI\\Fonts\\RussoOne-Regular.ttf" },
+    exo     = { name = "Exo Sci-Fi",          path = "Interface\\AddOns\\BordoUI\\Fonts\\Exo-SemiBold.ttf" },
 };
 
 -- Default Settings (All English)
@@ -42,8 +43,11 @@ function BordoUI:GetDamageSettings()
     local s = BordoUIDB.damageSettings;
     
     -- Ensure non-nil and valid values for every setting
-    if ( s.mode ~= "scrolling" and s.mode ~= "inworld" ) then
-        s.mode = (s.inWorld == true) and "inworld" or "scrolling";
+    if ( s.mode == "inworld" ) then
+        s.mode = "standard";
+    end
+    if ( s.mode ~= "scrolling" and s.mode ~= "standard" ) then
+        s.mode = "standard";
     end
     if ( s.variant ~= "msbt" and s.variant ~= "xct" and s.variant ~= "clean" ) then
         s.variant = "msbt";
@@ -225,7 +229,7 @@ end
 -- Spawn or Stack Combat Text Line
 function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
     local s = self:GetDamageSettings();
-    if ( s.mode == "inworld" ) then return; end -- SCT disabled when in Classic 3D mode
+    if ( s.mode == "standard" or s.mode == "inworld" ) then return; end -- SCT disabled in Standard mode
     if ( s.filter == "off" ) then return; end
     if ( s.filter == "crits" and not isCrit ) then return; end
     
@@ -383,7 +387,7 @@ local sctTicker = CreateFrame("Frame", "BordoUI_SCT_Ticker");
 sctTicker:SetScript("OnUpdate", function()
     local dt = arg1 or 0.03;
     local s = BordoUI:GetDamageSettings();
-    if ( s.mode == "inworld" ) then return; end
+    if ( s.mode == "standard" or s.mode == "inworld" ) then return; end
     local maxDuration = 2.4;
     
     for i = 1, SCT.maxLines do
@@ -425,7 +429,7 @@ logWatcher:SetScript("OnEvent", function()
     local msg = arg1;
     if ( not msg ) then return; end
     local s = BordoUI:GetDamageSettings();
-    if ( s.mode == "inworld" ) then return; end
+    if ( s.mode == "standard" or s.mode == "inworld" ) then return; end
     if ( s.filter == "off" ) then return; end
     
     local isPeriodic = (event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
@@ -491,17 +495,33 @@ function BordoUI:ApplyDamageSettings()
     local fontPath = fontDef.path;
     local scale = tonumber(s.scale) or 0.85;
     
-    -- In-World 3D Mode vs SCT Mode:
-    -- If mode == "scrolling": Hide 3D numbers over ads using transparent blank.ttf
-    -- If mode == "inworld": Render 3D numbers over ads in chosen font!
-    if ( s.mode == "scrolling" ) then
-        DAMAGE_TEXT_FONT = "Interface\\AddOns\\BordoUI\\Media\\blank.ttf";
-    else
-        DAMAGE_TEXT_FONT = fontPath;
-        -- Hide any active SCT lines
+    -- Standard In-World Mode vs Scrolling SCT Mode
+    if ( s.mode == "standard" or s.mode == "inworld" ) then
+        -- 1. Enable standard damage numbers over enemies and player
+        if ( SetCVar ) then
+            pcall(SetCVar, "CombatDamage", "1");
+            pcall(SetCVar, "CombatLogPeriodicSpells", (s.filter == "nodots") and "0" or "1");
+            pcall(SetCVar, "PetMeleeDamage", "1");
+            pcall(SetCVar, "PetSpellDamage", "1");
+            pcall(SetCVar, "SHOW_COMBAT_TEXT", (s.filter == "off") and "0" or "1");
+            pcall(SetCVar, "COMBAT_TEXT_FLOAT_MODE", "1");
+        end
+        -- 2. Restore standard damage font
+        if ( s.font == "standard" or not FONTS[s.font] ) then
+            DAMAGE_TEXT_FONT = "Fonts\\SKURRI.TTF";
+        else
+            DAMAGE_TEXT_FONT = fontPath;
+        end
+        -- 3. Hide all SCT lines to avoid duplicate numbers
         for i = 1, SCT.maxLines do
             if ( SCT.lines[i] ) then SCT.lines[i]:Hide(); end
         end
+    else
+        -- SCT Mode: Disable 3D numbers over ads and route through SCT beside character
+        if ( SetCVar ) then
+            pcall(SetCVar, "CombatDamage", "0");
+        end
+        DAMAGE_TEXT_FONT = "Interface\\AddOns\\BordoUI\\Media\\blank.ttf";
     end
     
     -- Blizzard CombatText Font & Scale
@@ -540,13 +560,16 @@ function BordoUI:TestDamageNumbers()
     self:ApplyDamageSettings();
     local s = self:GetDamageSettings();
     
-    if ( s.mode == "inworld" ) then
-        if ( CombatText_AddMessage and CombatText_StandardScroll ) then
-            CombatText_AddMessage("777", CombatText_StandardScroll, 0.4, 0.8, 1.0);
-            CombatText_AddMessage("+850", CombatText_StandardScroll, 0.2, 1.0, 0.2);
-            CombatText_AddMessage("* 14,636 CRIT! *", CombatText_StandardScroll, 1.0, 0.82, 0.0, "crit");
-        end
+    if ( s.mode == "standard" or s.mode == "inworld" ) then
         pcall(PlaySound, "igSpellCastStarted");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: |cffffd100Standard Mode Active|r - Original damage numbers floating over enemies and player.");
+        if ( UIErrorsFrame ) then
+            UIErrorsFrame:AddMessage("Standard Numbers Active: 777 hit, * 14,636 CRIT *", 1.0, 0.82, 0.0, 1.0, 2);
+        end
+        if ( CombatText_AddMessage and CombatText_StandardScroll ) then
+            CombatText_AddMessage("777", CombatText_StandardScroll, 1.0, 1.0, 1.0);
+            CombatText_AddMessage("* 14,636 CRIT *", CombatText_StandardScroll, 1.0, 0.82, 0.0, "crit");
+        end
         return;
     end
     
@@ -585,12 +608,12 @@ end
 -- Quick Toggle Mode (Minimap Shift-Click)
 function BordoUI:ToggleDamageMotion()
     local s = self:GetDamageSettings();
-    if ( s.mode == "scrolling" ) then
-        s.mode = "inworld";
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r Mode: |cffffd100Classic In-World 3D (Over Ads)|r");
-    else
+    if ( s.mode == "standard" or s.mode == "inworld" ) then
         s.mode = "scrolling";
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r Mode: |cff00ccffScrolling Combat Text (Beside Character)|r");
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r Mode: |cff00ccffScrolling Text (SCT beside character)|r");
+    else
+        s.mode = "standard";
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r Mode: |cffffd100Standard (Original numbers over targets)|r");
     end
     self:ApplyDamageSettings();
 end
@@ -747,8 +770,8 @@ function BordoUI:CreateDamageNumbersWindow()
     -- 1. PRIMARY COMBAT TEXT MODE (Large Prominent Toggle Cards)
     AddHeader("1. COMBAT TEXT SYSTEM:");
     local modeOptions = {
-        { id = "scrolling", label = "SCT (Beside Character)", desc = "Numbers scroll beside your character (MSBT/xCT+ style). Hides cluttered numbers over enemy ads!" },
-        { id = "inworld",   label = "Classic 3D (Over Ads)",          desc = "Standard classic WoW floating combat numbers over enemy heads in 3D world." },
+        { id = "standard",  label = "Standard",             desc = "Original standard damage numbers floating over enemies and player." },
+        { id = "scrolling", label = "Scrolling Text (SCT)", desc = "Numbers scroll beside your character (MSBT / xCT+ style)." },
     };
     local mW = 174;
     for i = 1, table.getn(modeOptions) do
@@ -859,13 +882,14 @@ function BordoUI:CreateDamageNumbersWindow()
     -- 5. FONT SELECTION
     AddHeader("4. FONT FAMILY:");
     local fontList = {
+        { id = "standard",label = "Standard",desc = "Original default Blizzard damage font (Skurri)." },
         { id = "modern",  label = "Modern",  desc = "Crisp, clean sans-serif typeface." },
         { id = "classic", label = "Classic", desc = "Nostalgic World of Warcraft Friz Quadrata." },
         { id = "arcade",  label = "Arcade",  desc = "Compact, legible Arial Narrow." },
         { id = "russo",   label = "Russo",   desc = "Heavy, punchy action comic block font." },
         { id = "exo",     label = "Exo",     desc = "Futuristic, elegant sci-fi font." },
     };
-    local ftW = 67;
+    local ftW = 55;
     for i = 1, table.getn(fontList) do
         local ft = fontList[i];
         CreatePillButton(dmgFrame, "font", ft.id, ft.label, ft.label, ft.desc, ftW, 20, 12 + (i - 1) * (ftW + 5), curY, function(val)
@@ -975,12 +999,12 @@ function BordoUI:UpdateDamageWindowUI()
         previewWidgets.text1:SetFont(fontPath, pFontSize, "OUTLINE");
         previewWidgets.text2:SetFont(fontPath, math.floor(pFontSize * 1.15), "OUTLINE");
         
-        if ( s.mode == "inworld" ) then
+        if ( s.mode == "standard" or s.mode == "inworld" ) then
             previewWidgets.icon1:Hide();
             previewWidgets.icon2:Hide();
             previewWidgets.text1:ClearAllPoints();
             previewWidgets.text1:SetPoint("LEFT", previewWidgets.box, "LEFT", 14, -4);
-            previewWidgets.text1:SetText("In-World 3D: 777");
+            previewWidgets.text1:SetText("Standard: 777 (Over Targets)");
             previewWidgets.text2:ClearAllPoints();
             previewWidgets.text2:SetPoint("LEFT", previewWidgets.box, "CENTER", 10, -4);
             previewWidgets.text2:SetText("* 14,636 CRIT *");
@@ -1021,24 +1045,21 @@ function BordoUI:UpdateDamageWindowUI()
     
     -- Bottom Status Text
     if ( dmgFrame.statusText ) then
-        local modeName    = (s.mode == "inworld") and "Classic 3D" or "Scrolling SCT";
+        local isStandard  = (s.mode == "standard" or s.mode == "inworld");
+        local modeName    = isStandard and "Standard" or "Scrolling SCT";
         local variantName = (s.variant == "xct") and "xCT+ Named" or ((s.variant == "clean") and "Clean Pure" or "MSBT Style");
         local filterNames = { all = "All Hits", nodots = "No DoT-Spam", crits = "Only Crits", off = "Disabled" };
-        local fontNames   = { modern = "Modern", classic = "Classic", arcade = "Arcade", russo = "Russo", exo = "Exo" };
-        local scPct       = math.floor((s.scale or 0.85) * 100 + 0.5);
-        
-        local filterNames = { all = "All Hits", nodots = "No DoT-Spam", crits = "Only Crits", off = "Disabled" };
-        local fontNames   = { modern = "Modern", classic = "Classic", arcade = "Arcade", russo = "Russo", exo = "Exo" };
+        local fontNames   = { standard = "Standard", modern = "Modern", classic = "Classic", arcade = "Arcade", russo = "Russo", exo = "Exo" };
         local scPct       = math.floor(((tonumber(s.scale) or 0.85)) * 100 + 0.5);
         local fName       = filterNames[s.filter] or tostring(s.filter or "All Hits");
-        local ftName      = fontNames[s.font] or tostring(s.font or "Modern");
-        local subName     = (s.mode == "inworld") and "Over Ads" or variantName;
+        local ftName      = fontNames[s.font] or tostring(s.font or "Standard");
+        local subName     = isStandard and "Overhead Numbers" or variantName;
 
         dmgFrame.statusText:SetText(string.format("Active: |cffffd100%s|r | |cff00ccff%s|r | |cff55ff55%s|r | |cffaaaaaa%s|r | |cffffffff%d%%|r",
-            tostring(modeName or "Scrolling SCT"),
-            tostring(subName or "MSBT Style"),
+            tostring(modeName or "Standard"),
+            tostring(subName or "Overhead Numbers"),
             tostring(fName or "All Hits"),
-            tostring(ftName or "Modern"),
+            tostring(ftName or "Standard"),
             tonumber(scPct) or 85
         ));
     end

@@ -4,6 +4,19 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.7] - 2026-10-27
+
+### Added & Fixed
+- **Added "Standard" Combat Text Mode (`DamageFont.lua`):**
+  - Renamed mode button from `Classic 3D` to **`Standard`**, restoring original default overhead damage numbers over enemies and the player.
+  - Automatically restores all native game CVars upon activating Standard mode (`CombatDamage = "1"`, `CombatLogPeriodicSpells = "1"`, `PetMeleeDamage = "1"`, `PetSpellDamage = "1"`, `SHOW_COMBAT_TEXT = "1"`, `COMBAT_TEXT_FLOAT_MODE = "1"`).
+  - Fixed `benilla-config/config.toml` to restore `CombatDamage = "1"`.
+  - Added dedicated **`Standard`** font option using original Blizzard `SKURRI.TTF`.
+  - Live test button now confirms on screen and in chat when in `Standard` mode.
+  - Seamless toggle between **`Standard`** (original overhead numbers) and **`Scrolling Text (SCT)`** (beside character).
+
+---
+
 ## [2.8.6] - 2026-10-27
 
 ### Fixed
