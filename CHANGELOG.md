@@ -4,6 +4,17 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.6] - 2026-10-27
+
+### Fixed
+- **Fixed DamageFont.lua:867 String Format Lua Error:**
+  - Resolved ad argument #2 to 'format' (string expected, got nil) when opening the Combat Text Settings window with legacy/uninitialized saved variables.
+  - Bulletproofed GetDamageSettings() to guarantee fallback non-nil values for every key (mode, ariant, ilter, ont, scale, icons, stacking).
+  - Added safe 	ostring(...) and 	onumber(...) fallbacks to all string.format calls in DamageFont.lua.
+  - Replaced multi-byte UTF-8 emojis (🛡, 💥, ⚔, ⚡, ♦) with clean standard ASCII to guarantee 100% rendering stability in WoW 1.12.1.
+
+---
+
 ## [2.8.5] - 2026-10-27
 
 ### Added & Improved

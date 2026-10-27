@@ -36,25 +36,31 @@ local FONTS = {
 -- Default Settings (All English)
 function BordoUI:GetDamageSettings()
     BordoUIDB = BordoUIDB or {};
-    if ( not BordoUIDB.damageSettings ) then
-        BordoUIDB.damageSettings = {
-            mode        = "scrolling", -- "scrolling" (SCT beside character), "inworld" (Classic 3D over ads)
-            variant     = "msbt",      -- "msbt" (Icons+Numbers), "xct" (Named+Targets), "clean" (Pure Numbers)
-            filter      = "nodots",    -- "all", "nodots", "crits", "off"
-            font        = "modern",    -- "modern", "classic", "arcade", "russo", "exo"
-            scale       = 0.85,        -- 0.50, 0.70, 0.85, 1.00, 1.25
-            icons       = true,        -- Show spell icons
-            stacking    = true,        -- Merge rapid AoE hits with x2, x3, x4
-        };
+    if ( not BordoUIDB.damageSettings or type(BordoUIDB.damageSettings) ~= "table" ) then
+        BordoUIDB.damageSettings = {};
     end
-    -- Migrate legacy values if present
-    if ( BordoUIDB.damageSettings.mode == nil ) then
-        BordoUIDB.damageSettings.mode = (BordoUIDB.damageSettings.inWorld == true) and "inworld" or "scrolling";
+    local s = BordoUIDB.damageSettings;
+    
+    -- Ensure non-nil and valid values for every setting
+    if ( s.mode ~= "scrolling" and s.mode ~= "inworld" ) then
+        s.mode = (s.inWorld == true) and "inworld" or "scrolling";
     end
-    if ( BordoUIDB.damageSettings.variant == nil ) then
-        BordoUIDB.damageSettings.variant = "msbt";
+    if ( s.variant ~= "msbt" and s.variant ~= "xct" and s.variant ~= "clean" ) then
+        s.variant = "msbt";
     end
-    return BordoUIDB.damageSettings;
+    if ( s.filter ~= "all" and s.filter ~= "nodots" and s.filter ~= "crits" and s.filter ~= "off" ) then
+        s.filter = "nodots";
+    end
+    if ( s.font ~= "modern" and s.font ~= "classic" and s.font ~= "arcade" and s.font ~= "russo" and s.font ~= "exo" ) then
+        s.font = "modern";
+    end
+    if ( not s.scale or type(s.scale) ~= "number" or s.scale <= 0 ) then
+        s.scale = tonumber(BordoUIDB.dmgScale) or 0.85;
+    end
+    if ( s.icons == nil ) then s.icons = true; end
+    if ( s.stacking == nil ) then s.stacking = true; end
+    
+    return s;
 end
 
 -- School / Spell Color Palette
@@ -250,7 +256,7 @@ function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
                 local numText = string.format("%d", l.amount);
                 if ( l.isCrit or isCrit ) then
                     l.isCrit = true;
-                    l.text:SetText(string.format("♦ %s ♦", numText));
+                    l.text:SetText(string.format("* %s *", numText));
                     l.text:SetTextColor(SPELL_COLORS.crit[1], SPELL_COLORS.crit[2], SPELL_COLORS.crit[3]);
                 else
                     l.text:SetText(numText);
@@ -316,7 +322,7 @@ function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
         targetLine.text:ClearAllPoints();
         targetLine.text:SetPoint("LEFT", targetLine.nameText, "RIGHT", 4, 0);
         if ( isCrit ) then
-            targetLine.text:SetText("♦ " .. numStr .. " ♦");
+            targetLine.text:SetText("* " .. numStr .. " *");
         else
             targetLine.text:SetText(numStr);
         end
@@ -332,7 +338,7 @@ function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
         targetLine.text:ClearAllPoints();
         targetLine.text:SetPoint("LEFT", targetLine, "LEFT", 0, 0);
         if ( isCrit ) then
-            targetLine.text:SetText("♦ " .. numStr .. " CRIT ♦");
+            targetLine.text:SetText("* " .. numStr .. " CRIT *");
         else
             targetLine.text:SetText(numStr);
         end
@@ -347,7 +353,7 @@ function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
         targetLine.text:ClearAllPoints();
         targetLine.text:SetPoint("LEFT", targetLine.iconFrame, "RIGHT", 4, 0);
         if ( isCrit ) then
-            targetLine.text:SetText("♦ " .. numStr .. " ♦");
+            targetLine.text:SetText("* " .. numStr .. " *");
         else
             targetLine.text:SetText(numStr);
         end
@@ -592,8 +598,13 @@ end
 -- Set Scale directly
 function BordoUI:SetDamageScale(scale)
     local s = self:GetDamageSettings();
-    s.scale = math.min(1.5, math.max(0.4, tonumber(scale) or 0.85));
+    local num = tonumber(scale) or 0.85;
+    s.scale = math.min(1.5, math.max(0.4, num));
+    if ( BordoUIDB ) then
+        BordoUIDB.dmgScale = s.scale;
+    end
     self:ApplyDamageSettings();
+    self:UpdateDamageWindowUI();
 end
 
 -------------------------------------------------------------------------------
@@ -713,7 +724,7 @@ function BordoUI:CreateDamageNumbersWindow()
     local closeTxt = closeBtn:CreateFontString(nil, "OVERLAY");
     closeTxt:SetFont(FONT_PATH, 11, "OUTLINE");
     closeTxt:SetPoint("CENTER", closeBtn, "CENTER", 0, 0);
-    closeTxt:SetText("✕");
+    closeTxt:SetText("X");
     closeTxt:SetTextColor(0.7, 0.7, 0.7);
     closeBtn:SetScript("OnEnter", function() closeTxt:SetTextColor(1, 0.2, 0.2); end);
     closeBtn:SetScript("OnLeave", function() closeTxt:SetTextColor(0.7, 0.7, 0.7); end);
@@ -736,8 +747,8 @@ function BordoUI:CreateDamageNumbersWindow()
     -- 1. PRIMARY COMBAT TEXT MODE (Large Prominent Toggle Cards)
     AddHeader("1. COMBAT TEXT SYSTEM:");
     local modeOptions = {
-        { id = "scrolling", label = "⚡ Scrolling Combat Text (SCT)", desc = "Numbers scroll beside your character (MSBT/xCT+ style). Hides cluttered numbers over enemy ads!" },
-        { id = "inworld",   label = "⚔ Classic In-World 3D",          desc = "Standard classic WoW floating combat numbers over enemy heads in 3D world." },
+        { id = "scrolling", label = "SCT (Beside Character)", desc = "Numbers scroll beside your character (MSBT/xCT+ style). Hides cluttered numbers over enemy ads!" },
+        { id = "inworld",   label = "Classic 3D (Over Ads)",          desc = "Standard classic WoW floating combat numbers over enemy heads in 3D world." },
     };
     local mW = 174;
     for i = 1, table.getn(modeOptions) do
@@ -754,9 +765,9 @@ function BordoUI:CreateDamageNumbersWindow()
     -- 2. SCT DISPLAY VARIANTS (Only used in Scrolling mode)
     AddHeader("2. SCROLLING TEXT VARIANT (SCT STYLES):");
     local variants = {
-        { id = "msbt",  label = "🛡 MSBT Style",   desc = "Number + Spell Icon + Multi-hit badge (e.g. 7,178 [Icon] x4). Exact match for reference image!" },
-        { id = "xct",   label = "💥 xCT+ Compact", desc = "Spell Name + Icon + Total Damage x[Targets Hit] (e.g. Magma Totem x5). Ultra-compact for mass AoE!" },
-        { id = "clean", label = "⚡ Clean Pure",    desc = "Pure floating numbers & golden crits with no icons. Highest contrast." },
+        { id = "msbt",  label = "MSBT (Icon + Hits)", desc = "Number + Spell Icon + Multi-hit badge (e.g. 7,178 [Icon] x4). Exact match for reference image!" },
+        { id = "xct",   label = "xCT+ (Name + Total)", desc = "Spell Name + Icon + Total Damage x[Targets Hit] (e.g. Magma Totem x5). Ultra-compact for mass AoE!" },
+        { id = "clean", label = "Clean (Pure Numbers)", desc = "Pure floating numbers & golden crits with no icons. Highest contrast." },
     };
     local vW = 114;
     for i = 1, table.getn(variants) do
@@ -814,7 +825,7 @@ function BordoUI:CreateDamageNumbersWindow()
     local pText2 = previewBox:CreateFontString(nil, "OVERLAY");
     pText2:SetFont(FONT_PATH, 13, "OUTLINE");
     pText2:SetPoint("LEFT", pIcon2, "RIGHT", 4, 0);
-    pText2:SetText("♦ 14,636 ♦ x3");
+    pText2:SetText("* 14,636 * x3");
     pText2:SetTextColor(1.0, 0.82, 0.0);
     
     previewWidgets.box = previewBox;
@@ -902,7 +913,7 @@ function BordoUI:CreateDamageNumbersWindow()
     local testTxt = testBtn:CreateFontString(nil, "OVERLAY");
     testTxt:SetFont(FONT_PATH, 10, "OUTLINE");
     testTxt:SetPoint("CENTER", testBtn, "CENTER", 0, 0);
-    testTxt:SetText("▶  Test Live Combat Text on Screen");
+    testTxt:SetText(">> Test Live Combat Text on Screen <<");
     testTxt:SetTextColor(0.00, 0.90, 1.00);
     
     testBtn:SetScript("OnEnter", function()
@@ -983,7 +994,7 @@ function BordoUI:UpdateDamageWindowUI()
             previewWidgets.text1:SetText("Magma Totem: 1,450 x5");
             previewWidgets.text2:ClearAllPoints();
             previewWidgets.text2:SetPoint("LEFT", previewWidgets.icon2, "RIGHT", 4, 0);
-            previewWidgets.text2:SetText("Frostbolt: ♦ 820 ♦");
+            previewWidgets.text2:SetText("Frostbolt: * 820 *");
         elseif ( s.variant == "clean" ) then
             previewWidgets.icon1:Hide();
             previewWidgets.icon2:Hide();
@@ -992,7 +1003,7 @@ function BordoUI:UpdateDamageWindowUI()
             previewWidgets.text1:SetText("777 (Frost)");
             previewWidgets.text2:ClearAllPoints();
             previewWidgets.text2:SetPoint("LEFT", previewWidgets.box, "CENTER", 10, -4);
-            previewWidgets.text2:SetText("♦ 14,636 CRIT ♦");
+            previewWidgets.text2:SetText("* 14,636 CRIT *");
         else
             -- MSBT
             previewWidgets.icon1:Show();
@@ -1004,7 +1015,7 @@ function BordoUI:UpdateDamageWindowUI()
             previewWidgets.text1:SetText("777");
             previewWidgets.text2:ClearAllPoints();
             previewWidgets.text2:SetPoint("LEFT", previewWidgets.icon2, "RIGHT", 4, 0);
-            previewWidgets.text2:SetText("♦ 14,636 ♦ x3");
+            previewWidgets.text2:SetText("* 14,636 * x3");
         end
     end
     
@@ -1016,12 +1027,19 @@ function BordoUI:UpdateDamageWindowUI()
         local fontNames   = { modern = "Modern", classic = "Classic", arcade = "Arcade", russo = "Russo", exo = "Exo" };
         local scPct       = math.floor((s.scale or 0.85) * 100 + 0.5);
         
+        local filterNames = { all = "All Hits", nodots = "No DoT-Spam", crits = "Only Crits", off = "Disabled" };
+        local fontNames   = { modern = "Modern", classic = "Classic", arcade = "Arcade", russo = "Russo", exo = "Exo" };
+        local scPct       = math.floor(((tonumber(s.scale) or 0.85)) * 100 + 0.5);
+        local fName       = filterNames[s.filter] or tostring(s.filter or "All Hits");
+        local ftName      = fontNames[s.font] or tostring(s.font or "Modern");
+        local subName     = (s.mode == "inworld") and "Over Ads" or variantName;
+
         dmgFrame.statusText:SetText(string.format("Active: |cffffd100%s|r | |cff00ccff%s|r | |cff55ff55%s|r | |cffaaaaaa%s|r | |cffffffff%d%%|r",
-            modeName,
-            (s.mode == "inworld") and "Over Ads" or variantName,
-            filterNames[s.filter] or s.filter,
-            fontNames[s.font] or s.font,
-            scPct
+            tostring(modeName or "Scrolling SCT"),
+            tostring(subName or "MSBT Style"),
+            tostring(fName or "All Hits"),
+            tostring(ftName or "Modern"),
+            tonumber(scPct) or 85
         ));
     end
 end
