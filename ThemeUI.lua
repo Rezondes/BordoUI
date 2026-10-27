@@ -1340,6 +1340,76 @@ function AZSHelper:ApplySquareMinimapStyle()
 		end)
 		AZSHelper.minimapEventHook = ev
 	end
+
+	-- ElvUI-Style Minimap FPS Counter (Bottom-Right)
+	local fpsFrame = getglobal("AZSHelper_MinimapFPS") or CreateFrame("Button", "AZSHelper_MinimapFPS", mm)
+	fpsFrame:SetWidth(48)
+	fpsFrame:SetHeight(14)
+	fpsFrame:ClearAllPoints()
+	fpsFrame:SetPoint("BOTTOMRIGHT", mm, "BOTTOMRIGHT", -3, 3)
+	fpsFrame:SetFrameLevel(mm:GetFrameLevel() + 10)
+	fpsFrame:EnableMouse(true)
+
+	local fpsText = fpsFrame.text or fpsFrame:CreateFontString(nil, "OVERLAY")
+	fpsText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
+	fpsText:ClearAllPoints()
+	fpsText:SetPoint("BOTTOMRIGHT", fpsFrame, "BOTTOMRIGHT", 0, 0)
+	fpsText:SetJustifyH("RIGHT")
+	fpsText:SetShadowColor(0, 0, 0, 1)
+	fpsText:SetShadowOffset(1, -1)
+	fpsFrame.text = fpsText
+
+	local fpsTimer = 0
+	fpsFrame:SetScript("OnUpdate", function()
+		fpsTimer = fpsTimer + arg1
+		if fpsTimer >= 0.5 then
+			fpsTimer = 0
+			local fps = math.floor(GetFramerate() + 0.5)
+			local r, g, b
+			if fps >= 30 then
+				r, g, b = 0.20, 1.00, 0.20
+			elseif fps >= 20 then
+				r, g, b = 1.00, 0.85, 0.20
+			else
+				r, g, b = 1.00, 0.20, 0.20
+			end
+			fpsText:SetText(string.format("|cff%02x%02x%02x%d|r |cffb0b0b0fps|r", r * 255, g * 255, b * 255, fps))
+		end
+	end)
+
+	fpsFrame:SetScript("OnEnter", function()
+		GameTooltip:SetOwner(fpsFrame, "ANCHOR_BOTTOMLEFT")
+		GameTooltip:ClearLines()
+		GameTooltip:AddLine("System Performance", 1, 0.82, 0)
+		local fps = math.floor(GetFramerate() + 0.5)
+		GameTooltip:AddDoubleLine("Framerate:", string.format("%d FPS", fps), 1, 1, 1, 0.2, 1, 0.2)
+		if GetNetStats then
+			local _, _, latencyHome = GetNetStats()
+			if latencyHome and latencyHome > 0 then
+				GameTooltip:AddDoubleLine("Latency:", string.format("%d ms", latencyHome), 1, 1, 1, 0.2, 1, 0.2)
+			end
+		end
+		if gcinfo then
+			local mem = gcinfo()
+			if mem and mem > 0 then
+				GameTooltip:AddDoubleLine("Lua Memory:", string.format("%.1f MB", mem / 1024), 1, 1, 1, 0.8, 0.8, 0.8)
+			end
+		end
+		GameTooltip:AddLine("Click to clean Lua memory.", 0.6, 0.6, 0.6)
+		GameTooltip:Show()
+	end)
+
+	fpsFrame:SetScript("OnLeave", function()
+		GameTooltip:Hide()
+	end)
+
+	fpsFrame:SetScript("OnClick", function()
+		if collectgarbage then
+			collectgarbage()
+			DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Lua memory cleaned.")
+		end
+	end)
+
 	mm:EnableMouseWheel(true)
 	mm:SetScript("OnMouseWheel", function()
 		if arg1 > 0 then

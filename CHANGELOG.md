@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.9] - 2026-10-27
+
+### Added & Improved
+- **ElvUI-Style Minimap FPS Counter (`ThemeUI.lua`):**
+  - Integrated a clean, modern FPS counter directly into the bottom-right corner of the square minimap (`AZSHelper_MinimapFPS`).
+  - Features dynamic ElvUI color coding (green for smooth 30+ FPS, yellow for 20-29, red below 20) with silver label (`fps`).
+  - Hovering displays an informative performance tooltip with exact Framerate, network Latency (ms), and Lua memory usage; clicking runs Lua garbage collection.
+
+---
+
 ## [2.7.8] - 2026-10-27
 
 ### Fixed & Improved
