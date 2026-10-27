@@ -16,7 +16,7 @@ local SurvivorUI_FONT_BUMP = 0
 --
 -- Under the spells, the jewelry worn (neck, rings, trinkets), the gear a run
 -- drops: each slot filled with the piece's quality color, with what it gives in
--- short, read off its tooltip ("Neck  CDR Â· DMG").
+-- short, read off its tooltip ("Neck  CDR, DMG").
 --
 -- From the game's addon API (AZS_SPELLS); without it nothing shows. Hold Alt
 -- and drag to move; /sui build hides it.
@@ -883,21 +883,21 @@ end
 -- The gear: each piece of jewelry and what it gives, in short.
 -- Words in a tooltip line and their short names, the more specific first.
 local STAT_WORDS = {
-	{ "stun duration", "STUN" }, { "stun", "STUN" }, { "root", "ROOT" },
-	{ "shields you", "SHIELD" }, { "absorb", "ABSORB" }, { "weaken", "WEAK" },
-	{ "explode", "BOOM" }, { "leap", "LEAP" }, { "splash", "SPLASH" }, { "burn and bleed", "BLEED" },
-	{ "strike again", "AGAIN" }, { "duration", "DUR" },
-	{ "you kill restores", "HP/KILL" }, { "kill heals", "HP/KILL" }, { "each kill", "HP/KILL" },
-	{ "damage dealt heals", "LEECH" }, { "of all damage dealt", "LEECH" }, { "leech", "LEECH" },
-	{ "critical strike damage", "CRIT DMG" }, { "critical damage", "CRIT DMG" },
-	{ "damage of your critical", "CRIT DMG" }, { "critical strikes deal", "CRIT DMG" },
-	{ "critical", "CRIT" }, { "crit", "CRIT" }, { "cooldown", "CDR" },
-	{ "damage reduction", "DMG RED" }, { "damage taken", "DMG RED" }, { "armor", "DMG RED" },
-	{ "area", "AREA" }, { "target", "TGT" }, { "twice", "ECHO" }, { "echo", "ECHO" },
-	{ "movement", "SPD" }, { "speed", "SPD" }, { "per second", "REGEN" }, { "regen", "REGEN" },
-	{ "health", "HP" }, { "pickup", "PICK" }, { "pick up", "PICK" }, { "experience", "XP" }, { "gold", "GOLD" },
-	{ "luck", "LUCK" }, { "heal", "HEAL" }, { "thorns", "THORNS" },
-	{ "live", "LIFE" }, { "damage", "DMG" },
+	{ "stun duration", "Stun" }, { "stun", "Stun" }, { "root", "Root" },
+	{ "shields you", "Shield" }, { "absorb", "Absorb" }, { "weaken", "Weaken" },
+	{ "explode", "Boom" }, { "leap", "Leap" }, { "splash", "Splash" }, { "burn and bleed", "Bleed" },
+	{ "strike again", "Echo" }, { "duration", "Dur" },
+	{ "you kill restores", "HP/Kill" }, { "kill heals", "HP/Kill" }, { "each kill", "HP/Kill" },
+	{ "damage dealt heals", "Leech" }, { "of all damage dealt", "Leech" }, { "leech", "Leech" },
+	{ "critical strike damage", "Crit Dmg" }, { "critical damage", "Crit Dmg" },
+	{ "damage of your critical", "Crit Dmg" }, { "critical strikes deal", "Crit Dmg" },
+	{ "critical", "Crit" }, { "crit", "Crit" }, { "cooldown", "CDR" },
+	{ "damage reduction", "Dmg Red" }, { "damage taken", "Dmg Red" }, { "armor", "Armor" },
+	{ "area", "Area" }, { "target", "Tgt" }, { "twice", "Echo" }, { "echo", "Echo" },
+	{ "movement", "Speed" }, { "speed", "Speed" }, { "per second", "Regen" }, { "regen", "Regen" },
+	{ "health", "HP" }, { "pickup", "Pick" }, { "pick up", "Pick" }, { "experience", "XP" }, { "gold", "Gold" },
+	{ "luck", "Luck" }, { "heal", "Heal" }, { "thorns", "Thorns" },
+	{ "live", "Life" }, { "damage", "Dmg" },
 }
 -- A line's number as it reads, with its sign: "+24%", "-19%". A line that
 -- gives more without a sign ("strikes 1 more target", "increases ... by 24%")
@@ -908,7 +908,7 @@ local function Value(tag, text)
 	if not value then
 		return nil
 	end
-	if tag == "LEAP" then
+	if tag == "Leap" or tag == "LEAP" then
 		local _, last = string.find(text, value, 1, true)
 		local _, _, share = string.find(text, "(%d+%.?%d*%%)", (last or 0) + 1)
 		return share and (value.."x"..share) or value
@@ -925,12 +925,12 @@ local function Value(tag, text)
 end
 -- How a bonus reads in the list: the number first, then its word; a leap the
 -- other way round, its two numbers together; a stun or a root its word first
--- and its seconds (STUN 1.5s), or the chance of it (STUN 20%).
-local CONTROL = { STUN = true, ROOT = true }
+-- and its seconds (Stun 1.5s), or the chance of it (Stun 20%).
+local CONTROL = { Stun = true, Root = true, STUN = true, ROOT = true }
 local function Tagged(tag, value)
 	if not value then
 		return tag
-	elseif tag == "LEAP" then
+	elseif tag == "Leap" or tag == "LEAP" then
 		return tag.." "..value
 	elseif CONTROL[tag] then
 		if string.find(value, "%", 1, true) then
@@ -1000,7 +1000,7 @@ local function ReadPiece(slot, link)
 			end
 		end
 	end
-	pieces[link] = { rank = rank or "I", spell = spell, tags = table.concat(tags, " Â· ") }
+	pieces[link] = { rank = rank or "I", spell = spell, tags = table.concat(tags, ", ") }
 	return pieces[link]
 end
 list.gearTitle = list:CreateFontString(nil, "OVERLAY")

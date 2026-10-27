@@ -819,7 +819,7 @@ local function MakeView(alone)
 		if headline then
 			if s then
 				headline:SetText(Pct(s.dmg - 1))
-				headlineCaption:SetText("|cffa0a0a0Damage  \194\183  Health:|r |cff4da6ff"..string.format("%.0f", s.hp).."|r")
+				headlineCaption:SetText("|cffa0a0a0Damage / Health:|r |cff4da6ff"..string.format("%.0f", s.hp).."|r")
 			else
 				headline:SetText("-")
 				headlineCaption:SetText("|cffa0a0a0Start a run to see its numbers|r")

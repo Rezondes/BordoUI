@@ -4,6 +4,22 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.14] - 2026-10-27
+
+### Fixed & Cleaned
+- **Eliminated Glitched Characters ("Â·" / "a with line") Across All Panels:**
+  - Resolved the multi-byte UTF-8 mojibake issue (`\194\183` / `Â·`) where middle dots rendered as broken `Â·` characters in WoW 1.12.1's native ANSI fonts.
+  - **Jewelry Panel (`BuildList.lua`):**
+    - Removed `Â·` and replaced with clean, natural comma separators (`table.concat(tags, ", ")`).
+    - Stats now display cleanly in readable Title Case (e.g. `+30% Luck, +25% Gold`, `4.4% Dmg Red, +18% HP`).
+    - Eliminates the confusing "red a" visual bug on Damage Reduction rings.
+  - **Ability Tooltip (`AbilityTooltip.lua`):** Replaced `\194\183` with clean ASCII ` - ` for stats, cast times, and cooldown lines.
+  - **Boss Tracker (`BossTracker.lua`):** Replaced `\194\183` with clean ASCII ` - done` on guardian milestones and timers.
+  - **Loot Toast (`LootAlert.lua`):** Replaced `\194\183` with clean ASCII ` - ` for slot subtitles and collection alerts.
+  - **Character Sheet (`CharacterPane.lua`):** Replaced `\194\183` with clean ASCII ` / ` for the Damage / Health headline.
+
+---
+
 ## [2.8.13] - 2026-10-27
 
 ### Added & Refined

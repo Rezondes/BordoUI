@@ -14,7 +14,7 @@
 -- is left as the game wrote it.
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local DOT = " \194\183 "
+local DOT = " - "
 
 -- Upgrades come from the level-up cards (gold, as theirs), bonuses from what
 -- is worn (green), talents from the talent tree (blue).
@@ -339,7 +339,7 @@ local function Write(ability)
 	else
 		GameTooltip:AddLine(ability.title, tint[1], tint[2], tint[3])
 	end
-	-- "Physical damage · Automatic", what it does in its color; "3.4 sec"
+	-- "Physical damage - Automatic", what it does in its color; "3.4 sec"
 	-- cooldown, "28 yd" range, "7%" crit "204%" damage.
 	local cooldown = string.gsub(ability.cooldown or " ", "^([%d%.]+ sec)", COOLDOWN_HEX.."%1|r")
 	GameTooltip:AddDoubleLine(Hex(tint)..what.."|r"..DOT..ability.cast, cooldown,

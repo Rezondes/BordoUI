@@ -3,11 +3,11 @@
     World of Warcraft 1.12.1 / Azeroth Survivors
 
     Displays a prominent, modern Loot Toast above the player character
-    ("Mitte oben, über dem Charakter") when a boss drops equipment or jewelry:
+    ("Mitte oben, Ã¼ber dem Charakter") when a boss drops equipment or jewelry:
     - 40x40 Authentic Item Icon with Quality Border & Glow
     - "BOSS LOOT" header in gold
     - Item Name in full Quality Color (Uncommon, Rare, Epic, Legendary)
-    - Item Slot / Subtitle / Collection status (e.g. "Legs · Epic", "Finger · New in collection!")
+    - Item Slot / Subtitle / Collection status (e.g. "Legs - Epic", "Finger - New in collection!")
     - ONLY triggers on true enemy boss drops (CHAT_MSG_LOOT / CHAT_MSG_SYSTEM)
     - Strictly excludes Augment choices and level-up upgrades
     - Excludes player starting ability Neck amulets
@@ -50,33 +50,33 @@ local HEX_TO_QUALITY = {
 -- Multilingual prefixes for loot messages
 local LOOT_PREFIXES = {
     "You receive loot:",
-    "Du erhältst Beute:",
-    "Otrzymujesz łup:",
-    "Você recebe saque:",
-    "Recibes botín:",
+    "Du erhÃ¤ltst Beute:",
+    "Otrzymujesz Å‚up:",
+    "VocÃª recebe saque:",
+    "Recibes botÃ­n:",
     "Vous recevez du butin :",
-    "Ganimet aldın:",
-    "Вы получаете добычу:",
-    "你获得了战利品：",
-    "전리품을 받았습니다:",
-    "Primești pradă:",
-    "Ви отримуєте здобич:",
-    "戦利品を入手：",
+    "Ganimet aldÄ±n:",
+    "Ð’Ñ‹ Ð¿Ð¾Ð»ÑƒÑ‡Ð°ÐµÑ‚Ðµ Ð´Ð¾Ð±Ñ‹Ñ‡Ñƒ:",
+    "ä½ èŽ·å¾—äº†æˆ˜åˆ©å“ï¼š",
+    "ì „ë¦¬í’ˆì„ ë°›ì•˜ìŠµë‹ˆë‹¤:",
+    "PrimeÈ™ti pradÄƒ:",
+    "Ð’Ð¸ Ð¾Ñ‚Ñ€Ð¸Ð¼ÑƒÑ”Ñ‚Ðµ Ð·Ð´Ð¾Ð±Ð¸Ñ‡:",
+    "æˆ¦åˆ©å“ã‚’å…¥æ‰‹ï¼š",
 };
 
 local NEW_TAGS = {
     "New in your collection",
     "Neu in deiner Sammlung",
-    "Nowość w kolekcji",
-    "Novo na sua coleção",
-    "Nuevo en tu colección",
+    "NowoÅ›Ä‡ w kolekcji",
+    "Novo na sua coleÃ§Ã£o",
+    "Nuevo en tu colecciÃ³n",
     "Nouveau dans votre collection",
     "Koleksiyonunda yeni",
-    "Новое в вашей коллекции",
-    "收藏新增",
-    "수집품에 새로 추가",
-    "Nou în colecția ta",
-    "Нове у вашій колекції",
+    "ÐÐ¾Ð²Ð¾Ðµ Ð² Ð²Ð°ÑˆÐµÐ¹ ÐºÐ¾Ð»Ð»ÐµÐºÑ†Ð¸Ð¸",
+    "æ”¶è—æ–°å¢ž",
+    "ìˆ˜ì§‘í’ˆì— ìƒˆë¡œ ì¶”ê°€",
+    "Nou Ã®n colecÈ›ia ta",
+    "ÐÐ¾Ð²Ðµ Ñƒ Ð²Ð°ÑˆÑ–Ð¹ ÐºÐ¾Ð»ÐµÐºÑ†Ñ–Ñ—",
 };
 
 -- Slot keyword fallback icons so real item symbols (Pants, Helm, Ring, etc.) ALWAYS show, never a box!
@@ -94,16 +94,16 @@ local SLOT_KEYWORD_FALLBACKS = {
     { keywords = { "chest", "vest", "robe", "tunic", "breastplate", "hauberk", "jerkin", "armor", "brust", "gewand", "wams", "harnisch", "panzer", "kutte" },
       icon = "Interface\\Icons\\INV_Chest_Cloth_17", slot = "Chest" },
     -- Gloves
-    { keywords = { "gloves", "gauntlets", "mitts", "handguards", "grips", "handschuhe", "stulpen", "faustschützer", "griffe", "handschutz" },
+    { keywords = { "gloves", "gauntlets", "mitts", "handguards", "grips", "handschuhe", "stulpen", "faustschÃ¼tzer", "griffe", "handschutz" },
       icon = "Interface\\Icons\\INV_Gauntlets_04", slot = "Hands" },
     -- Belt
-    { keywords = { "belt", "girdle", "cinch", "cord", "sash", "waistguard", "gürtel", "gurt", "kordel", "schärpe", "taillenschutz" },
+    { keywords = { "belt", "girdle", "cinch", "cord", "sash", "waistguard", "gÃ¼rtel", "gurt", "kordel", "schÃ¤rpe", "taillenschutz" },
       icon = "Interface\\Icons\\INV_Belt_03", slot = "Waist" },
     -- Boots
     { keywords = { "boots", "sabatons", "greaves", "footpads", "shoes", "striders", "stiefel", "treter", "schuhe", "panzerstiefel" },
       icon = "Interface\\Icons\\INV_Boots_01", slot = "Feet" },
     -- Bracers
-    { keywords = { "bracers", "cuffs", "wristguards", "bindings", "armschienen", "handgelenke", "manschetten", "armbänder" },
+    { keywords = { "bracers", "cuffs", "wristguards", "bindings", "armschienen", "handgelenke", "manschetten", "armbÃ¤nder" },
       icon = "Interface\\Icons\\INV_Bracer_07", slot = "Wrist" },
     -- Cloak
     { keywords = { "cloak", "cape", "drape", "shroud", "umhang", "mantel", "schleier" },
@@ -118,11 +118,11 @@ local SLOT_KEYWORD_FALLBACKS = {
     { keywords = { "shield", "buckler", "bulwark", "aegis", "schild", "bollwerk", "rundschild" },
       icon = "Interface\\Icons\\INV_Shield_05", slot = "Shield" },
     -- Weapons
-    { keywords = { "sword", "blade", "saber", "scimitar", "broadsword", "longsword", "schwert", "klinge", "säbel" },
+    { keywords = { "sword", "blade", "saber", "scimitar", "broadsword", "longsword", "schwert", "klinge", "sÃ¤bel" },
       icon = "Interface\\Icons\\INV_Sword_04", slot = "One-Hand" },
     { keywords = { "axe", "hatchet", "cleaver", "battleaxe", "axt", "beil", "spalter", "kriegsaxt" },
       icon = "Interface\\Icons\\INV_Axe_02", slot = "One-Hand" },
-    { keywords = { "mace", "hammer", "club", "mallet", "bludgeon", "streitkolben", "hammer", "keule", "schlägel" },
+    { keywords = { "mace", "hammer", "club", "mallet", "bludgeon", "streitkolben", "hammer", "keule", "schlÃ¤gel" },
       icon = "Interface\\Icons\\INV_Mace_01", slot = "One-Hand" },
     { keywords = { "dagger", "knife", "shank", "stiletto", "dirk", "dolch", "messer", "krummdolch" },
       icon = "Interface\\Icons\\INV_Misc_Knife_02", slot = "One-Hand" },
@@ -132,7 +132,7 @@ local SLOT_KEYWORD_FALLBACKS = {
       icon = "Interface\\Icons\\INV_Weapon_Bow_05", slot = "Ranged" },
     { keywords = { "crossbow", "armbrust" },
       icon = "Interface\\Icons\\INV_Weapon_Crossbow_01", slot = "Ranged" },
-    { keywords = { "gun", "rifle", "musket", "blunderbuss", "shotgun", "flinte", "gewehr", "büchse" },
+    { keywords = { "gun", "rifle", "musket", "blunderbuss", "shotgun", "flinte", "gewehr", "bÃ¼chse" },
       icon = "Interface\\Icons\\INV_Weapon_Rifle_01", slot = "Ranged" },
     { keywords = { "wand", "zauberstab" },
       icon = "Interface\\Icons\\INV_Wand_01", slot = "Ranged" },
@@ -144,13 +144,13 @@ local KNOWN_ITEMS = {
     ["wildheart pants"] = { tex = "Interface\\Icons\\INV_Pants_02", slot = "INVTYPE_LEGS", q = 4 },
     ["hose des wildherzens"] = { tex = "Interface\\Icons\\INV_Pants_02", slot = "INVTYPE_LEGS", q = 4 },
     ["bloodfang pants"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
-    ["hose der blutfänge"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
+    ["hose der blutfÃ¤nge"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
     ["judgement legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
     ["beinplatten des gerichts"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
     ["netherwind pants"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 4 },
     ["hose des netherwinds"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 4 },
     ["dragonstalker's legguards"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
-    ["drachenjägerschützer"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
+    ["drachenjÃ¤gerschÃ¼tzer"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 4 },
     ["dreadmist leggings"] = { tex = "Interface\\Icons\\INV_Pants_07", slot = "INVTYPE_LEGS", q = 3 },
     ["gamaschen des schreckenszwirns"] = { tex = "Interface\\Icons\\INV_Pants_07", slot = "INVTYPE_LEGS", q = 3 },
     ["shadowcraft pants"] = { tex = "Interface\\Icons\\INV_Pants_06", slot = "INVTYPE_LEGS", q = 3 },
@@ -158,7 +158,7 @@ local KNOWN_ITEMS = {
     ["magister's leggings"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
     ["gamaschen des magisters"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
     ["devout skirt"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
-    ["rock der frömmigkeit"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
+    ["rock der frÃ¶mmigkeit"] = { tex = "Interface\\Icons\\INV_Pants_08", slot = "INVTYPE_LEGS", q = 3 },
     ["lightforge legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
     ["beinplatten der essenz"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
     ["beaststalker's pants"] = { tex = "Interface\\Icons\\INV_Pants_03", slot = "INVTYPE_LEGS", q = 3 },
@@ -168,15 +168,15 @@ local KNOWN_ITEMS = {
     ["valor legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
     ["beinplatten des heldentums"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 3 },
     ["cloudkeeper legplates"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
-    ["wolkenwächter-beinplatten"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
+    ["wolkenwÃ¤chter-beinplatten"] = { tex = "Interface\\Icons\\INV_Pants_04", slot = "INVTYPE_LEGS", q = 4 },
     -- Helmets
     ["crown of destruction"] = { tex = "Interface\\Icons\\INV_Helmet_08", slot = "INVTYPE_HEAD", q = 4 },
-    ["krone der zerstörung"] = { tex = "Interface\\Icons\\INV_Helmet_08", slot = "INVTYPE_HEAD", q = 4 },
+    ["krone der zerstÃ¶rung"] = { tex = "Interface\\Icons\\INV_Helmet_08", slot = "INVTYPE_HEAD", q = 4 },
     -- Rings
     ["band of accuria"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_15", slot = "INVTYPE_FINGER", q = 4 },
-    ["band der präzision"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_15", slot = "INVTYPE_FINGER", q = 4 },
+    ["band der prÃ¤zision"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_15", slot = "INVTYPE_FINGER", q = 4 },
     ["ring of the protector"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_03", slot = "INVTYPE_FINGER", q = 4 },
-    ["ring des beschützers"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_03", slot = "INVTYPE_FINGER", q = 4 },
+    ["ring des beschÃ¼tzers"] = { tex = "Interface\\Icons\\INV_Jewelry_Ring_03", slot = "INVTYPE_FINGER", q = 4 },
     -- Trinkets
     ["blackhand's breadth"] = { tex = "Interface\\Icons\\INV_Misc_StoneTablet_11", slot = "INVTYPE_TRINKET", q = 3 },
     ["schwarzfausts breite"] = { tex = "Interface\\Icons\\INV_Misc_StoneTablet_11", slot = "INVTYPE_TRINKET", q = 3 },
@@ -192,7 +192,7 @@ local function SuppressNativeLootNotice()
 end
 
 -- ============================================================================
--- Center Boss Loot Toast ("Mitte oben, über dem Charakter")
+-- Center Boss Loot Toast ("Mitte oben, Ã¼ber dem Charakter")
 -- ============================================================================
 local toastFrame = CreateFrame("Button", "BordoUI_LootAlertFrame", UIParent);
 LootUI.frame = toastFrame;
@@ -509,7 +509,7 @@ toastFrame:SetScript("OnUpdate", function()
                 if resolvedSlot and subText:GetText() then
                     local currentSub = subText:GetText();
                     if string.find(currentSub, "New in", 1, true) or string.find(currentSub, "Neu", 1, true) then
-                        subText:SetText(resolvedSlot .. " \194\183 |cff7dff7dNew in collection!|r");
+                        subText:SetText(resolvedSlot .. " - |cff7dff7dNew in collection!|r");
                     else
                         subText:SetText(resolvedSlot);
                     end
@@ -607,7 +607,7 @@ function LootUI:ShowAlert(name, itemLink, texture, quality, slotLabel, isNew)
 
     local sub = slotLabel or "Boss Drop";
     if isNew then
-        sub = sub .. " \194\183 |cff7dff7dNew in collection!|r";
+        sub = sub .. " - |cff7dff7dNew in collection!|r";
     end
     subText:SetText(sub);
 
@@ -760,7 +760,7 @@ function BordoUI:TestLootAlert(kind)
             "item:16678:0:0:0",
             "Interface\\Icons\\INV_Pants_02",
             4, -- Epic
-            "Legs (Pants · Tier 0.5)",
+            "Legs (Pants - Tier 0.5)",
             true
         );
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Previewed Boss Drop: |cffa335ee[Wildheart Pants]|r (Legs).");
@@ -780,7 +780,7 @@ function BordoUI:TestLootAlert(kind)
             "item:17063:0:0:0",
             "Interface\\Icons\\INV_Jewelry_Ring_15",
             4, -- Epic
-            "Finger (Ring · Rank IV)",
+            "Finger (Ring - Rank IV)",
             true
         );
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Previewed Boss Drop: |cffa335ee[Band of Accuria]|r (Ring). Try '/bordo testloot pants' for pants.");

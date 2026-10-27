@@ -106,7 +106,7 @@ local ZONE_ALIASES = {
     ["wald von elwynn"] = "Elwynn Forest",
     ["elwynn forest"] = "Elwynn Forest",
     ["duskwood"] = "Duskwood",
-    ["dämmerwald"] = "Duskwood",
+    ["dÃ¤mmerwald"] = "Duskwood",
     ["daemmerwald"] = "Duskwood",
     ["wsg"] = "Warsong Gulch",
     ["warsong gulch"] = "Warsong Gulch",
@@ -349,7 +349,7 @@ local gGoal = guardiansHeader:CreateFontString(nil, "OVERLAY");
 gGoal:SetFont(FONT_PATH, 9, "OUTLINE");
 gGoal:SetPoint("RIGHT", guardiansHeader, "RIGHT", -2, 0);
 gGoal:SetTextColor(0.35, 0.90, 0.40);
-gGoal:SetText("4/4 by 8:00 \194\183 done");
+gGoal:SetText("4/4 by 8:00 - done");
 TrackerUI.gGoal = gGoal;
 
 -- Guardians Segment Boxes (One per lair, up to 6 lairs)
@@ -626,7 +626,7 @@ function TrackerUI:Update()
                 if bossKilled[bName] then
                     row.timeText:SetText(string.format("%s / %s", FormatClock(bAt), FormatClock(bossKilled[bName])));
                 else
-                    row.timeText:SetText(string.format("%s \194\183 done", FormatClock(bAt)));
+                    row.timeText:SetText(string.format("%s - done", FormatClock(bAt)));
                 end
                 row.bossTarget = nil;
             elseif bState == "up" then
@@ -712,7 +712,7 @@ function TrackerUI:Update()
         end
     end
     if ( totalSlain >= 4 or t >= 480 ) then
-        gGoal:SetText(string.format("%d/4 by 8:00 \194\183 done", math.min(4, totalSlain)));
+        gGoal:SetText(string.format("%d/4 by 8:00 - done", math.min(4, totalSlain)));
         gGoal:SetTextColor(0.35, 0.90, 0.40);
     else
         local rem = math.max(0, 480 - t);
