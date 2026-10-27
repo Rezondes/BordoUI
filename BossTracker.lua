@@ -718,11 +718,15 @@ function TrackerUI:Update()
 
     -- Check achievement 4/4 before 8:00
     local totalSlain = 0;
-    for i = 1, numLairs do
-        local l = lairList[i];
-        local st = l.state or l[2];
-        if ( l.active == false or l.active == 0 or st == "empty" ) then
-            totalSlain = totalSlain + 1;
+    if ( t >= 30 ) then
+        for i = 1, numLairs do
+            local l = lairList[i];
+            local st = l.state or l[2];
+            local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
+            local respawnTime = (tonumber(l.left or l.respawn or l[5]) or 0) - since;
+            if ( l.active == false or l.active == 0 or (st == "empty" and respawnTime > 0) ) then
+                totalSlain = totalSlain + 1;
+            end
         end
     end
     if ( totalSlain >= 4 or t >= 480 ) then
@@ -791,17 +795,27 @@ function TrackerUI:Update()
                         seg.arrow:SetVertexColor(1.00, 1.00, 1.00, 1.0);
                     end
                 else
-                    -- Slain / Respawning in red with countdown
-                    seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
-                    seg.arrow:Hide();
-                    if ( seg.shadow ) then seg.shadow:Hide(); end
-                    seg.timer:Show();
-
+                    -- Slain / Respawning or pending initial spawn
                     local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
                     local respawnTime = (tonumber(lair.left or lair.respawn or lair[5]) or 0) - since;
                     if ( respawnTime > 0 ) then
+                        seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
+                        seg.arrow:Hide();
+                        if ( seg.shadow ) then seg.shadow:Hide(); end
+                        seg.timer:Show();
                         seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
+                    elseif ( t < 45 ) then
+                        -- Early run waiting for first lair activation: dark slate gray
+                        seg.bg:SetVertexColor(0.20, 0.22, 0.25, 0.85);
+                        seg.arrow:Hide();
+                        if ( seg.shadow ) then seg.shadow:Hide(); end
+                        seg.timer:Show();
+                        seg.timer:SetText("...");
                     else
+                        seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
+                        seg.arrow:Hide();
+                        if ( seg.shadow ) then seg.shadow:Hide(); end
+                        seg.timer:Show();
                         seg.timer:SetText("0:39");
                     end
                 end
