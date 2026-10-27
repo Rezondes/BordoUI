@@ -105,12 +105,18 @@ local function IsTotem(name)
         return true;
     end
     
-    -- Substring patterns: ends with "totem", begins with "totem ", German compound, or contains totem
-    if ( string.find(lower, "totem$", 1) or string.find(lower, "^totem ", 1) or string.find(lower, "^tótem ", 1) or string.find(lower, "^тотем ", 1) or string.find(lower, "%-totem", 1) or string.find(lower, "totem", 1, true) ) then
+    -- Substring patterns: ends with "totem", begins with "totem ", German compound, etc.
+    if ( string.find(lower, "totem$", 1) or string.find(lower, "^totem ", 1) or string.find(lower, "^tótem ", 1) or string.find(lower, "^тотем ", 1) or string.find(lower, "%-totem", 1) ) then
         return true;
     end
     
     return false;
+end
+
+local function ShouldHideTotems()
+    if ( not BordoUIDB ) then return true; end
+    if ( BordoUIDB.hideTotems == nil ) then return true; end -- Default: true (hide totems)
+    return BordoUIDB.hideTotems;
 end
 
 -- Identify if a frame is a WoW 1.12.1 Blizzard Nameplate
@@ -257,7 +263,9 @@ local function StyleNameplate(frame)
     end
     
     -- Shaman Totem Check: completely hide HP bar and plate to eliminate clutter
-    if ( IsTotem(cleanName) ) then
+    local isTotem = IsTotem(cleanName);
+    local hideTotems = ShouldHideTotems();
+    if ( isTotem and hideTotems ) then
         frame.isTotemPlate = true;
         healthBar:SetStatusBarTexture("");
         healthBar:SetAlpha(0);
@@ -272,6 +280,7 @@ local function StyleNameplate(frame)
         frame:SetAlpha(0);
         return;
     elseif ( frame.isTotemPlate ) then
+        -- Frame recycled for normal unit or totems unhidden
         frame.isTotemPlate = nil;
         healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
         healthBar:SetAlpha(1);
@@ -282,7 +291,7 @@ local function StyleNameplate(frame)
         if ( levelText ) then levelText:Show(); end
         frame:SetAlpha(1);
     end
-
+    
     local kind = GetUnitClassification(cleanName);
     local isTarget = (UnitExists("target") and UnitName("target") == cleanName);
     

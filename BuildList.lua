@@ -636,8 +636,7 @@ local function PlaceReach(row, symbol, tint)
 	if symbol and place then
 		if row.symbol ~= symbol then
 			row.symbol = symbol
-			row.glass:SetTexture(ART..symbol)
-			if ( not row.glass:GetTexture() ) then row.glass:SetTexture(ART..symbol..".tga"); end
+			row.glass:SetTexture(ART..symbol..".tga")
 		end
 		-- Square between the column's two dividers, on whole pixels: 15 free
 		-- between them, 3 either side of the 9 of the symbol.
