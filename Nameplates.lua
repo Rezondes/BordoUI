@@ -234,18 +234,6 @@ local function SetupNameplateElements(frame)
     frame.azsHealthBar = healthBar;
     frame.azsNameText = nameText;
     frame.azsLevelText = levelText;
-    frame:SetClampedToScreen(true);
-    healthBar:ClearAllPoints();
-    healthBar:SetPoint("CENTER", frame, "CENTER", 0, 0);
-    if ( nameText ) then
-        nameText:ClearAllPoints();
-        nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
-    end
-    if ( levelText ) then
-        levelText:ClearAllPoints();
-        levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
-    end
-    frame.azsAnchored = true;
     frame.azsElementsReady = true;
 end
 
@@ -399,15 +387,8 @@ local function StyleNameplate(frame)
             end
         end
         
-        if ( not frame.azsAnchored ) then
-            nameText:ClearAllPoints();
-            nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
-            if ( levelText ) then
-                levelText:ClearAllPoints();
-                levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
-            end
-            frame.azsAnchored = true;
-        end
+        nameText:ClearAllPoints();
+        nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
         nameText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE");
         
         local isLeader = allyToken and UnitIsPartyLeader(allyToken);
@@ -418,6 +399,8 @@ local function StyleNameplate(frame)
         end
         
         if ( levelText ) then
+            levelText:ClearAllPoints();
+            levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
             levelText:SetFont("Fonts\\ARIALN.TTF", 9, "OUTLINE");
             levelText:SetTextColor(0.40, 1.0, 0.40);
         end
@@ -495,15 +478,13 @@ local function StyleNameplate(frame)
     if ( not maxVal or maxVal <= 0 ) then maxVal = 100; end
     local pct = math.floor((val / maxVal) * 100);
     
-    -- Ensure text is anchored cleanly above the bar without per-frame point churn
-    if ( not frame.azsAnchored ) then
-        nameText:ClearAllPoints();
-        nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
-        if ( levelText ) then
-            levelText:ClearAllPoints();
-            levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
-        end
-        frame.azsAnchored = true;
+    -- Position Text cleanly above the bar
+    nameText:ClearAllPoints();
+    nameText:SetPoint("BOTTOMLEFT", healthBar, "TOPLEFT", 1, 2);
+    
+    if ( levelText ) then
+        levelText:ClearAllPoints();
+        levelText:SetPoint("BOTTOMRIGHT", healthBar, "TOPRIGHT", -1, 2);
     end
     
     -- ---------------------------------------------------------------------

@@ -1246,10 +1246,6 @@ for i = 1, 6 do
 	UI.encounterBars[i] = bar
 end
 local function UpdateEncounterBars()
-	if BordoUI and BordoUI.IsWindowEnabled and not BordoUI:IsWindowEnabled("bossbar") then
-		UI.encounterContainer:Hide()
-		return
-	end
 	local activeEnemies = {}
 	local bosses = (AZS_GetBosses and AZS_GetBosses()) or {}
 	for i = 1, table.getn(bosses) do
@@ -1281,43 +1277,6 @@ local function UpdateEncounterBars()
 					hpm  = (g.hpm and g.hpm > 0) and g.hpm or 100,
 					kind = "guardian",
 				})
-			end
-		end
-	end
-	if ( AZS_UNITS and type(AZS_UNITS) == "table" ) then
-		for i = 1, table.getn(AZS_UNITS) do
-			local u = AZS_UNITS[i]
-			if u then
-				local kind = u.kind or u[1]
-				local uName = u.name or u[3]
-				if (kind == "boss" or kind == "final" or kind == "guardian") and uName then
-					local found = false
-					for k = 1, table.getn(activeEnemies) do
-						if activeEnemies[k].name == uName then found = true break end
-					end
-					if not found then
-						local curHp = tonumber(u.hp or u.cur or u[4]) or 100
-						local maxHp = tonumber(u.hpm or u.max or u[5]) or 100
-						table.insert(activeEnemies, {
-							name = uName,
-							hp = curHp,
-							hpm = (maxHp > 0) and maxHp or 100,
-							kind = kind,
-						})
-					end
-				end
-			end
-		end
-	end
-	if UnitExists("target") and UnitIsEnemy("player", "target") then
-		local tName = UnitName("target")
-		for k = 1, table.getn(activeEnemies) do
-			if activeEnemies[k].name == tName then
-				local thp = UnitHealth("target")
-				local thpm = UnitHealthMax("target")
-				if thp and thp > 0 then activeEnemies[k].hp = thp end
-				if thpm and thpm > 0 then activeEnemies[k].hpm = thpm end
-				break
 			end
 		end
 	end
