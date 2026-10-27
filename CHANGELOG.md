@@ -4,6 +4,23 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.1] - 2026-10-27
+
+### Fixed & Restored
+- **Minimap Loot Caches (Battleground Chests) Restored (`MapPins.lua`):**
+  - Completely replaced the overcomplicated chest engine with the authentic, battle-tested SurvivorUI minimap engine.
+  - Battleground Caches (golden chests via `PinCache.tga`) immediately appear on the Minimap with zero calibration delay.
+  - Out-of-reach caches clamp cleanly to the minimap edge with directional guidance and yard distance tooltips.
+  - Added `/pins` and `/bordopins` chat command to inspect live cache and lair coordinates in real time.
+- **Miniboss Tracker Heraldic Marks & Directional Arrows Fixed (`BossTracker.lua`, `Core.lua`):**
+  - Generated dedicated standalone 64x64 square heraldic mark icons (`mark_1.tga` through `mark_8.tga`) for 100% fail-safe texture loading across all WoW 1.12.1 graphics drivers and clients.
+  - Slain/respawning guardians now display their crisp silver heraldic symbol on the left of the dark-red box with the countdown timer on the right, exactly matching the reference screenshot.
+  - Living/spawned guardians display in vibrant green with their heraldic symbol and the 64-step rotational directional arrow (`GuardianArrow.tga`) pointing directly to their position.
+  - Added emergency font string fallback (`[1]`, `[2]`, `[3]`, etc.) ensuring segments will never render blank space under any condition.
+  - Shaman totem health bar suppression remains preserved and toggleable via `/bordo totems`.
+
+---
+
 ## [2.8.0] - 2026-10-27
 
 ### Fixed & Restored

@@ -735,7 +735,7 @@ function TrackerUI:Update()
 
                 local state = lair.state or lair[2];
                 local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
-                local isActive = (state == "asleep" or state == "awake" or (state ~= "empty" and state ~= nil) or lair.active == true or lair.active == 1);
+                local isActive = (state ~= "empty" and state ~= nil and lair.active ~= false);
 
                 if ( SurvivorUI_SetLairMark ) then
                     SurvivorUI_SetLairMark(seg.mark, markId, not isActive);

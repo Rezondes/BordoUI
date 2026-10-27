@@ -401,13 +401,20 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
         if ( texture ) then texture:Hide(); end
         return;
     end
-    local column = math.mod(mark - 1, 4);
-    local line = math.floor((mark - 1) / 4);
-    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
-    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
+    mark = tonumber(mark) or 1;
+    if ( mark < 1 or mark > 8 ) then
+        mark = math.mod(math.abs(mark) - 1, 8) + 1;
+    end
+    
+    -- Dedicated standalone 64x64 square texture for each of the 8 heraldic symbols (Crossed swords, Shield, Crown, Chalice, etc.)
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\mark_" .. mark);
+    texture:SetTexCoord(0, 1, 0, 1);
+    
     if ( dim ) then
-        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
+        -- Slain / empty guardian: bright crisp silver-white against dark-red background (matches reference image)
+        texture:SetVertexColor(0.90, 0.90, 0.90, 0.95);
     else
+        -- Alive / spawned: full brightness
         texture:SetVertexColor(1, 1, 1, 1);
     end
     texture:Show();
