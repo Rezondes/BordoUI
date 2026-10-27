@@ -4,6 +4,28 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.5] - 2026-10-27
+
+### Added & Improved
+- **Full Scrolling Combat Text (SCT) Engine (DamageFont.lua):**
+  - Added seamless toggle between **Scrolling Combat Text (Beside Character)** and **Classic In-World 3D (Over Ads)**.
+  - When Scrolling Combat Text is active, in-world 3D numbers floating over enemy mobs are silenced cleanly via lank.ttf, keeping the battlefield clean.
+  - Added **3 SCT Variants**:
+    - **MSBT Style (Icon + Multi-Hit):** Displays damage number + authentic spell icon + stacked hit counter badge (7,178 [Icon] x4).
+    - **xCT+ Compact (Spell Name + Icon + Multi-Hit Total):** Compact layout grouping AoE spells with spell name, icon, accumulated damage, and target count (e.g. Magma Totem [Icon] 7,250 x5).
+    - **Clean Pure (Numbers Only):** Minimalist high-readability floating numbers and glowing golden crits without spell icons.
+- **Redesigned Modern Settings Overlay:**
+  - Replaced legacy menu with a modern tactile dark-card interface (380x470) featuring high-contrast clickable pill buttons.
+  - **Live In-Window Preview Box:** Features a dedicated preview viewport inside the settings window where simulated hits and crits scroll in real time as you adjust settings.
+  - **Live Screen Test Button:** Triggers a live on-screen simulation burst to preview numbers and positioning right in the game world.
+  - **100% English UI:** Complete English text across all window headers, descriptions, buttons, tooltips, and chat status messages.
+- **Minimap Dock Button 4:**
+  - Left-Click opens the redesigned SCT Settings overlay.
+  - Right-Click quickly cycles filters (All Numbers / No DoT-Spam / Only Crits / Disabled).
+  - Shift-Click quickly toggles between Scrolling Combat Text and Classic In-World 3D.
+
+---
+
 ## [2.8.4] - 2026-10-27
 
 ### Added & Improved
