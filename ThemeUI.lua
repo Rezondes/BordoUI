@@ -1277,6 +1277,27 @@ end
 -- =========================================================================
 -- 7. SQUARE MINIMAP & CHAT SKINNING
 -- =========================================================================
+local function KillMinimapButton(name)
+	local f = type(name) == "string" and getglobal(name) or name
+	if f then
+		f:Hide()
+		if f.UnregisterAllEvents then
+			f:UnregisterAllEvents()
+		end
+		f.Show = function() end
+		if f.ClearAllPoints and f.SetPoint then
+			f:ClearAllPoints()
+			f:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", -5000, -5000)
+		end
+		if f.SetAlpha then
+			f:SetAlpha(0)
+		end
+		if f.EnableMouse then
+			f:EnableMouse(false)
+		end
+	end
+end
+
 function AZSHelper:ApplySquareMinimapStyle()
 	local mm = Minimap
 	if not mm then return end
@@ -1285,7 +1306,7 @@ function AZSHelper:ApplySquareMinimapStyle()
 	mm:SetPoint("TOPRIGHT", UIParent, "TOPRIGHT", -12, -12)
 	mm:SetWidth(140)
 	mm:SetHeight(140)
-	local border = CreateFrame("Frame", "AZSHelper_MinimapSquareFrame", mm)
+	local border = getglobal("AZSHelper_MinimapSquareFrame") or CreateFrame("Frame", "AZSHelper_MinimapSquareFrame", mm)
 	border:SetPoint("TOPLEFT", mm, "TOPLEFT", -2, 2)
 	border:SetPoint("BOTTOMRIGHT", mm, "BOTTOMRIGHT", 2, -2)
 	border:SetFrameLevel(mm:GetFrameLevel() + 5)
@@ -1299,9 +1320,25 @@ function AZSHelper:ApplySquareMinimapStyle()
 	border:SetBackdropBorderColor(0.20, 0.20, 0.25, 0.95)
 	for _, name in pairs({
 		"MinimapBorder", "MinimapBorderTop", "MinimapZoneTextButton",
-		"MinimapZoomIn", "MinimapZoomOut", "GameTimeFrame", "MinimapToggleButton"
+		"MinimapZoomIn", "MinimapZoomOut", "GameTimeFrame", "MinimapToggleButton",
+		"MiniMapBattlefieldFrame", "MiniMapBattlefieldIcon", "MiniMapBattlefieldBorder",
+		"MiniMapTrackingFrame", "MiniMapMeetingStoneFrame", "MiniMapPing"
 	}) do
-		SafeHide(name)
+		KillMinimapButton(name)
+	end
+	if not AZSHelper.minimapEventHook then
+		local ev = CreateFrame("Frame")
+		ev:RegisterEvent("PLAYER_ENTERING_WORLD")
+		ev:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
+		ev:RegisterEvent("VARIABLES_LOADED")
+		ev:SetScript("OnEvent", function()
+			KillMinimapButton("MiniMapBattlefieldFrame")
+			KillMinimapButton("MiniMapBattlefieldIcon")
+			KillMinimapButton("MiniMapBattlefieldBorder")
+			KillMinimapButton("MiniMapTrackingFrame")
+			KillMinimapButton("MiniMapMeetingStoneFrame")
+		end)
+		AZSHelper.minimapEventHook = ev
 	end
 	mm:EnableMouseWheel(true)
 	mm:SetScript("OnMouseWheel", function()

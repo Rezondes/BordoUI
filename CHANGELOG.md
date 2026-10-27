@@ -4,6 +4,15 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.7.8] - 2026-10-27
+
+### Fixed & Improved
+- **Square Minimap - Removed Default Battlefield / PvP Icon (`ThemeUI.lua`):**
+  - Permanently suppressed the circular Blizzard battlefield queue / status button (`MiniMapBattlefieldFrame` with crossed swords) from attaching to and overlapping the left edge of the square minimap.
+  - Neutralized `:Show()`, unregistered all events, set opacity to 0, and moved anchors off-screen (`KillMinimapButton`) so background battleground updates can no longer force the button back onto the map.
+
+---
+
 ## [2.7.6] - 2026-10-26
 
 ### Fixed & Improved
