@@ -18,6 +18,7 @@
 -- /sui meter brings it back. Needs the API; without it nothing shows.
 
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
+local SurvivorUI_FONT = "Fonts\\ARIALN.TTF"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 
 local WIDTH = 228

@@ -4,6 +4,18 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.1] - 2026-10-27
+
+### Fixed & Suppressed
+- **Eliminated Duplicate Minimap Guardian Banner (`hudFlag`):**
+  - Fully suppressed the game engine's built-in red guardian banner pin (`AZS_SetHudShown("flag", false)` and CVar `hudFlag = "0"`) that previously overlapped with BordoUI's custom crossed-swords lair pin on the nearest guardian.
+  - Added continuous background suppression in `ThemeUI.lua` to ensure `hudFlag` remains permanently disabled throughout the run.
+  - Updated `benilla-config/config.toml` with `hudFlag = "0"` to suppress native banner spawning at game launch.
+- **Damage Meter Typography Fix (`Meter.lua`):**
+  - Fixed `SetFont` missing font definition on line 215 by declaring local font path (`SurvivorUI_FONT = "Fonts\ARIALN.TTF"`), resolving Lua error popup on load.
+
+---
+
 ## [2.8.0] - 2026-10-27
 
 ### Added & Improved

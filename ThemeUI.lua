@@ -1346,6 +1346,10 @@ function AZSHelper:ApplySquareMinimapStyle()
 		ev:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
 		ev:RegisterEvent("VARIABLES_LOADED")
 		ev:SetScript("OnEvent", function()
+			if SetCVar then pcall(SetCVar, "hudFlag", "0") end
+			if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") then
+				AZS_SetHudShown("flag", false)
+			end
 			if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("meter") then
 				AZS_SetHudShown("meter", false)
 			end
@@ -1356,6 +1360,10 @@ function AZSHelper:ApplySquareMinimapStyle()
 			KillMinimapButton("MiniMapMeetingStoneFrame")
 		end)
 		AZSHelper.minimapEventHook = ev
+	end
+	if SetCVar then pcall(SetCVar, "hudFlag", "0") end
+	if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") then
+		AZS_SetHudShown("flag", false)
 	end
 	if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("meter") then
 		AZS_SetHudShown("meter", false)
@@ -1671,6 +1679,12 @@ mainWatcher:SetScript("OnUpdate", function()
 		tallyElapsed = 0
 		UpdateBottomBar()
 		UpdateEncounterBars()
+		if AZS_IsHudShown and AZS_IsHudShown("flag") then
+			AZS_SetHudShown("flag", false)
+		end
+		if AZS_IsHudShown and AZS_IsHudShown("meter") then
+			AZS_SetHudShown("meter", false)
+		end
 	end
 	skillElapsed = skillElapsed + arg1
 	if skillElapsed >= 0.1 then

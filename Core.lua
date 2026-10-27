@@ -205,6 +205,10 @@ eventFrame:SetScript("OnEvent", function()
             BordoUI:UpdateAllLockButtons();
         end
         if ( event == "PLAYER_ENTERING_WORLD" ) then
+            pcall(SetCVar, "hudFlag", "0");
+            if ( AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") ) then
+                AZS_SetHudShown("flag", false);
+            end
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r loaded (Modern UI Suite, Miniboss Timer, Chest Radar & Boss Highlight). Type |cffffd100/bordo|r or |cffffd100/azs|r.");
             BordoUI:ApplyMaxCameraDistance();
             if ( BordoUI.ApplyModernDamageText ) then
