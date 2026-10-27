@@ -4,6 +4,21 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.10] - 2026-10-27
+
+### Added & Improved
+- **Separated Independent Profiles for Standard & Scrolling SCT (`DamageFont.lua`):**
+  - Standard mode and Scrolling SCT now possess completely separate and independent configuration profiles (`s.standard` and `s.sct`).
+  - Adjusting Font Family, Damage Filter, or Scale in Standard mode operates exclusively on in-world 3D numbers and never overwrites your SCT configuration, and vice versa.
+- **Dynamic Mode-Specific Window Layout:**
+  - **Standard View:** Hides the irrelevant SCT Variant pills and Live Preview box. Neatly rearranges sections 2 (Filter), 3 (Font), and 4 (Scale), automatically contracting the window height to an ultra-compact **272px** with zero wasted space.
+  - **Scrolling SCT View:** Restores full SCT controls (Variants, Live Style Preview with icons, Filters, Fonts, and Scale) at 368px.
+- **Full Standard Mode Controls Functionality:**
+  - Clicking any Filter, Font (Standard, Modern, Classic, Arcade, Russo, Exo), or Scale (50% to 125%) in Standard mode immediately updates the native game engine's in-world floating text.
+  - Live test button provides immediate on-screen and chat confirmation displaying the exact active profile.
+
+---
+
 ## [2.8.9] - 2026-10-27
 
 ### Added
