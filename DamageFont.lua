@@ -84,7 +84,7 @@ local function DetectSchoolColor(spellName, isCrit)
     if ( isCrit ) then return SPELL_COLORS.crit; end
     if ( not spellName ) then return SPELL_COLORS.physical; end
     local lower = string.lower(spellName);
-    if ( string.find(lower, "fire") or string.find(lower, "feuer") or string.find(lower, "flame") or string.find(lower, "pyro") or string.find(lower, "scorch") or string.find(lower, "ignite") or string.find(lower, "blast") ) then
+    if ( string.find(lower, "fire") or string.find(lower, "feuer") or string.find(lower, "flame") or string.find(lower, "pyro") or string.find(lower, "scorch") or string.find(lower, "ignite") or string.find(lower, "blast") or string.find(lower, "searing") or string.find(lower, "magma") ) then
         return SPELL_COLORS.fire;
     elseif ( string.find(lower, "frost") or string.find(lower, "ice") or string.find(lower, "blizzard") or string.find(lower, "eis") or string.find(lower, "chill") ) then
         return SPELL_COLORS.frost;
@@ -226,6 +226,23 @@ for i = 1, SCT.maxLines do
     table.insert(SCT.lines, CreateSCTLine(i));
 end
 
+-- Static Icon Map for instant guaranteed spell & totem icons
+local SCT_ICONS = {
+    ["searing totem"]    = "Interface\\Icons\\Spell_Fire_SearingTotem",
+    ["glühendes totem"]  = "Interface\\Icons\\Spell_Fire_SearingTotem",
+    ["magma totem"]      = "Interface\\Icons\\Spell_Fire_SelfDestruct",
+    ["fire nova totem"]  = "Interface\\Icons\\Spell_Fire_SealOfFire",
+    ["fire nova"]        = "Interface\\Icons\\Spell_Fire_SealOfFire",
+    ["lightning bolt"]   = "Interface\\Icons\\Spell_Nature_Lightning",
+    ["chain lightning"]  = "Interface\\Icons\\Spell_Nature_ChainLightning",
+    ["earth shock"]      = "Interface\\Icons\\Spell_Nature_EarthShock",
+    ["flame shock"]      = "Interface\\Icons\\Spell_Fire_FlameShock",
+    ["frost shock"]      = "Interface\\Icons\\Spell_Frost_FrostShock",
+    ["firebolt"]         = "Interface\\Icons\\Spell_Fire_FireBolt02",
+    ["attack"]           = "Interface\\Icons\\INV_Sword_04",
+    ["melee"]            = "Interface\\Icons\\INV_Sword_04",
+};
+
 -- Spawn or Stack Combat Text Line
 function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
     local s = self:GetDamageSettings();
@@ -238,11 +255,17 @@ function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
     local scale = tonumber(s.scale) or 0.85;
     
     -- Resolve Spell Icon
-    local iconPath = "Interface\\Icons\\INV_Sword_04";
-    if ( AZSHelper and AZSHelper.GetSpellIcon ) then
-        iconPath = AZSHelper:GetSpellIcon(spellName);
-    elseif ( SurvivorUI_MeterIcon ) then
-        iconPath = SurvivorUI_MeterIcon(spellName) or iconPath;
+    local lowerSpell = string.lower(spellName or "");
+    local iconPath = SCT_ICONS and SCT_ICONS[lowerSpell];
+    if ( not iconPath ) then
+        if ( AZSHelper and AZSHelper.GetSpellIcon ) then
+            iconPath = AZSHelper:GetSpellIcon(spellName);
+        elseif ( SurvivorUI_MeterIcon ) then
+            iconPath = SurvivorUI_MeterIcon(spellName);
+        end
+    end
+    if ( not iconPath or iconPath == "" ) then
+        iconPath = "Interface\\Icons\\INV_Sword_04";
     end
     
     local parentAnchor = isIncoming and incomingAnchor or outgoingAnchor;
@@ -421,6 +444,9 @@ local logWatcher = CreateFrame("Frame", "BordoUI_SCT_CombatLogWatcher");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE");
 logWatcher:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_PET_DAMAGE");
+logWatcher:RegisterEvent("CHAT_MSG_COMBAT_PET_HITS");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF");
 logWatcher:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");
@@ -460,10 +486,43 @@ logWatcher:SetScript("OnEvent", function()
     local amount = tonumber(numStr or 0);
     if ( not amount or amount <= 0 ) then return; end
     
-    -- Extract Spell Name
+    -- Extract Spell Name & Source
     local spell = nil;
-    local _, _, s1 = string.find(msg, "^Euer (.+) trifft");
-    if ( s1 ) then spell = s1; end
+    
+    -- 1. Check Pet & Totem Damage (e.g. Searing Totem, Magma Totem)
+    if ( event == "CHAT_MSG_SPELL_PET_DAMAGE" or event == "CHAT_MSG_COMBAT_PET_HITS" ) then
+        local _, _, pet1, sp1 = string.find(msg, "^([^']+)'s (.+) [hc][ir][it]");
+        if ( pet1 ) then
+            if ( string.find(pet1, "Totem") or string.find(pet1, "totem") ) then
+                spell = pet1;
+            else
+                spell = sp1 or pet1;
+            end
+        end
+        if ( not spell ) then
+            local _, _, pet2 = string.find(msg, "^([^ ]+) [hc][ir][it]");
+            if ( pet2 ) then spell = pet2; end
+        end
+        if ( not spell ) then
+            local _, _, spG, petG = string.find(msg, "^(.+) von (.+) trifft");
+            if ( petG ) then
+                if ( string.find(petG, "Totem") or string.find(petG, "totem") ) then
+                    spell = petG;
+                else
+                    spell = spG;
+                end
+            end
+        end
+        if ( not spell ) then
+            spell = "Searing Totem";
+        end
+    end
+    
+    -- 2. Direct Spell & Melee Hits
+    if ( not spell ) then
+        local _, _, s1 = string.find(msg, "^Euer (.+) trifft");
+        if ( s1 ) then spell = s1; end
+    end
     if ( not spell ) then
         local _, _, s2 = string.find(msg, "^Your (.+) crits");
         if ( s2 ) then spell = s2; end
@@ -476,8 +535,16 @@ logWatcher:SetScript("OnEvent", function()
         local _, _, s4 = string.find(msg, "^Your (.+) ticks");
         if ( s4 ) then spell = s4; end
     end
+    
+    -- 3. Totem fallback keywords if mentioned in combat message
     if ( not spell ) then
-        spell = (event == "CHAT_MSG_COMBAT_SELF_HITS") and "Melee" or "Attack";
+        if ( string.find(lower, "searing totem") or string.find(lower, "glühendes totem") or string.find(lower, "firebolt") ) then
+            spell = "Searing Totem";
+        elseif ( string.find(lower, "magma totem") ) then
+            spell = "Magma Totem";
+        else
+            spell = (event == "CHAT_MSG_COMBAT_SELF_HITS") and "Melee" or "Attack";
+        end
     end
     
     local isIncoming = (event == "CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS" or event == "CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");
@@ -574,6 +641,7 @@ function BordoUI:TestDamageNumbers()
     end
     
     -- Feed sample lines matching the user's reference
+    self:AddCombatNumber("Searing Totem", 307, false, false, false);
     self:AddCombatNumber("Frostbolt", 777, false, false, false);
     self:AddCombatNumber("Frostbolt", 694, false, false, false);
     if ( s.variant == "xct" ) then

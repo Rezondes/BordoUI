@@ -4,6 +4,18 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.9] - 2026-10-27
+
+### Added
+- **Searing Totem & Pet Combat Text Integration (`DamageFont.lua`):**
+  - Registered `CHAT_MSG_SPELL_PET_DAMAGE` and `CHAT_MSG_COMBAT_PET_HITS` combat log channels.
+  - Implemented specific totem parser attributing Searing Totem and pet attacks directly to the totem entity.
+  - Added dedicated icon mapping for **`Searing Totem`** (`Spell_Fire_SearingTotem`) with orange fire school coloration.
+  - Rapid Searing Totem firebolts stack cleanly into `x2`, `x3`, `x4` multi-hit badges matching user style.
+  - Added Searing Totem sample burst to live test simulation button.
+
+---
+
 ## [2.8.8] - 2026-10-27
 
 ### Improved & Cleaned
