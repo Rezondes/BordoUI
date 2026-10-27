@@ -224,6 +224,12 @@ eventFrame:SetScript("OnEvent", function()
             if ( targetChat and BordoUIDB and BordoUIDB.chatPos ) then
                 BordoUI:RestorePosition(targetChat, BordoUIDB.chatPos);
             end
+            if ( BordoUI_ProcTrackerFrame and BordoUIDB and BordoUIDB.procTrackerPos ) then
+                BordoUI:RestorePosition(BordoUI_ProcTrackerFrame, BordoUIDB.procTrackerPos);
+            end
+            if ( BordoUI_ChestRadarFrame and BordoUIDB and BordoUIDB.chestRadarPos ) then
+                BordoUI:RestorePosition(BordoUI_ChestRadarFrame, BordoUIDB.chestRadarPos);
+            end
         end
     end
 end);
@@ -281,6 +287,34 @@ SlashCmdList["BORDOU"] = function(msg)
     elseif ( cmd == "loot" or cmd == "testloot" ) then
         if ( BordoUI.TestLootAlert ) then
             BordoUI:TestLootAlert(val);
+        end
+    elseif ( cmd == "lowhp" or cmd == "heartbeat" ) then
+        if ( BordoUI.ToggleLowHealthWarning ) then
+            BordoUI:ToggleLowHealthWarning();
+        end
+    elseif ( cmd == "testlowhp" ) then
+        if ( BordoUI.TestLowHealthWarning ) then
+            BordoUI:TestLowHealthWarning();
+        end
+    elseif ( cmd == "procs" or cmd == "proc" or cmd == "buffs" ) then
+        if ( BordoUI.ToggleProcTracker ) then
+            BordoUI:ToggleProcTracker();
+        end
+    elseif ( cmd == "testprocs" or cmd == "testproc" ) then
+        if ( BordoUI.TestProcTracker ) then
+            BordoUI:TestProcTracker();
+        end
+    elseif ( cmd == "chestradar" or cmd == "radar" ) then
+        if ( BordoUI.ToggleChestRadar ) then
+            BordoUI:ToggleChestRadar();
+        end
+    elseif ( cmd == "testchest" ) then
+        if ( BordoUI.TestChestRadar ) then
+            BordoUI:TestChestRadar();
+        end
+    elseif ( cmd == "runrecap" or cmd == "recap" or cmd == "testrecap" ) then
+        if ( BordoUI.ToggleRunRecap ) then
+            BordoUI:ToggleRunRecap(val);
         end
 
     elseif ( cmd == "test" or cmd == "preview" ) then
@@ -532,6 +566,8 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = BordoUI_ChatBox, name = "Chat Box (Drag Me)", key = "chatPos" },
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
 		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
+		{ frame = BordoUI_ProcTrackerFrame, name = "Procs & Buffs HUD (Drag Me)", key = "procTrackerPos" },
+		{ frame = BordoUI_ChestRadarFrame, name = "Chest Radar (Drag Me)", key = "chestRadarPos" },
     };
     for i = 1, table.getn(targets) do
         local t = targets[i];

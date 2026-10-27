@@ -4,6 +4,31 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.0.0] - 2026-10-27 (Bordo 2.0 Major Feature Expansion)
+
+### Added
+- **Low-Health Warning & Heartbeat Vignette (`LowHealthWarning.lua`):**
+  - Atmospheric pulsing crimson vignette around the screen edges triggers when player HP drops to 25% or below.
+  - Periodic heartbeat audio pulse (1.1s rhythm) warns in dense horde pulls.
+  - Automatically resets when healed above 25% or upon death.
+  - Toggle with `/bordo lowhp`, preview with `/bordo testlowhp`.
+- **Important Procs & Buffs HUD (`ProcTracker.lua`):**
+  - Centered priority buff bar anchored directly above the player's combat HUD.
+  - Tracks high-impact defensives (Divine Shield, Ice Block, Evasion, Shield Wall), burst procs (Bloodlust, Heroism, Berserking, Combustion, Adrenaline Rush), shields, and speed boosts.
+  - Displays color-coded glowing borders (Gold for burst, Cyan for defensives, Green for speed) with live countdown timers.
+  - Movable with `/unlock`. Toggle with `/bordo procs`, test with `/bordo testprocs`.
+- **Chest Radar & Proximity Compass Arrow (`ChestRadar.lua`):**
+  - Rotational HUD compass arrow pointing directly towards the nearest unopened battleground cache/chest.
+  - Displays real-time yard distance (`Chest: 38 yd`, `Open Chest!`).
+  - Automatically hides when no chests are in vicinity (> 140 yd).
+  - Movable with `/unlock`. Toggle with `/bordo chestradar`, test with `/bordo testchest`.
+- **End-of-Run Arcade Summary Card (`RunRecap.lua`):**
+  - Full-screen centered recap card appearing automatically upon victory (15:00 cleared) or defeat.
+  - Complete 6-card statistics grid: Survived Time, Enemies Slain, Gold Collected, Hero Level, Total Damage & DPS, and MVP Ability with icon.
+  - Discord-ready watermark aesthetic. Re-open anytime with `/bordo recap`, preview with `/bordo testrecap victory` or `/bordo testrecap defeat`.
+
+---
+
 ## [2.8.14] - 2026-10-27
 
 ### Fixed & Cleaned
