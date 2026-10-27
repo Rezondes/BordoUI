@@ -949,6 +949,12 @@ UI.bottomBar = UI.tallyFrame
 -- Red Skull Icon for Kills
 UI.killsSkull = UI.tallyFrame:CreateTexture(nil, "ARTWORK")
 UI.killsSkull:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Kills")
+if ( not UI.killsSkull:GetTexture() ) then
+	UI.killsSkull:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Kills.tga")
+end
+if ( not UI.killsSkull:GetTexture() ) then
+	UI.killsSkull:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcon_8")
+end
 UI.killsSkull:SetWidth(15)
 UI.killsSkull:SetHeight(15)
 UI.killsSkull:SetPoint("LEFT", UI.tallyFrame, "LEFT", 8, 0)
@@ -970,6 +976,12 @@ UI.goldGlow:SetPoint("CENTER", UI.goldSlot, "CENTER", 0, 0)
 UI.goldGlow:Hide()
 UI.goldCoin = UI.goldSlot:CreateTexture(nil, "ARTWORK")
 UI.goldCoin:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Coin")
+if ( not UI.goldCoin:GetTexture() ) then
+	UI.goldCoin:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Coin.tga")
+end
+if ( not UI.goldCoin:GetTexture() ) then
+	UI.goldCoin:SetTexture("Interface\\MoneyFrame\\UI-GoldIcon")
+end
 UI.goldCoin:SetPoint("CENTER", UI.goldSlot, "CENTER", 0, 0)
 UI.goldCoin:SetWidth(15)
 UI.goldCoin:SetHeight(15)

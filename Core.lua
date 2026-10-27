@@ -165,9 +165,21 @@ function BordoUI:UpdateAllLockButtons()
         if btn and btn.tex then
             if isLocked then
                 btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Lock.tga");
+                if ( not btn.tex:GetTexture() ) then
+                    btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Lock");
+                end
+                if ( not btn.tex:GetTexture() ) then
+                    btn.tex:SetTexture("Interface\\RaidFrame\\UI-RaidFrame-Threat");
+                end
                 btn.tex:SetVertexColor(0.85, 0.85, 0.85, 0.85);
             else
                 btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Unlock.tga");
+                if ( not btn.tex:GetTexture() ) then
+                    btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Unlock");
+                end
+                if ( not btn.tex:GetTexture() ) then
+                    btn.tex:SetTexture("Interface\\Buttons\\UI-Panel-MinimizeButton-Up");
+                end
                 btn.tex:SetVertexColor(0.30, 1.00, 0.40, 1.00);
             end
         end
@@ -391,7 +403,15 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
     local column = math.mod(mark - 1, 4);
     local line = math.floor((mark - 1) / 4);
     texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
-    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
+    if ( not texture:GetTexture() ) then
+        texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks.tga");
+    end
+    if ( texture:GetTexture() ) then
+        texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
+    else
+        texture:SetTexture("Interface\\TargetingFrame\\UI-RaidTargetingIcons");
+        texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
+    end
     if ( dim ) then
         texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
     else

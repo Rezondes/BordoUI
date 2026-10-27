@@ -385,6 +385,12 @@ for i = 1, 6 do
 
     local arrow = seg:CreateTexture(nil, "OVERLAY");
     arrow:SetTexture(ART .. "GuardianArrow");
+    if ( not arrow:GetTexture() ) then
+        arrow:SetTexture(ART .. "GuardianArrow.tga");
+    end
+    if ( not arrow:GetTexture() ) then
+        arrow:SetTexture("Interface\\Minimap\\MinimapArrow");
+    end
     arrow:SetWidth(13);
     arrow:SetHeight(13);
     arrow:SetPoint("CENTER", seg, "CENTER", 4, 0);

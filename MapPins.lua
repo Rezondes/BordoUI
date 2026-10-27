@@ -313,6 +313,9 @@ local function NewChestPin(i)
     local tex = pin:CreateTexture(nil, "OVERLAY");
     tex:SetAllPoints(pin);
     tex:SetTexture(BAG);
+    if ( not tex:GetTexture() ) then tex:SetTexture(MEDIA .. "bag"); end
+    if ( not tex:GetTexture() ) then tex:SetTexture(ART .. "PinCache.tga"); end
+    if ( not tex:GetTexture() ) then tex:SetTexture("Interface\\Buttons\\UI-GroupLoot-Coin-Up"); end
     pin.tex = tex;
     
     pin:EnableMouse(true);
@@ -383,6 +386,9 @@ local function NewWorldPin(i)
     local tex = pin:CreateTexture(nil, "OVERLAY");
     tex:SetAllPoints(pin);
     tex:SetTexture(BAG);
+    if ( not tex:GetTexture() ) then tex:SetTexture(MEDIA .. "bag"); end
+    if ( not tex:GetTexture() ) then tex:SetTexture(ART .. "PinCache.tga"); end
+    if ( not tex:GetTexture() ) then tex:SetTexture("Interface\\Buttons\\UI-GroupLoot-Coin-Up"); end
     pin.tex = tex;
     
     pin:EnableMouse(true);

@@ -4,6 +4,16 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.6] - 2026-10-27
+
+### Fixed
+- **Universal Texture Loader & Multi-Layer Blizzard Fallbacks:**
+  - Added multi-tier fallback texture loading (custom TGA -> with .tga extension -> built-in Blizzard MPQ assets) across all frames.
+  - Guaranteed visual display of Kills Red Skull (UI-RaidTargetingIcon_8), Gold Coin (UI-GoldIcon), Minimap Caches (UI-GroupLoot-Coin-Up), Guardian Heraldic Marks (UI-RaidTargetingIcons atlas), and Lock/Unlock buttons regardless of browser WebGL texture stripping or privacy extensions.
+  - Corrected legacy SurvivorUI\Art path in BuildList.lua to BordoUI\Art.
+
+---
+
 ## [2.8.5] - 2026-10-27
 
 ### Fixed & Restored
