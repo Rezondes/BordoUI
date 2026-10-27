@@ -798,25 +798,25 @@ function TrackerUI:Update()
                     -- Slain / Respawning or pending initial spawn
                     local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
                     local respawnTime = (tonumber(lair.left or lair.respawn or lair[5]) or 0) - since;
-                    if ( respawnTime > 0 ) then
-                        seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
-                        seg.arrow:Hide();
-                        if ( seg.shadow ) then seg.shadow:Hide(); end
-                        seg.timer:Show();
-                        seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
-                    elseif ( t < 45 ) then
+                    if ( t < 45 and totalSlain == 0 ) then
                         -- Early run waiting for first lair activation: dark slate gray
                         seg.bg:SetVertexColor(0.20, 0.22, 0.25, 0.85);
                         seg.arrow:Hide();
                         if ( seg.shadow ) then seg.shadow:Hide(); end
                         seg.timer:Show();
                         seg.timer:SetText("...");
-                    else
+                    elseif ( respawnTime > 0 ) then
                         seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
                         seg.arrow:Hide();
                         if ( seg.shadow ) then seg.shadow:Hide(); end
                         seg.timer:Show();
-                        seg.timer:SetText("0:39");
+                        seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
+                    else
+                        seg.bg:SetVertexColor(0.85, 0.45, 0.20, 0.85);
+                        seg.arrow:Hide();
+                        if ( seg.shadow ) then seg.shadow:Hide(); end
+                        seg.timer:Show();
+                        seg.timer:SetText("DUE");
                     end
                 end
                 seg:Show();

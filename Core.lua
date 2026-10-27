@@ -45,7 +45,7 @@ local defaults = {
     dmgScale   = 0.75,
     tableScale = 0.80,
     collapsed  = false,
-    locked     = false, -- Global UI window lock
+    locked     = true, -- Global UI window lock (default to locked for clean screen)
     statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
     multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 },
     centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
@@ -490,7 +490,14 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
     end
     local column = math.mod(mark - 1, 4);
     local line = math.floor((mark - 1) / 4);
-    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks.tga");
+    local dir = BORDO_ADDON_DIR or "BordoUI";
+    texture:SetTexture("Interface\\AddOns\\" .. dir .. "\\Art\\LairMarks.tga");
+    if not texture:GetTexture() then
+        texture:SetTexture("Interface\\AddOns\\BordoWeb\\Art\\LairMarks.tga");
+    end
+    if not texture:GetTexture() then
+        texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks.tga");
+    end
     texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
         texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
