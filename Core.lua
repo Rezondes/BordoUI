@@ -155,18 +155,8 @@ function BordoUI:ToggleLock()
     return newState;
 end
 -- =========================================================================
--- Universal Window Lock Button Engine & Texture Applicator
+-- Universal Window Lock Button Engine
 -- =========================================================================
-local ART = "Interface\\AddOns\\BordoUI\\Art\\";
-
-function BordoUI_ApplyTexture(tex, name, sub)
-    if not tex or not name then return; end
-    sub = sub or "Art";
-    local clean = string.gsub(name, "%.[tT][gG][aA]$", "");
-    clean = string.gsub(clean, "%.[bB][lL][pP]$", "");
-    tex:SetTexture("Interface\\AddOns\\BordoUI\\" .. sub .. "\\" .. clean);
-end
-
 BordoUI.LockButtons = {};
 function BordoUI:UpdateAllLockButtons()
     local isLocked = (BordoUIDB and BordoUIDB.locked);
@@ -174,10 +164,10 @@ function BordoUI:UpdateAllLockButtons()
         local btn = BordoUI.LockButtons[i];
         if btn and btn.tex then
             if isLocked then
-                btn.tex:SetTexture(ART .. "Lock");
+                btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Lock.tga");
                 btn.tex:SetVertexColor(0.85, 0.85, 0.85, 0.85);
             else
-                btn.tex:SetTexture(ART .. "Unlock");
+                btn.tex:SetTexture("Interface\\AddOns\\BordoUI\\Art\\Unlock.tga");
                 btn.tex:SetVertexColor(0.30, 1.00, 0.40, 1.00);
             end
         end
@@ -304,14 +294,6 @@ SlashCmdList["BORDOU"] = function(msg)
             if ( ShowNameplates ) then pcall(ShowNameplates); end
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
-    elseif ( cmd == "totem" or cmd == "totems" ) then
-        BordoUIDB = BordoUIDB or {};
-        if ( BordoUIDB.hideTotems == nil ) then
-            BordoUIDB.hideTotems = true;
-        end
-        BordoUIDB.hideTotems = not BordoUIDB.hideTotems;
-        local st = BordoUIDB.hideTotems and "|cff55ff55[HIDDEN]|r" or "|cffff3333[SHOWN]|r";
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Totem health bars are now " .. st .. ".");
     elseif ( cmd == "lock" ) then
         BordoUI:ToggleMoveMode(false);
         BordoUI:SetLocked(true);
@@ -325,7 +307,6 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Force-enable Teammate (green) & Enemy nameplates");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Toggle Shaman totem health bars (hidden by default)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
@@ -382,13 +363,10 @@ function SurvivorUI_LairMarks(lairs)
     local marks = {};
     lairs = lairs or (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
     local places = {};
-    for k, l in pairs(lairs) do
-        if type(l) == "table" then
-            local idx = tonumber(l.index or l[1]) or tonumber(k);
-            if idx then
-                table.insert(places, idx);
-            end
-        end
+    for index = 1, table.getn(lairs) do
+        local l = lairs[index];
+        local idx = (l and (l.index or l[1])) or index;
+        table.insert(places, tonumber(idx) or index);
     end
     table.sort(places);
     for rank = 1, table.getn(places) do
@@ -401,20 +379,13 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
         if ( texture ) then texture:Hide(); end
         return;
     end
-    mark = tonumber(mark) or 1;
-    if ( mark < 1 or mark > 8 ) then
-        mark = math.mod(math.abs(mark) - 1, 8) + 1;
-    end
-    
-    -- Dedicated standalone 64x64 square texture for each of the 8 heraldic symbols (Crossed swords, Shield, Crown, Chalice, etc.)
-    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\mark_" .. mark);
-    texture:SetTexCoord(0, 1, 0, 1);
-    
+    local column = math.mod(mark - 1, 4);
+    local line = math.floor((mark - 1) / 4);
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
+    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
-        -- Slain / empty guardian: bright crisp silver-white against dark-red background (matches reference image)
-        texture:SetVertexColor(0.90, 0.90, 0.90, 0.95);
+        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
     else
-        -- Alive / spawned: full brightness
         texture:SetVertexColor(1, 1, 1, 1);
     end
     texture:Show();

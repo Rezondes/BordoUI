@@ -368,55 +368,31 @@ local function PointArrow(texture, angle)
     texture:SetTexCoord(col / CELLS, (col + 1) / CELLS, row / CELLS, (row + 1) / CELLS);
 end
 
-local function WrapAngle(angle)
-    while angle > math.pi do
-        angle = angle - 2 * math.pi;
-    end
-    while angle < -math.pi do
-        angle = angle + 2 * math.pi;
-    end
-    return angle;
-end
-
 for i = 1, 6 do
     local seg = CreateFrame("Frame", nil, segmentBar);
-    seg:SetHeight(18);
-    seg:EnableMouse(true);
-    seg:SetScript("OnMouseUp", function()
-        if this.targetBoss and TargetByName then
-            TargetByName(this.targetBoss, true);
-        end
-    end);
+    seg:SetHeight(16);
 
     local bg = seg:CreateTexture(nil, "BACKGROUND");
     bg:SetTexture(FLAT);
     bg:SetAllPoints(seg);
     seg.bg = bg;
 
-    local mark = seg:CreateTexture(nil, "OVERLAY");
-    mark:SetWidth(14);
-    mark:SetHeight(14);
-    mark:SetPoint("LEFT", seg, "LEFT", 2, 0);
+    local mark = seg:CreateTexture(nil, "ARTWORK");
+    mark:SetWidth(13);
+    mark:SetHeight(13);
+    mark:SetPoint("LEFT", seg, "LEFT", 1, 0);
     seg.mark = mark;
-
-    local shadow = seg:CreateTexture(nil, "ARTWORK");
-    shadow:SetTexture(ART .. "GuardianArrow");
-    shadow:SetVertexColor(0, 0, 0, 0.85);
-    shadow:SetWidth(15);
-    shadow:SetHeight(15);
-    shadow:SetPoint("CENTER", seg, "CENTER", 6, 0);
-    seg.shadow = shadow;
 
     local arrow = seg:CreateTexture(nil, "OVERLAY");
     arrow:SetTexture(ART .. "GuardianArrow");
     arrow:SetWidth(13);
     arrow:SetHeight(13);
-    arrow:SetPoint("CENTER", seg, "CENTER", 6, 0);
+    arrow:SetPoint("CENTER", seg, "CENTER", 4, 0);
     seg.arrow = arrow;
 
     local timer = seg:CreateFontString(nil, "OVERLAY");
-    timer:SetFont(FONT_PATH, 10, "OUTLINE");
-    timer:SetPoint("RIGHT", seg, "RIGHT", -3, 0);
+    timer:SetFont(FONT_PATH, 9, "OUTLINE");
+    timer:SetPoint("RIGHT", seg, "RIGHT", -2, 0);
     timer:SetTextColor(1, 1, 1);
     seg.timer = timer;
 
@@ -448,7 +424,7 @@ local lastWalkX, lastWalkY;
 local walkedHeading = 0;
 local function UpdatePlayerHeading()
     if ( AZS_RUN and AZS_RUN.pf ) then
-        return -tonumber(AZS_RUN.pf) or 0;
+        return tonumber(AZS_RUN.pf) or 0;
     end
     local hx, hy = GetPlayerMapPosition("player");
     if ( hx and hy and (hx > 0 or hy > 0) ) then
@@ -684,20 +660,9 @@ function TrackerUI:Update()
     end
 
     -- Guardians / Lairs
-    local rawLairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
-    local marks = SurvivorUI_LairMarks and SurvivorUI_LairMarks(rawLairs) or {};
-    local lairList = {};
-    for k, v in pairs(rawLairs) do
-        if type(v) == "table" then
-            table.insert(lairList, v);
-        end
-    end
-    table.sort(lairList, function(a, b)
-        local pa = tonumber(a.index or a[1]) or 0;
-        local pb = tonumber(b.index or b[1]) or 0;
-        return pa < pb;
-    end);
-    local numLairs = table.getn(lairList);
+    local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
+    local numLairs = table.getn(lairs);
+    local marks = SurvivorUI_LairMarks(lairs);
     local px = (run and tonumber(run.px)) or 0;
     local py = (run and tonumber(run.py)) or 0;
     local pFacing = UpdatePlayerHeading();
@@ -705,9 +670,8 @@ function TrackerUI:Update()
     -- Check achievement 4/4 before 8:00
     local totalSlain = 0;
     for i = 1, numLairs do
-        local l = lairList[i];
-        local st = l.state or l[2];
-        if ( l.active == false or l.active == 0 or st == "empty" ) then
+        local l = lairs[i];
+        if ( l and (l.active == false or l.active == 0) ) then
             totalSlain = totalSlain + 1;
         end
     end
@@ -721,72 +685,47 @@ function TrackerUI:Update()
     end
 
     if ( numLairs > 0 ) then
-        local segW = (barW - (numLairs - 1) * 3) / numLairs;
+        local segW = (barW - (numLairs - 1) * 2) / numLairs;
         for i = 1, 6 do
             local seg = guardianSegments[i];
             if ( i <= numLairs ) then
-                local lair = lairList[i];
-                local place = tonumber(lair.index or lair[1]) or i;
-                local markId = marks[place] or (math.mod(i - 1, 8) + 1);
+                local lair = lairs[i];
+                local markId = marks[tonumber(lair.index or lair[1]) or i] or i;
 
                 seg:ClearAllPoints();
-                seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 3), 0);
+                seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 2), 0);
                 seg:SetWidth(segW);
 
-                local state = lair.state or lair[2];
-                local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
-                local isActive = (state ~= "empty" and state ~= nil and lair.active ~= false);
+                local isActive = (lair.active == true or lair.active == 1);
+                local isAwake = (lair.awake == true or lair.awake == 1);
 
-                if ( SurvivorUI_SetLairMark ) then
-                    SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
-                end
-
-                seg.targetBoss = lair.name or lair[3];
+                SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
 
                 if ( isAwake ) then
                     -- Fighting / Awake in orange
                     seg.bg:SetVertexColor(1.0, 0.55, 0.15, 0.85);
                     seg.arrow:Hide();
-                    if ( seg.shadow ) then seg.shadow:Hide(); end
                     seg.timer:Show();
                     seg.timer:SetText("FIGHT");
                 elseif ( isActive ) then
-                    -- Spawned / Alive in light green with live 3D Directional Arrow
+                    -- Spawned / Alive in light green with Rotational Arrow pointing to boss
                     seg.bg:SetVertexColor(0.70, 0.92, 0.55, 0.85);
                     seg.timer:Hide();
-
-                    local lx = tonumber(lair.x or lair[6] or lair[2]) or 0;
-                    local ly = tonumber(lair.y or lair[7] or lair[3]) or 0;
-                    local east = py - ly;
-                    local south = px - lx;
-                    local bearing = math.atan2(east, -south);
-                    local relAngle = bearing - pFacing;
-
-                    PointArrow(seg.arrow, relAngle);
-                    if ( seg.shadow ) then
-                        PointArrow(seg.shadow, relAngle);
-                        seg.shadow:Show();
-                    end
                     seg.arrow:Show();
 
-                    -- Tint gold when walking/facing towards the boss (within ~15 degrees)
-                    local ahead = math.abs(WrapAngle(relAngle)) < 0.26;
-                    if ( ahead ) then
-                        seg.arrow:SetVertexColor(1.00, 0.85, 0.25, 1.0);
-                    else
-                        seg.arrow:SetVertexColor(1.00, 1.00, 1.00, 1.0);
-                    end
+                    local lx = tonumber(lair.x or lair[2]) or 0;
+                    local ly = tonumber(lair.y or lair[3]) or 0;
+                    local bearing = math.atan2(ly - py, lx - px);
+                    local relAngle = bearing - pFacing;
+                    PointArrow(seg.arrow, relAngle);
                 else
                     -- Slain / Respawning in red with countdown
                     seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
                     seg.arrow:Hide();
-                    if ( seg.shadow ) then seg.shadow:Hide(); end
                     seg.timer:Show();
-
-                    local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
-                    local respawnTime = (tonumber(lair.left or lair.respawn or lair[5]) or 0) - since;
+                    local respawnTime = tonumber(lair.respawn or lair.left) or 0;
                     if ( respawnTime > 0 ) then
-                        seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
+                        seg.timer:SetText(FormatClock(respawnTime));
                     else
                         seg.timer:SetText("0:39");
                     end

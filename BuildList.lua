@@ -21,7 +21,7 @@ local SurvivorUI_FONT_BUMP = 0
 -- From the game's addon API (AZS_SPELLS); without it nothing shows. Hold Alt
 -- and drag to move; /sui build hides it.
 local FLAT = "Interface\\ChatFrame\\ChatFrameBackground"
-local ART = "Interface\\AddOns\\BordoUI\\Art\\"
+local ART = "Interface\\AddOns\\SurvivorUI\\Art\\"
 local FONT_BUMP = SurvivorUI_FONT_BUMP or 0
 local WIDTH = 224
 local ROW_HEIGHT = 18
