@@ -4,6 +4,20 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.4] - 2026-10-27
+
+### Added & Improved
+- **Modern Scrolling Combat Text (MSBT Style) (`DamageFont.lua`):**
+  - Integrated full custom Scrolling Combat Text engine placing damage numbers beside the player character rather than cluttering over ads.
+  - **Spell Icons & Stacking:** Each combat number features its authentic spell icon and automatically stacks rapid multi-hits with clean multiplier badges (`x2`, `x3`, `x4`) matching user reference screenshot.
+  - **In-World Numbers Toggle:** Option to completely hide 3D numbers floating over enemy ads (`blank.ttf`), keeping the screen 100% clean and readable.
+  - **Multiple Styles:** Side Stack (MSBT style beside character), WoW Classic Arc, and Scroll Up.
+  - **Custom Filters:** All Damage, No DoT-Spam (direct hits & crits only), Only Crits, and Disabled.
+  - **Font & Size Scaling:** Real-time scaling (50%, 70%, 85%, 100%, 125%) across Modern, Classic WoW, Arcade, Russo Bold, and Exo fonts.
+  - **100% English Localization:** Complete English UI, buttons, tooltips, and chat status notifications.
+
+---
+
 ## [2.8.3] - 2026-10-27
 
 ### Fixed
