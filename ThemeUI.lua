@@ -1035,7 +1035,7 @@ PositionMicroButtons()
 -- C) MODERN MINIMAP ACTION DOCK (Character, Talents, Damage Meter)
 local minimapDock = CreateFrame("Frame", "BordoUI_MinimapDock", UIParent)
 minimapDock:SetWidth(28)
-minimapDock:SetHeight(87)
+minimapDock:SetHeight(116)
 minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -6, 0)
 minimapDock:SetFrameStrata("LOW")
 minimapDock:SetFrameLevel(10)
@@ -1094,9 +1094,10 @@ local function CreateSquareDockButton(parent, index, iconPath, tooltipTitle, too
 		icon:SetPoint("BOTTOMRIGHT", btn, "BOTTOMRIGHT", -2, 2)
 	end)
 	
+	btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	btn:SetScript("OnClick", function()
 		PlaySound("igMainMenuOptionCheckBoxOn")
-		if onClick then onClick() end
+		if onClick then onClick(arg1) end
 	end)
 	
 	btn:SetScript("OnEnter", function()
@@ -1148,6 +1149,20 @@ CreateSquareDockButton(
 			BordoUI_ToggleMeter()
 		elseif SurvivorUI_ToggleMeter then
 			SurvivorUI_ToggleMeter()
+		end
+	end
+)
+-- 4. Damage Numbers & Styles Button
+CreateSquareDockButton(
+	minimapDock, 4, "Interface\\Icons\\Ability_CriticalStrike",
+	"Damage Numbers & Styles", "Left-Click: Configure Styles & Animations\nRight-Click: Quick Cycle (All / No DoTs / Crits / Off)\nShift-Click: Toggle WoW Arc Motion",
+	function(button)
+		if IsShiftKeyDown() and BordoUI and BordoUI.ToggleDamageMotion then
+			BordoUI:ToggleDamageMotion()
+		elseif button == "RightButton" and BordoUI and BordoUI.CycleDamageFilter then
+			BordoUI:CycleDamageFilter()
+		elseif BordoUI and BordoUI.ToggleDamageNumbersWindow then
+			BordoUI:ToggleDamageNumbersWindow()
 		end
 	end
 )

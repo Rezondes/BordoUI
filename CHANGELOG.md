@@ -4,6 +4,28 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.2] - 2026-10-27
+
+### Added & Improved
+- **Dedicated Damage Numbers & Combat Text Settings Window (`DamageFont.lua`):**
+  - Added full graphical configuration panel for in-game floating combat text and damage numbers (`/bordo dmg`, `/bordo numbers`, or Minimap Dock Button 4).
+  - **Motion & Flight Styles:** Supports **WoW Classic Arc (Bogen)** (`COMBAT_TEXT_FLOAT_MODE = "3"`) where numbers spring up and cascade down in an arc to the sides, as well as Scroll Up and Scroll Down.
+  - **Custom Damage Filters:**
+    - *Alle Zahlen:* Full display with direct damage, DoT ticks, and crits.
+    - *Ohne DoTs:* Suppresses thousands of periodic aura DoT ticks (`CombatLogPeriodicSpells = "0"`), keeping screen clean and displaying only direct hits & crits.
+    - *Nur Crits:* Exclusively displays large, satisfying critical strikes!
+    - *Aus:* Completely disables floating combat numbers.
+  - **Font Styles:** Switch seamlessly between Modern Sans (`modern.ttf`), Classic WoW (`FRIZQT__.TTF`), Arcade Narrow (`ARIALN.TTF`), Russo Bold (`RussoOne`), and Exo Sci-Fi (`Exo`).
+  - **Live Sizing & Scale:** 50% (Winzig), 70% (Kompakt), 85% (Standard), 100% (Groß), and 125% (Riesig).
+  - **Instant Hit Simulation:** Integrated "Test-Treffer simulieren" button to test numbers, heals, and crits in real-time.
+- **Minimap Action Dock Button 4 (`ThemeUI.lua`):**
+  - Added 4th dock button with `Ability_CriticalStrike` icon.
+  - Left-Click opens the Damage Numbers & Styles settings window.
+  - Right-Click quickly cycles filters (Alle Zahlen -> Ohne DoTs -> Nur Crits -> Aus).
+  - Shift-Click toggles between WoW Classic Arc and Scroll Up flight modes.
+
+---
+
 ## [2.8.1] - 2026-10-27
 
 ### Fixed & Suppressed

@@ -237,16 +237,22 @@ SlashCmdList["BORDOU"] = function(msg)
     msg = string.lower(msg or "");
     local _, _, cmd, val = string.find(msg, "^(%a+)%s*(.*)$");
     
-    if ( cmd == "scale" or cmd == "dmg" ) then
+    if ( cmd == "scale" or cmd == "dmg" or cmd == "damage" or cmd == "numbers" or cmd == "combattext" ) then
         local num = tonumber(val);
         if ( num and num >= 0.4 and num <= 1.5 ) then
-            BordoUIDB.dmgScale = num;
-            if ( BordoUI.ApplyModernDamageText ) then
-                BordoUI:ApplyModernDamageText();
+            if ( BordoUI.SetDamageScale ) then
+                BordoUI:SetDamageScale(num);
+            else
+                BordoUIDB.dmgScale = num;
+                if ( BordoUI.ApplyModernDamageText ) then
+                    BordoUI:ApplyModernDamageText();
+                end
             end
             DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Floating combat text scale set to %.0f%%.", num * 100));
+        elseif ( BordoUI.ToggleDamageNumbersWindow ) then
+            BordoUI:ToggleDamageNumbersWindow();
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo dmg 0.75 (value between 0.4 and 1.5)");
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo dmg [0.4 - 1.5] or type /bordo dmg to open settings window.");
         end
     elseif ( cmd == "size" or cmd == "table" ) then
         local num = tonumber(val);
