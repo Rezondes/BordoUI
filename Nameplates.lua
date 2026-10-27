@@ -59,9 +59,30 @@ local function GetUnitClassification(mobName)
     return "normal";
 end
 
+-- Identify if a unit name belongs to a Shaman totem (100% pure ASCII safe)
+local function IsTotem(name)
+    if ( not name or name == "" ) then return false; end
+    local lower = string.lower(name);
+    local _, _, trimmed = string.find(lower, "^%s*(.-)%s*$");
+    lower = trimmed or lower;
+    
+    -- Exclude Grimtotem Tauren NPCs
+    if ( string.find(lower, "grimtotem", 1, true) ) then
+        return false;
+    end
+    
+    -- Match "totem" in any form
+    if ( lower == "totem" or string.find(lower, "totem", 1, true) ) then
+        return true;
+    end
+    
+    return false;
+end
+
 -- Identify if a nameplate belongs to a party or raid teammate
 local function IsTeammate(unitName)
     if ( not unitName or unitName == "" ) then return false, nil, nil; end
+    if ( IsTotem(unitName) ) then return false, nil, nil; end
     local lowName = string.lower(unitName);
     
     local numParty = GetNumPartyMembers() or 0;
@@ -87,26 +108,6 @@ local function IsTeammate(unitName)
     end
     
     return false, nil, nil;
-end
-
--- Identify if a unit name belongs to a Shaman totem (100% pure ASCII safe)
-local function IsTotem(name)
-    if ( not name or name == "" ) then return false; end
-    local lower = string.lower(name);
-    local _, _, trimmed = string.find(lower, "^%s*(.-)%s*$");
-    lower = trimmed or lower;
-    
-    -- Exclude Grimtotem Tauren NPCs
-    if ( string.find(lower, "grimtotem", 1, true) ) then
-        return false;
-    end
-    
-    -- Match "totem" in any form
-    if ( lower == "totem" or string.find(lower, "totem", 1, true) ) then
-        return true;
-    end
-    
-    return false;
 end
 
 local function ShouldHideTotems()
@@ -260,8 +261,13 @@ end
 
 -- Restore a previously filtered-out nameplate to full visibility
 local function RestoreNameplateFrame(frame)
+    if ( frame.isTotemPlate ) then return; end
+    local cleanName = frame.azsCleanName;
+    if ( cleanName and IsTotem(cleanName) ) then return; end
+    local curName = frame.azsNameText and frame.azsNameText:GetText();
+    if ( curName and IsTotem(curName) ) then return; end
+    
     frame.isFilteredOut = nil;
-    frame.isTotemPlate = nil;
     local healthBar = frame.azsHealthBar;
     if ( not healthBar ) then return; end
     local borderFrame = healthBar.azsBorder;
@@ -314,6 +320,26 @@ local function StyleNameplate(frame)
     end
     
     -- ---------------------------------------------------------------------
+    -- ABSOLUTE SHAMAN TOTEM SUPPRESSION: Totems must NEVER show!
+    -- Must run FIRST before ally, target, hover, threat or filters!
+    -- ---------------------------------------------------------------------
+    if ( IsTotem(cleanName) or IsTotem(curName) ) then
+        frame.isTotemPlate = true;
+        HideNameplateFrame(frame);
+        return;
+    end
+    if ( UnitExists("target") and IsTotem(UnitName("target")) and frame.azsTargetGlow and frame.azsTargetGlow:IsShown() ) then
+        frame.isTotemPlate = true;
+        HideNameplateFrame(frame);
+        return;
+    end
+    if ( UnitExists("mouseover") and IsTotem(UnitName("mouseover")) and (UnitName("mouseover") == cleanName or UnitName("mouseover") == curName) ) then
+        frame.isTotemPlate = true;
+        HideNameplateFrame(frame);
+        return;
+    end
+    
+    -- ---------------------------------------------------------------------
     -- CLASSIFICATION 0: TEAMMATES & PARTY MEMBERS (Vibrant Green Health Bar!)
     -- ---------------------------------------------------------------------
     local isAlly, allyToken, allyRealName = IsTeammate(cleanName);
@@ -322,9 +348,11 @@ local function StyleNameplate(frame)
     local isTarget = frame.azsTargetGlow and frame.azsTargetGlow:IsShown() or false;
     if ( frame.azsTargetGlow ) then frame.azsTargetGlow:SetAlpha(0); end
     if ( not isAlly and isTarget and UnitIsFriend("player", "target") ) then
-        isAlly = true;
-        allyToken = "target";
-        allyRealName = UnitName("target");
+        if ( not IsTotem(UnitName("target")) and not IsTotem(cleanName) and not IsTotem(curName) ) then
+            isAlly = true;
+            allyToken = "target";
+            allyRealName = UnitName("target");
+        end
     end
     
     if ( isAlly ) then
@@ -403,14 +431,6 @@ local function StyleNameplate(frame)
             end
         end
         healthBar.azsHpText:Show();
-        return;
-    end
-    
-    -- Shaman Totem Check: completely hide HP bar and plate to eliminate clutter
-    local isTotem = IsTotem(cleanName);
-    local hideTotems = ShouldHideTotems();
-    if ( isTotem and hideTotems ) then
-        HideNameplateFrame(frame);
         return;
     end
     
