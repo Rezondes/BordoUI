@@ -2,7 +2,7 @@
 ## Title: |cff00ccffBordo UI|r |cffffd100[Azeroth Survivors]|r
 ## Notes: Modern UI Suite for Azeroth Survivors (Centered Combat HUD, XP & Kills/Gold Bar, Modern Stats, Boss Timeline & Arrows, Build & Jewelry, Party Frames, Nameplates, Map Pins, Damage Font).
 ## Author: Bordo
-## Version: 2.8.10
+## Version: 2.8.11
 ## SavedVariables: BordoUIDB, AZSHelperDB
 
 Core.lua

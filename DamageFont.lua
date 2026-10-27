@@ -110,17 +110,17 @@ local function DetectSchoolColor(spellName, isCrit)
     if ( isCrit ) then return SPELL_COLORS.crit; end
     if ( not spellName ) then return SPELL_COLORS.physical; end
     local lower = string.lower(spellName);
-    if ( string.find(lower, "fire") or string.find(lower, "feuer") or string.find(lower, "flame") or string.find(lower, "pyro") or string.find(lower, "scorch") or string.find(lower, "ignite") or string.find(lower, "blast") or string.find(lower, "searing") or string.find(lower, "magma") ) then
+    if ( string.find(lower, "fire") or string.find(lower, "feuer") or string.find(lower, "flame") or string.find(lower, "flammen") or string.find(lower, "pyro") or string.find(lower, "scorch") or string.find(lower, "ignite") or string.find(lower, "blast") or string.find(lower, "searing") or string.find(lower, "verbrennung") or string.find(lower, "gluehend") or string.find(lower, "magma") or string.find(lower, "entz") ) then
         return SPELL_COLORS.fire;
-    elseif ( string.find(lower, "frost") or string.find(lower, "ice") or string.find(lower, "blizzard") or string.find(lower, "eis") or string.find(lower, "chill") ) then
+    elseif ( string.find(lower, "frost") or string.find(lower, "ice") or string.find(lower, "blizzard") or string.find(lower, "eis") or string.find(lower, "chill") or string.find(lower, "kaelte") ) then
         return SPELL_COLORS.frost;
-    elseif ( string.find(lower, "shadow") or string.find(lower, "schatten") or string.find(lower, "drain") or string.find(lower, "curse") or string.find(lower, "corruption") or string.find(lower, "pain") or string.find(lower, "death") ) then
+    elseif ( string.find(lower, "shadow") or string.find(lower, "schatten") or string.find(lower, "drain") or string.find(lower, "curse") or string.find(lower, "fluch") or string.find(lower, "corruption") or string.find(lower, "verderbnis") or string.find(lower, "pain") or string.find(lower, "death") or string.find(lower, "tod") ) then
         return SPELL_COLORS.shadow;
-    elseif ( string.find(lower, "holy") or string.find(lower, "heilig") or string.find(lower, "smite") or string.find(lower, "wrath") or string.find(lower, "consecrat") or string.find(lower, "justice") ) then
+    elseif ( string.find(lower, "holy") or string.find(lower, "heilig") or string.find(lower, "smite") or string.find(lower, "pein") or string.find(lower, "wrath") or string.find(lower, "zorn") or string.find(lower, "consecrat") or string.find(lower, "weihe") or string.find(lower, "justice") or string.find(lower, "urteil") ) then
         return SPELL_COLORS.holy;
-    elseif ( string.find(lower, "nature") or string.find(lower, "natur") or string.find(lower, "lightning") or string.find(lower, "blitz") or string.find(lower, "poison") or string.find(lower, "gift") or string.find(lower, "earth") or string.find(lower, "chain") ) then
+    elseif ( string.find(lower, "nature") or string.find(lower, "natur") or string.find(lower, "lightning") or string.find(lower, "blitz") or string.find(lower, "poison") or string.find(lower, "gift") or string.find(lower, "earth") or string.find(lower, "erde") or string.find(lower, "chain") or string.find(lower, "kette") ) then
         return SPELL_COLORS.nature;
-    elseif ( string.find(lower, "arcane") or string.find(lower, "arkan") or string.find(lower, "missile") or string.find(lower, "star") or string.find(lower, "moon") ) then
+    elseif ( string.find(lower, "arcane") or string.find(lower, "arkan") or string.find(lower, "missile") or string.find(lower, "geschoss") or string.find(lower, "star") or string.find(lower, "stern") or string.find(lower, "moon") or string.find(lower, "mond") ) then
         return SPELL_COLORS.arcane;
     end
     return SPELL_COLORS.physical;
@@ -263,23 +263,212 @@ for i = 1, SCT.maxLines do
     table.insert(SCT.lines, CreateSCTLine(i));
 end
 
--- Static Icon Map for instant guaranteed spell & totem icons
+-- Static Icon Map for instant guaranteed spell, talent & totem icons
 local SCT_ICONS = {
+    -- Mage
+    ["pyroblast"]        = "Interface\\Icons\\Spell_Fire_Fireball02",
+    ["pyroschlag"]       = "Interface\\Icons\\Spell_Fire_Fireball02",
+    ["pyroclasm"]        = "Interface\\Icons\\Spell_Fire_Fireball02",
+    ["ignite"]           = "Interface\\Icons\\Spell_Fire_Incinerate",
+    ["entzuenden"]       = "Interface\\Icons\\Spell_Fire_Incinerate",
+    ["fireball"]         = "Interface\\Icons\\Spell_Fire_FlameBolt",
+    ["feuerball"]        = "Interface\\Icons\\Spell_Fire_FlameBolt",
+    ["frostbolt"]        = "Interface\\Icons\\Spell_Frost_FrostBolt02",
+    ["frostblitz"]       = "Interface\\Icons\\Spell_Frost_FrostBolt02",
+    ["flamestrike"]      = "Interface\\Icons\\Spell_Fire_SelfDestruct",
+    ["flammenstoss"]     = "Interface\\Icons\\Spell_Fire_SelfDestruct",
+    ["blast wave"]       = "Interface\\Icons\\Spell_Holy_Excorcism_02",
+    ["druckwelle"]       = "Interface\\Icons\\Spell_Holy_Excorcism_02",
+    ["fire blast"]       = "Interface\\Icons\\Spell_Fire_Fireball",
+    ["feuerschlag"]      = "Interface\\Icons\\Spell_Fire_Fireball",
+    ["cone of cold"]     = "Interface\\Icons\\Spell_Frost_Glacier",
+    ["kaeltekegel"]      = "Interface\\Icons\\Spell_Frost_Glacier",
+    ["frost nova"]       = "Interface\\Icons\\Spell_Frost_FrostNova",
+    ["blizzard"]         = "Interface\\Icons\\Spell_Frost_IceStorm",
+    ["arcane missiles"]  = "Interface\\Icons\\Spell_Nature_StarFall",
+    ["arkangeschosse"]   = "Interface\\Icons\\Spell_Nature_StarFall",
+    ["arcane explosion"] = "Interface\\Icons\\Spell_Nature_WispSplode",
+    ["scorch"]           = "Interface\\Icons\\Spell_Fire_SoulBurn",
+    ["versengen"]        = "Interface\\Icons\\Spell_Fire_SoulBurn",
+
+    -- Shaman
     ["searing totem"]    = "Interface\\Icons\\Spell_Fire_SearingTotem",
+    ["totem der verbrennung"] = "Interface\\Icons\\Spell_Fire_SearingTotem",
     ["gluehendes totem"]  = "Interface\\Icons\\Spell_Fire_SearingTotem",
+    ["searing"]          = "Interface\\Icons\\Spell_Fire_SearingTotem",
     ["magma totem"]      = "Interface\\Icons\\Spell_Fire_SelfDestruct",
+    ["totem der gluehenden magma"] = "Interface\\Icons\\Spell_Fire_SelfDestruct",
     ["fire nova totem"]  = "Interface\\Icons\\Spell_Fire_SealOfFire",
     ["fire nova"]        = "Interface\\Icons\\Spell_Fire_SealOfFire",
+    ["feuernova"]        = "Interface\\Icons\\Spell_Fire_SealOfFire",
     ["lightning bolt"]   = "Interface\\Icons\\Spell_Nature_Lightning",
+    ["blitzschlag"]      = "Interface\\Icons\\Spell_Nature_Lightning",
     ["chain lightning"]  = "Interface\\Icons\\Spell_Nature_ChainLightning",
+    ["kettenblitzschlag"]= "Interface\\Icons\\Spell_Nature_ChainLightning",
+    ["kettenblitz"]      = "Interface\\Icons\\Spell_Nature_ChainLightning",
     ["earth shock"]      = "Interface\\Icons\\Spell_Nature_EarthShock",
+    ["erdschock"]        = "Interface\\Icons\\Spell_Nature_EarthShock",
     ["flame shock"]      = "Interface\\Icons\\Spell_Fire_FlameShock",
+    ["flammenschock"]    = "Interface\\Icons\\Spell_Fire_FlameShock",
     ["frost shock"]      = "Interface\\Icons\\Spell_Frost_FrostShock",
+    ["frostschock"]      = "Interface\\Icons\\Spell_Frost_FrostShock",
+    ["lightning shield"] = "Interface\\Icons\\Spell_Nature_LightningShield",
+    ["blitzschlagschild"]= "Interface\\Icons\\Spell_Nature_LightningShield",
     ["firebolt"]         = "Interface\\Icons\\Spell_Fire_FireBolt02",
+    ["feuerblitz"]       = "Interface\\Icons\\Spell_Fire_FireBolt02",
+
+    -- Warlock
+    ["shadow bolt"]      = "Interface\\Icons\\Spell_Shadow_ShadowBolt",
+    ["schattenblitz"]    = "Interface\\Icons\\Spell_Shadow_ShadowBolt",
+    ["corruption"]       = "Interface\\Icons\\Spell_Shadow_AbominationExplosion",
+    ["verderbnis"]       = "Interface\\Icons\\Spell_Shadow_AbominationExplosion",
+    ["immolate"]         = "Interface\\Icons\\Spell_Fire_Immolation",
+    ["feuerbrand"]       = "Interface\\Icons\\Spell_Fire_Immolation",
+    ["curse of agony"]   = "Interface\\Icons\\Spell_Shadow_CurseOfSargeras",
+    ["fluch der pein"]   = "Interface\\Icons\\Spell_Shadow_CurseOfSargeras",
+    ["rain of fire"]     = "Interface\\Icons\\Spell_Shadow_RainOfFire",
+    ["feuerregen"]       = "Interface\\Icons\\Spell_Shadow_RainOfFire",
+    ["hellfire"]         = "Interface\\Icons\\Spell_Fire_Incinerate",
+    ["hoellenfeuer"]     = "Interface\\Icons\\Spell_Fire_Incinerate",
+    ["searing pain"]     = "Interface\\Icons\\Spell_Fire_SoulBurn",
+    ["sengender schmerz"]= "Interface\\Icons\\Spell_Fire_SoulBurn",
+    ["drain life"]       = "Interface\\Icons\\Spell_Shadow_LifeDrain02",
+    ["blutsauger"]       = "Interface\\Icons\\Spell_Shadow_LifeDrain02",
+    ["death coil"]       = "Interface\\Icons\\Spell_Shadow_DeathCoil",
+    ["todesmantel"]      = "Interface\\Icons\\Spell_Shadow_DeathCoil",
+    ["soulfire"]         = "Interface\\Icons\\Spell_Fire_Fireball02",
+    ["seelenfeuer"]      = "Interface\\Icons\\Spell_Fire_Fireball02",
+
+    -- Druid
+    ["moonfire"]         = "Interface\\Icons\\Spell_Nature_StarFall",
+    ["mondfeuer"]        = "Interface\\Icons\\Spell_Nature_StarFall",
+    ["starfire"]         = "Interface\\Icons\\Spell_Arcane_StarFire",
+    ["sternenfeuer"]     = "Interface\\Icons\\Spell_Arcane_StarFire",
+    ["wrath"]            = "Interface\\Icons\\Spell_Nature_AbolishMagic",
+    ["zorn"]             = "Interface\\Icons\\Spell_Nature_AbolishMagic",
+    ["hurricane"]        = "Interface\\Icons\\Spell_Nature_Cyclone",
+    ["hurrikan"]         = "Interface\\Icons\\Spell_Nature_Cyclone",
+    ["insect swarm"]     = "Interface\\Icons\\Spell_Nature_InsectSwarm",
+    ["insektenschwarm"]  = "Interface\\Icons\\Spell_Nature_InsectSwarm",
+    ["swipe"]            = "Interface\\Icons\\INV_Misc_MonsterClaw_03",
+    ["prankenhieb"]      = "Interface\\Icons\\INV_Misc_MonsterClaw_03",
+    ["shred"]            = "Interface\\Icons\\Spell_Shadow_VampiricAura",
+
+    -- Priest
+    ["smite"]            = "Interface\\Icons\\Spell_Holy_HolySmite",
+    ["goettliche pein"]  = "Interface\\Icons\\Spell_Holy_HolySmite",
+    ["holy fire"]        = "Interface\\Icons\\Spell_Holy_SearingLight",
+    ["heiliges feuer"]   = "Interface\\Icons\\Spell_Holy_SearingLight",
+    ["mind blast"]       = "Interface\\Icons\\Spell_Shadow_UnholyFrenzy",
+    ["gedankenschlag"]   = "Interface\\Icons\\Spell_Shadow_UnholyFrenzy",
+    ["mind flay"]        = "Interface\\Icons\\Spell_Shadow_SiphonMana",
+    ["gedankenschinden"] = "Interface\\Icons\\Spell_Shadow_SiphonMana",
+    ["shadow word: pain"]= "Interface\\Icons\\Spell_Shadow_ShadowWordPain",
+    ["schattenwort: schmerz"] = "Interface\\Icons\\Spell_Shadow_ShadowWordPain",
+    ["holy nova"]        = "Interface\\Icons\\Spell_Holy_HolyNova",
+    ["heilige nova"]     = "Interface\\Icons\\Spell_Holy_HolyNova",
+
+    -- Paladin
+    ["consecration"]     = "Interface\\Icons\\Spell_Holy_InnerFire",
+    ["weihe"]            = "Interface\\Icons\\Spell_Holy_InnerFire",
+    ["hammer of wrath"]  = "Interface\\Icons\\Ability_ThunderClap",
+    ["hammer des zorns"] = "Interface\\Icons\\Ability_ThunderClap",
+    ["judgement"]        = "Interface\\Icons\\Spell_Holy_RighteousFury",
+    ["richturteil"]      = "Interface\\Icons\\Spell_Holy_RighteousFury",
+    ["exorcism"]         = "Interface\\Icons\\Spell_Holy_Excorcism_02",
+    ["exorzismus"]       = "Interface\\Icons\\Spell_Holy_Excorcism_02",
+    ["holy shock"]       = "Interface\\Icons\\Spell_Holy_SearingLight",
+    ["heiliger schock"]  = "Interface\\Icons\\Spell_Holy_SearingLight",
+
+    -- Hunter
+    ["aimed shot"]       = "Interface\\Icons\\INV_Spear_07",
+    ["gezielter schuss"] = "Interface\\Icons\\INV_Spear_07",
+    ["arcane shot"]      = "Interface\\Icons\\Ability_ImpalingBolt",
+    ["arkaner schuss"]   = "Interface\\Icons\\Ability_ImpalingBolt",
+    ["multi-shot"]       = "Interface\\Icons\\Ability_UpgradeMoonGlaive",
+    ["mehrfachschuss"]   = "Interface\\Icons\\Ability_UpgradeMoonGlaive",
+    ["volley"]           = "Interface\\Icons\\Ability_Marksmanship",
+    ["salve"]            = "Interface\\Icons\\Ability_Marksmanship",
+    ["serpent sting"]    = "Interface\\Icons\\Ability_Hunter_Quickshot",
+    ["schlangenbiss"]    = "Interface\\Icons\\Ability_Hunter_Quickshot",
+
+    -- Rogue & Warrior Melee / Physical
+    ["eviscerate"]       = "Interface\\Icons\\Ability_Rogue_Eviscerate",
+    ["ausweiden"]        = "Interface\\Icons\\Ability_Rogue_Eviscerate",
+    ["sinister strike"]  = "Interface\\Icons\\Spell_Shadow_RitualOfSacrifice",
+    ["finsterer stoss"]  = "Interface\\Icons\\Spell_Shadow_RitualOfSacrifice",
+    ["backstab"]         = "Interface\\Icons\\Ability_BackStab",
+    ["meucheln"]         = "Interface\\Icons\\Ability_BackStab",
+    ["mortal strike"]    = "Interface\\Icons\\Ability_Warrior_SavageBlow",
+    ["toedlicher stoss"] = "Interface\\Icons\\Ability_Warrior_SavageBlow",
+    ["whirlwind"]        = "Interface\\Icons\\Ability_Whirlwind",
+    ["wirbelwind"]       = "Interface\\Icons\\Ability_Whirlwind",
+    ["cleave"]           = "Interface\\Icons\\Ability_Warrior_Cleave",
+    ["spalten"]          = "Interface\\Icons\\Ability_Warrior_Cleave",
+    ["execute"]          = "Interface\\Icons\\INV_Sword_48",
+    ["hinrichten"]       = "Interface\\Icons\\INV_Sword_48",
+    ["shield slam"]      = "Interface\\Icons\\INV_Shield_05",
+    ["schildschlag"]     = "Interface\\Icons\\INV_Shield_05",
+    ["thunder clap"]     = "Interface\\Icons\\Spell_Nature_ThunderClap",
+    ["donnerknall"]      = "Interface\\Icons\\Spell_Nature_ThunderClap",
     ["attack"]           = "Interface\\Icons\\INV_Sword_04",
     ["melee"]            = "Interface\\Icons\\INV_Sword_04",
     ["auto attack"]      = "Interface\\Icons\\INV_Sword_04",
 };
+
+-- Robust Spell Icon Resolver (Checks static map, keyword substrings, and live meters)
+local function ResolveSpellIcon(spellName)
+    if ( not spellName or spellName == "" ) then
+        return "Interface\\Icons\\INV_Sword_04";
+    end
+    local lower = string.lower(spellName);
+    
+    -- 1. Exact static match
+    if ( SCT_ICONS[lower] ) then
+        return SCT_ICONS[lower];
+    end
+    
+    -- 2. Keyword Substrings (Matches procs, German spell names, and talents)
+    if ( string.find(lower, "pyro") ) then
+        return "Interface\\Icons\\Spell_Fire_Fireball02";
+    elseif ( string.find(lower, "searing") or string.find(lower, "verbrennung") or string.find(lower, "gluehend") or string.find(lower, "firebolt") or string.find(lower, "feuerblitz") ) then
+        return "Interface\\Icons\\Spell_Fire_SearingTotem";
+    elseif ( string.find(lower, "magma") ) then
+        return "Interface\\Icons\\Spell_Fire_SelfDestruct";
+    elseif ( string.find(lower, "ignite") or string.find(lower, "entz") ) then
+        return "Interface\\Icons\\Spell_Fire_Incinerate";
+    elseif ( string.find(lower, "fireball") or string.find(lower, "feuerball") ) then
+        return "Interface\\Icons\\Spell_Fire_FlameBolt";
+    elseif ( string.find(lower, "frostbolt") or string.find(lower, "frostblitz") ) then
+        return "Interface\\Icons\\Spell_Frost_FrostBolt02";
+    elseif ( string.find(lower, "flamestrike") or string.find(lower, "flammensto") ) then
+        return "Interface\\Icons\\Spell_Fire_SelfDestruct";
+    elseif ( string.find(lower, "blast wave") or string.find(lower, "druckwelle") ) then
+        return "Interface\\Icons\\Spell_Holy_Excorcism_02";
+    elseif ( string.find(lower, "fire blast") or string.find(lower, "feuerschlag") ) then
+        return "Interface\\Icons\\Spell_Fire_Fireball";
+    elseif ( string.find(lower, "chain") or string.find(lower, "ketten") ) then
+        return "Interface\\Icons\\Spell_Nature_ChainLightning";
+    elseif ( string.find(lower, "lightning") or string.find(lower, "blitz") ) then
+        return "Interface\\Icons\\Spell_Nature_Lightning";
+    elseif ( string.find(lower, "shadow") or string.find(lower, "schatten") ) then
+        return "Interface\\Icons\\Spell_Shadow_ShadowBolt";
+    end
+    
+    -- 3. Dynamic lookup from helper or meter
+    local dynIcon = nil;
+    if ( AZSHelper and AZSHelper.GetSpellIcon ) then
+        dynIcon = AZSHelper:GetSpellIcon(spellName);
+    elseif ( SurvivorUI_MeterIcon ) then
+        dynIcon = SurvivorUI_MeterIcon(spellName);
+    end
+    if ( dynIcon and dynIcon ~= "" ) then
+        return dynIcon;
+    end
+    
+    -- 4. Fallback Default
+    return "Interface\\Icons\\INV_Sword_04";
+end
 
 -- Spawn or Stack Combat Text Line
 function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
@@ -295,18 +484,7 @@ function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
     local scale = tonumber(cfg.scale) or 0.85;
     
     -- Resolve Spell Icon
-    local lowerSpell = string.lower(spellName or "");
-    local iconPath = SCT_ICONS[lowerSpell];
-    if ( not iconPath ) then
-        if ( AZSHelper and AZSHelper.GetSpellIcon ) then
-            iconPath = AZSHelper:GetSpellIcon(spellName);
-        elseif ( SurvivorUI_MeterIcon ) then
-            iconPath = SurvivorUI_MeterIcon(spellName);
-        end
-    end
-    if ( not iconPath or iconPath == "" ) then
-        iconPath = "Interface\\Icons\\INV_Sword_04";
-    end
+    local iconPath = ResolveSpellIcon(spellName);
     
     local parentAnchor = isIncoming and incomingAnchor or outgoingAnchor;
     local now = GetTime();
@@ -485,9 +663,16 @@ local logWatcher = CreateFrame("Frame", "BordoUI_SCT_CombatLogWatcher");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_SELF_DAMAGE");
 logWatcher:RegisterEvent("CHAT_MSG_COMBAT_SELF_HITS");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_PET_DAMAGE");
 logWatcher:RegisterEvent("CHAT_MSG_COMBAT_PET_HITS");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE");
+logWatcher:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_HITS");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_DAMAGESHIELDS_ON_SELF");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_DAMAGESHIELDS_ON_OTHERS");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_PARTY_DAMAGE");
+logWatcher:RegisterEvent("CHAT_MSG_SPELL_FRIENDLYPLAYER_DAMAGE");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_SELF_BUFF");
 logWatcher:RegisterEvent("CHAT_MSG_COMBAT_CREATURE_VS_SELF_HITS");
 logWatcher:RegisterEvent("CHAT_MSG_SPELL_CREATURE_VS_SELF_DAMAGE");
@@ -499,7 +684,9 @@ logWatcher:SetScript("OnEvent", function()
     if ( s.mode == "standard" ) then return; end
     if ( s.sct.filter == "off" ) then return; end
     
-    local isPeriodic = (event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
+    local isPeriodic = (event == "CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE" or
+                        event == "CHAT_MSG_SPELL_PERIODIC_HOSTILEPLAYER_DAMAGE" or
+                        event == "CHAT_MSG_SPELL_PERIODIC_SELF_DAMAGE");
     if ( isPeriodic and s.sct.filter == "nodots" ) then
         return; -- Suppress DoT-spam
     end
@@ -510,18 +697,26 @@ logWatcher:SetScript("OnEvent", function()
         return; -- Suppress non-crits
     end
     
-    -- Extract Amount
+    -- Extract Amount (Checks DoT "suffers/erleidet" then direct "for/fuer")
     local numStr = nil;
-    local _, _, n1 = string.find(msg, "for (%d+)");
-    if ( n1 ) then numStr = n1; end
-    if ( not numStr ) then
-        local _, _, n2 = string.find(msg, "f%A+r (%d+)");
-        if ( n2 ) then numStr = n2; end
+    local _, _, sAmt = string.find(msg, "suffers (%d+)");
+    if ( not sAmt ) then
+        _, _, sAmt = string.find(msg, "erleidet (%d+)");
     end
-    if ( not numStr ) then
-        local gFunc = string.gfind or string.gmatch;
-        if ( gFunc ) then
-            for w in gFunc(msg, "(%d+)") do numStr = w; end
+    if ( sAmt ) then
+        numStr = sAmt;
+    else
+        local _, _, fAmt = string.find(msg, "for (%d+)");
+        if ( not fAmt ) then
+            _, _, fAmt = string.find(msg, "f%A+r (%d+)");
+        end
+        if ( fAmt ) then
+            numStr = fAmt;
+        else
+            local gFunc = string.gfind or string.gmatch;
+            if ( gFunc ) then
+                for w in gFunc(msg, "(%d+)") do numStr = w; end
+            end
         end
     end
     local amount = tonumber(numStr or 0);
@@ -530,9 +725,26 @@ logWatcher:SetScript("OnEvent", function()
     -- Extract Spell Name & Source
     local spell = nil;
     
-    -- 1. Check Pet & Totem Damage (e.g. Searing Totem, Magma Totem)
-    if ( event == "CHAT_MSG_SPELL_PET_DAMAGE" or event == "CHAT_MSG_COMBAT_PET_HITS" ) then
-        local _, _, pet1, sp1 = string.find(msg, "^([^']+)'s (.+) [hc][ir][it]");
+    -- 1. Periodic / DoT Hits ("<Target> suffers <Amount> <School> damage from your <Spell>.")
+    if ( isPeriodic ) then
+        local _, _, pSpell = string.find(msg, "from your ([^%.]+)");
+        if ( not pSpell ) then
+            _, _, pSpell = string.find(msg, "durch Euer ([^%.]+)");
+        end
+        if ( not pSpell ) then
+            local _, _, pPet, pSp = string.find(msg, "from ([^']+)'s ([^%.]+)");
+            if ( pPet ) then
+                pSpell = (string.find(pPet, "Totem") or string.find(pPet, "totem")) and pPet or pSp;
+            end
+        end
+        if ( pSpell ) then
+            spell = pSpell;
+        end
+    end
+    
+    -- 2. Pet & Totem Hits (e.g. Searing Totem, Magma Totem)
+    if ( not spell and (event == "CHAT_MSG_SPELL_PET_DAMAGE" or event == "CHAT_MSG_COMBAT_PET_HITS" or event == "CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE" or event == "CHAT_MSG_COMBAT_CREATURE_VS_CREATURE_HITS") ) then
+        local _, _, pet1, sp1 = string.find(msg, "^([^']+)'s (.+) [hcw][ir][ita][ts]");
         if ( pet1 ) then
             if ( string.find(pet1, "Totem") or string.find(pet1, "totem") ) then
                 spell = pet1;
@@ -541,7 +753,7 @@ logWatcher:SetScript("OnEvent", function()
             end
         end
         if ( not spell ) then
-            local _, _, pet2 = string.find(msg, "^([^ ]+) [hc][ir][it]");
+            local _, _, pet2 = string.find(msg, "^(.+ Totem) [hcw][ir][ita][ts]");
             if ( pet2 ) then spell = pet2; end
         end
         if ( not spell ) then
@@ -554,12 +766,15 @@ logWatcher:SetScript("OnEvent", function()
                 end
             end
         end
-        if ( not spell ) then
+        if ( not spell and (string.find(lower, "searing") or string.find(lower, "verbrennung") or string.find(lower, "firebolt") or string.find(lower, "feuerblitz")) ) then
             spell = "Searing Totem";
+        end
+        if ( not spell and string.find(lower, "magma") ) then
+            spell = "Magma Totem";
         end
     end
     
-    -- 2. Direct Spell & Melee Hits
+    -- 3. Direct Player Hits ("Your <Spell> hits/crits...")
     if ( not spell ) then
         local _, _, s1 = string.find(msg, "^Euer (.+) trifft");
         if ( s1 ) then spell = s1; end
@@ -577,14 +792,112 @@ logWatcher:SetScript("OnEvent", function()
         if ( s4 ) then spell = s4; end
     end
     
-    -- 3. Totem fallback keywords if mentioned in combat message
-    if ( not spell ) then
-        if ( string.find(lower, "searing totem") or string.find(lower, "gluehendes totem") or string.find(lower, "firebolt") ) then
+    -- 4. Fallback Keyword Scanner (Guarantees procs, talents & totems never fall through)
+    if ( not spell or spell == "Attack" or spell == "Melee" ) then
+        if ( string.find(lower, "pyroblast") or string.find(lower, "pyroschlag") ) then
+            spell = "Pyroblast";
+        elseif ( string.find(lower, "pyroclasm") ) then
+            spell = "Pyroclasm";
+        elseif ( string.find(lower, "ignite") or string.find(lower, "entz") ) then
+            spell = "Ignite";
+        elseif ( string.find(lower, "searing totem") or string.find(lower, "verbrennung") or string.find(lower, "gluehendes totem") or string.find(lower, "gluehend") or string.find(lower, "firebolt") or string.find(lower, "feuerblitz") ) then
             spell = "Searing Totem";
-        elseif ( string.find(lower, "magma totem") ) then
+        elseif ( string.find(lower, "magma totem") or string.find(lower, "magma") ) then
             spell = "Magma Totem";
-        else
-            spell = (event == "CHAT_MSG_COMBAT_SELF_HITS") and "Melee" or "Attack";
+        elseif ( string.find(lower, "fire nova") or string.find(lower, "feuernova") ) then
+            spell = "Fire Nova";
+        elseif ( string.find(lower, "fireball") or string.find(lower, "feuerball") ) then
+            spell = "Fireball";
+        elseif ( string.find(lower, "frostbolt") or string.find(lower, "frostblitz") ) then
+            spell = "Frostbolt";
+        elseif ( string.find(lower, "flamestrike") or string.find(lower, "flammensto") ) then
+            spell = "Flamestrike";
+        elseif ( string.find(lower, "blast wave") or string.find(lower, "druckwelle") ) then
+            spell = "Blast Wave";
+        elseif ( string.find(lower, "chain lightning") or string.find(lower, "kettenblitz") ) then
+            spell = "Chain Lightning";
+        elseif ( string.find(lower, "lightning bolt") or string.find(lower, "blitzschlag") ) then
+            spell = "Lightning Bolt";
+        elseif ( string.find(lower, "earth shock") or string.find(lower, "erdschock") ) then
+            spell = "Earth Shock";
+        elseif ( string.find(lower, "flame shock") or string.find(lower, "flammenschock") ) then
+            spell = "Flame Shock";
+        elseif ( string.find(lower, "frost shock") or string.find(lower, "frostschock") ) then
+            spell = "Frost Shock";
+        elseif ( string.find(lower, "lightning shield") or string.find(lower, "blitzschlagschild") ) then
+            spell = "Lightning Shield";
+        elseif ( string.find(lower, "shadow bolt") or string.find(lower, "schattenblitz") ) then
+            spell = "Shadow Bolt";
+        elseif ( string.find(lower, "corruption") or string.find(lower, "verderbnis") ) then
+            spell = "Corruption";
+        elseif ( string.find(lower, "immolate") or string.find(lower, "feuerbrand") ) then
+            spell = "Immolate";
+        elseif ( string.find(lower, "curse of agony") or string.find(lower, "fluch der pein") ) then
+            spell = "Curse of Agony";
+        elseif ( string.find(lower, "rain of fire") or string.find(lower, "feuerregen") ) then
+            spell = "Rain of Fire";
+        elseif ( string.find(lower, "hellfire") or string.find(lower, "hoellenfeuer") ) then
+            spell = "Hellfire";
+        elseif ( string.find(lower, "drain life") or string.find(lower, "blutsauger") ) then
+            spell = "Drain Life";
+        elseif ( string.find(lower, "death coil") or string.find(lower, "todesmantel") ) then
+            spell = "Death Coil";
+        elseif ( string.find(lower, "moonfire") or string.find(lower, "mondfeuer") ) then
+            spell = "Moonfire";
+        elseif ( string.find(lower, "starfire") or string.find(lower, "sternenfeuer") ) then
+            spell = "Starfire";
+        elseif ( string.find(lower, "wrath") or string.find(lower, "zorn") ) then
+            spell = "Wrath";
+        elseif ( string.find(lower, "hurricane") or string.find(lower, "hurrikan") ) then
+            spell = "Hurricane";
+        elseif ( string.find(lower, "insect swarm") or string.find(lower, "insektenschwarm") ) then
+            spell = "Insect Swarm";
+        elseif ( string.find(lower, "mind blast") or string.find(lower, "gedankenschlag") ) then
+            spell = "Mind Blast";
+        elseif ( string.find(lower, "mind flay") or string.find(lower, "gedankenschinden") ) then
+            spell = "Mind Flay";
+        elseif ( string.find(lower, "shadow word") or string.find(lower, "schattenwort") ) then
+            spell = "Shadow Word: Pain";
+        elseif ( string.find(lower, "holy nova") or string.find(lower, "heilige nova") ) then
+            spell = "Holy Nova";
+        elseif ( string.find(lower, "consecrat") or string.find(lower, "weihe") ) then
+            spell = "Consecration";
+        elseif ( string.find(lower, "hammer of wrath") or string.find(lower, "hammer des zorns") ) then
+            spell = "Hammer of Wrath";
+        elseif ( string.find(lower, "judgement") or string.find(lower, "richturteil") ) then
+            spell = "Judgement";
+        elseif ( string.find(lower, "aimed shot") or string.find(lower, "gezielter schuss") ) then
+            spell = "Aimed Shot";
+        elseif ( string.find(lower, "multi-shot") or string.find(lower, "mehrfachschuss") ) then
+            spell = "Multi-Shot";
+        elseif ( string.find(lower, "arcane shot") or string.find(lower, "arkaner schuss") ) then
+            spell = "Arcane Shot";
+        elseif ( string.find(lower, "volley") or string.find(lower, "salve") ) then
+            spell = "Volley";
+        elseif ( string.find(lower, "serpent sting") or string.find(lower, "schlangenbiss") ) then
+            spell = "Serpent Sting";
+        elseif ( string.find(lower, "eviscerate") or string.find(lower, "ausweiden") ) then
+            spell = "Eviscerate";
+        elseif ( string.find(lower, "sinister strike") or string.find(lower, "finsterer stoss") ) then
+            spell = "Sinister Strike";
+        elseif ( string.find(lower, "backstab") or string.find(lower, "meucheln") ) then
+            spell = "Backstab";
+        elseif ( string.find(lower, "mortal strike") or string.find(lower, "toedlicher stoss") ) then
+            spell = "Mortal Strike";
+        elseif ( string.find(lower, "whirlwind") or string.find(lower, "wirbelwind") ) then
+            spell = "Whirlwind";
+        elseif ( string.find(lower, "cleave") or string.find(lower, "spalten") ) then
+            spell = "Cleave";
+        elseif ( string.find(lower, "execute") or string.find(lower, "hinrichten") ) then
+            spell = "Execute";
+        elseif ( string.find(lower, "shield slam") or string.find(lower, "schildschlag") ) then
+            spell = "Shield Slam";
+        elseif ( string.find(lower, "thunder clap") or string.find(lower, "donnerknall") ) then
+            spell = "Thunder Clap";
+        elseif ( string.find(lower, "you hit") or string.find(lower, "you crit") or string.find(lower, "ihr trefft") or event == "CHAT_MSG_COMBAT_SELF_HITS" ) then
+            spell = "Melee";
+        elseif ( not spell ) then
+            spell = "Attack";
         end
     end
     

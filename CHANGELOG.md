@@ -4,6 +4,19 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.11] - 2026-10-27
+
+### Fixed & Enhanced
+- **Talent-Granted Abilities & Procs Full Recognition (`DamageFont.lua`):**
+  - **Mage Pyroblast & Pyroclasm Talent Procs:** Full end-to-end combat log detection for initial impact, critical strikes, and periodic burn ticks (`CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE`). Explicitly bound to authentic Pyroblast icon (`Spell_Fire_Fireball02`) and fire school coloration.
+  - **Shaman Searing Totem & "Call of the Elements" Milestone:** Searing Totem attacks (including auto-dropped duplicate totems from milestone talents) are now parsed across all channels (`CHAT_MSG_SPELL_PET_DAMAGE`, `CHAT_MSG_SPELL_CREATURE_VS_CREATURE_DAMAGE`, and direct spells). Fixed regex greedy boundary so `"Searing Totem"` is never truncated to `"Searing"` or fallen back to default sword icons.
+  - **Periodic Damage Parsing (`CHAT_MSG_SPELL_PERIODIC_CREATURE_DAMAGE`):** Added event listener and parser for target damage over time (`"<Target> suffers <Amount> <School> damage from your <Spell>."`), enabling all DoTs (Ignite, Pyroblast DoT, Corruption, Moonfire, etc.) to trigger damage numbers cleanly.
+  - **Comprehensive Static Icon Dictionary (`SCT_ICONS`):** Added over 70 abilities across all classes with English and German spellings (Feuerball, Frostblitz, Pyroschlag, Totem der Verbrennung, Kettenblitz, etc.), paired with a resilient substring keyword fallback resolver ensuring talent spells, procs, and totems never display as swords.
+- **In-World 3D Standard Mode CVar Synchronization:**
+  - Guaranteed restoration of `PetSpellDamage`, `PetMeleeDamage`, and `CombatLogPeriodicSpells` alongside `CombatDamage = "1"`.
+
+---
+
 ## [2.8.10] - 2026-10-27
 
 ### Added & Improved
