@@ -318,12 +318,19 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Toggle Shaman totem health bars (hidden by default)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo meter|r - Toggle BordoUI Damage Meter");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo reset|r - Reset all window positions to defaults");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo recap|r - View Death Recap & Recent Damage");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo dmg <0.4-1.5>|r - Set floating damage font scale");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo size <0.4-1.5>|r - Set stats table scale");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance");
+    elseif ( cmd == "meter" or cmd == "dps" ) then
+        if ( BordoUI_ToggleMeter ) then
+            BordoUI_ToggleMeter();
+        elseif ( SurvivorUI_ToggleMeter ) then
+            SurvivorUI_ToggleMeter();
+        end
     elseif ( cmd == "reset" ) then
         BordoUI:ResetToDefaultLayout();
     elseif ( cmd == "chest" or cmd == "chests" or cmd == "cl" or cmd == "kiste" or cmd == "kisten" ) then
@@ -511,6 +518,7 @@ function BordoUI:ToggleMoveMode(enable)
         { frame = SurvivorUIParty, name = "Party Frames (Drag Me)", key = "partyPos" },
         { frame = AZSHelper_TallyFrame, name = "Kills & Gold (Drag Me)", key = "tallyPos" },
         { frame = BordoUI_MinimapDock, name = "Minimap Action Buttons (Drag Me)", key = "minimapDockPos" },
+        { frame = BordoUI_MeterFrame or SurvivorUIMeter, name = "Damage Meter (Drag Me)", key = "meterPos" },
         { frame = BordoUI_ChatBox, name = "Chat Box (Drag Me)", key = "chatPos" },
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
 		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },

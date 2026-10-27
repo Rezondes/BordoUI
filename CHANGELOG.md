@@ -4,6 +4,20 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.0] - 2026-10-27
+
+### Added & Improved
+- **Integrated BordoUI Damage Meter (`Meter.lua`):**
+  - Fully integrated the modern damage meter into BordoUI's dark minimalist aesthetic (`BordoUIMeter`).
+  - Features distinctive class/spell colored horizontal bars, exact damage numbers, DPS, and % share.
+  - Interactive header menu switches between: Damage Dealt, Boss Damage, Healing Dealt, and Party Damage (in Co-op).
+  - Hovering over any ability bar displays detailed stats including total damage, share, DPS, and highest crit / crit rate from combat history.
+  - Automatically suppresses the game's stock Rust engine meter (`AZS_SetHudShown("meter", false)`) to prevent duplicate buttons.
+  - Added a dedicated 3rd action button to `BordoUI_MinimapDock` (Icon: Silver Sword `INV_Sword_04`), with Left-Click to toggle meter and Shift-Click to reset, guaranteeing exactly ONE clean button.
+  - Added `/bordo meter` command and integrated the window with BordoUI lock/unlock positioning.
+
+---
+
 ## [2.7.9] - 2026-10-27
 
 ### Added & Improved

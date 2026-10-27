@@ -1032,10 +1032,10 @@ PositionMicroButtons = function()
 end
 PositionMicroButtons()
 
--- C) MODERN MINIMAP ACTION DOCK (Character, Talents)
+-- C) MODERN MINIMAP ACTION DOCK (Character, Talents, Damage Meter)
 local minimapDock = CreateFrame("Frame", "BordoUI_MinimapDock", UIParent)
 minimapDock:SetWidth(28)
-minimapDock:SetHeight(58)
+minimapDock:SetHeight(87)
 minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -6, 0)
 minimapDock:SetFrameStrata("LOW")
 minimapDock:SetFrameLevel(10)
@@ -1134,6 +1134,20 @@ CreateSquareDockButton(
 			SurvivorUI_ToggleBuild()
 		elseif ToggleTalentFrame then
 			ToggleTalentFrame()
+		end
+	end
+)
+-- 3. Damage Meter Button
+CreateSquareDockButton(
+	minimapDock, 3, "Interface\\Icons\\INV_Sword_04",
+	"Damage Meter", "Left-Click: Toggle Damage Meter\nShift-Click: Reset Meter",
+	function()
+		if IsShiftKeyDown() and BordoUI_ResetMeter then
+			BordoUI_ResetMeter()
+		elseif BordoUI_ToggleMeter then
+			BordoUI_ToggleMeter()
+		elseif SurvivorUI_ToggleMeter then
+			SurvivorUI_ToggleMeter()
 		end
 	end
 )
@@ -1332,6 +1346,9 @@ function AZSHelper:ApplySquareMinimapStyle()
 		ev:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
 		ev:RegisterEvent("VARIABLES_LOADED")
 		ev:SetScript("OnEvent", function()
+			if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("meter") then
+				AZS_SetHudShown("meter", false)
+			end
 			KillMinimapButton("MiniMapBattlefieldFrame")
 			KillMinimapButton("MiniMapBattlefieldIcon")
 			KillMinimapButton("MiniMapBattlefieldBorder")
@@ -1339,6 +1356,9 @@ function AZSHelper:ApplySquareMinimapStyle()
 			KillMinimapButton("MiniMapMeetingStoneFrame")
 		end)
 		AZSHelper.minimapEventHook = ev
+	end
+	if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("meter") then
+		AZS_SetHudShown("meter", false)
 	end
 
 	-- ElvUI-Style Minimap FPS Counter (Bottom-Right)
