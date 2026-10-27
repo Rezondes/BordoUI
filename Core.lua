@@ -384,7 +384,7 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
     texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
     texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
-        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
+        texture:SetVertexColor(0.85, 0.85, 0.85, 0.95);
     else
         texture:SetVertexColor(1, 1, 1, 1);
     end

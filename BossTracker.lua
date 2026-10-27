@@ -696,8 +696,9 @@ function TrackerUI:Update()
                 seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 2), 0);
                 seg:SetWidth(segW);
 
-                local isActive = (lair.active == true or lair.active == 1);
-                local isAwake = (lair.awake == true or lair.awake == 1);
+                local state = lair.state or lair[2];
+                local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
+                local isActive = (state ~= "empty" and state ~= nil and lair.active ~= false);
 
                 SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
 
@@ -708,24 +709,27 @@ function TrackerUI:Update()
                     seg.timer:Show();
                     seg.timer:SetText("FIGHT");
                 elseif ( isActive ) then
-                    -- Spawned / Alive in light green with Rotational Arrow pointing to boss
+                    -- Spawned / Alive in light green with live 3D Rotational Arrow pointing to boss
                     seg.bg:SetVertexColor(0.70, 0.92, 0.55, 0.85);
                     seg.timer:Hide();
-                    seg.arrow:Show();
 
-                    local lx = tonumber(lair.x or lair[2]) or 0;
-                    local ly = tonumber(lair.y or lair[3]) or 0;
-                    local bearing = math.atan2(ly - py, lx - px);
+                    local lx = tonumber(lair.x or lair[6] or lair[2]) or 0;
+                    local ly = tonumber(lair.y or lair[7] or lair[3]) or 0;
+                    local east = py - ly;
+                    local south = px - lx;
+                    local bearing = math.atan2(east, -south);
                     local relAngle = bearing - pFacing;
                     PointArrow(seg.arrow, relAngle);
+                    seg.arrow:Show();
                 else
                     -- Slain / Respawning in red with countdown
                     seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
                     seg.arrow:Hide();
                     seg.timer:Show();
-                    local respawnTime = tonumber(lair.respawn or lair.left) or 0;
+                    local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
+                    local respawnTime = (tonumber(lair.left or lair.respawn or lair[5]) or 0) - since;
                     if ( respawnTime > 0 ) then
-                        seg.timer:SetText(FormatClock(respawnTime));
+                        seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
                     else
                         seg.timer:SetText("0:39");
                     end

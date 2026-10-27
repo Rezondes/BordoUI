@@ -88,6 +88,31 @@ local function IsTeammate(unitName)
     return false, nil, nil;
 end
 
+-- Identify if a unit name belongs to a Shaman totem
+local function IsTotem(name)
+    if ( not name or name == "" ) then return false; end
+    local lower = string.lower(name);
+    local _, _, trimmed = string.find(lower, "^%s*(.-)%s*$");
+    lower = trimmed or lower;
+    
+    -- Exclude Grimtotem Tauren NPCs
+    if ( string.find(lower, "grimtotem", 1, true) ) then
+        return false;
+    end
+    
+    -- Exact totem match (English, German, Spanish, Russian, Chinese, Korean)
+    if ( lower == "totem" or lower == "tótem" or lower == "тотем" or lower == "图腾" or lower == "토템" ) then
+        return true;
+    end
+    
+    -- Substring patterns: ends with "totem", begins with "totem ", German compound, or contains totem
+    if ( string.find(lower, "totem$", 1) or string.find(lower, "^totem ", 1) or string.find(lower, "^tótem ", 1) or string.find(lower, "^тотем ", 1) or string.find(lower, "%-totem", 1) or string.find(lower, "totem", 1, true) ) then
+        return true;
+    end
+    
+    return false;
+end
+
 -- Identify if a frame is a WoW 1.12.1 Blizzard Nameplate
 local function IsNameplate(frame)
     if ( not frame ) then return false; end
@@ -231,6 +256,33 @@ local function StyleNameplate(frame)
         cleanName = curName;
     end
     
+    -- Shaman Totem Check: completely hide HP bar and plate to eliminate clutter
+    if ( IsTotem(cleanName) ) then
+        frame.isTotemPlate = true;
+        healthBar:SetStatusBarTexture("");
+        healthBar:SetAlpha(0);
+        healthBar:SetWidth(0.001);
+        healthBar:SetHeight(0.001);
+        healthBar:Hide();
+        if ( borderFrame ) then borderFrame:Hide(); end
+        if ( healthBar.azsBg ) then healthBar.azsBg:Hide(); end
+        if ( healthBar.azsHpText ) then healthBar.azsHpText:Hide(); end
+        if ( nameText ) then nameText:Hide(); end
+        if ( levelText ) then levelText:Hide(); end
+        frame:SetAlpha(0);
+        return;
+    elseif ( frame.isTotemPlate ) then
+        frame.isTotemPlate = nil;
+        healthBar:SetStatusBarTexture("Interface\\TargetingFrame\\UI-StatusBar");
+        healthBar:SetAlpha(1);
+        healthBar:Show();
+        if ( borderFrame ) then borderFrame:Show(); end
+        if ( healthBar.azsBg ) then healthBar.azsBg:Show(); end
+        nameText:Show();
+        if ( levelText ) then levelText:Show(); end
+        frame:SetAlpha(1);
+    end
+
     local kind = GetUnitClassification(cleanName);
     local isTarget = (UnitExists("target") and UnitName("target") == cleanName);
     
