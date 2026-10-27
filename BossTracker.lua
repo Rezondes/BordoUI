@@ -377,10 +377,10 @@ for i = 1, 6 do
     bg:SetAllPoints(seg);
     seg.bg = bg;
 
-    local mark = seg:CreateTexture(nil, "OVERLAY");
-    mark:SetWidth(14);
-    mark:SetHeight(14);
-    mark:SetPoint("LEFT", seg, "LEFT", 2, 0);
+    local mark = seg:CreateTexture(nil, "ARTWORK");
+    mark:SetWidth(13);
+    mark:SetHeight(13);
+    mark:SetPoint("LEFT", seg, "LEFT", 1, 0);
     seg.mark = mark;
 
     local arrow = seg:CreateTexture(nil, "OVERLAY");
@@ -668,16 +668,19 @@ function TrackerUI:Update()
     local pFacing = UpdatePlayerHeading();
 
     -- Check achievement 4/4 before 8:00
-    local slain = (run and tonumber(run.gk)) or 0;
-    if ( slain >= 4 ) then
-        gGoal:SetText(string.format("%d/4 by 8:00 \194\183 done", math.min(4, slain)));
+    local totalSlain = 0;
+    for i = 1, numLairs do
+        local l = lairs[i];
+        if ( l and (l.active == false or l.active == 0) ) then
+            totalSlain = totalSlain + 1;
+        end
+    end
+    if ( totalSlain >= 4 or t >= 480 ) then
+        gGoal:SetText(string.format("%d/4 by 8:00 \194\183 done", math.min(4, totalSlain)));
         gGoal:SetTextColor(0.35, 0.90, 0.40);
-    elseif ( t and t >= 480 ) then
-        gGoal:SetText(string.format("%d/4 by 8:00", math.min(4, slain)));
-        gGoal:SetTextColor(0.60, 0.60, 0.60);
     else
-        local rem = math.max(0, 480 - (t or 0));
-        gGoal:SetText(string.format("%d/4 in %s", slain, FormatClock(rem)));
+        local rem = math.max(0, 480 - t);
+        gGoal:SetText(string.format("%d/4 in %s", totalSlain, FormatClock(rem)));
         gGoal:SetTextColor(1, 0.82, 0);
     end
 
@@ -687,66 +690,44 @@ function TrackerUI:Update()
             local seg = guardianSegments[i];
             if ( i <= numLairs ) then
                 local lair = lairs[i];
-                local place = tonumber(lair.index or lair[1]) or i;
-                local markId = marks[place] or (math.mod(i - 1, 8) + 1);
+                local markId = marks[tonumber(lair.index or lair[1]) or i] or i;
 
                 seg:ClearAllPoints();
                 seg:SetPoint("LEFT", segmentBar, "LEFT", (i - 1) * (segW + 2), 0);
                 seg:SetWidth(segW);
 
-                local state = lair.state or lair[2];
-                local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
-                local isActive = (state ~= "empty" and (lair.active == true or lair.active == 1 or (state and state ~= "empty") or (lair.id and tonumber(lair.id) > 0)));
+                local isActive = (lair.active == true or lair.active == 1);
+                local isAwake = (lair.awake == true or lair.awake == 1);
 
-                -- 1. Heraldic mark on the left (visible in all states)
                 SurvivorUI_SetLairMark(seg.mark, markId, not isActive);
-                seg.mark:Show();
 
                 if ( isAwake ) then
                     -- Fighting / Awake in orange
                     seg.bg:SetVertexColor(1.0, 0.55, 0.15, 0.85);
                     seg.arrow:Hide();
                     seg.timer:Show();
-                    local hpText = "FIGHT";
-                    if ( lair.id and AZS_UNITS ) then
-                        for uIdx = 1, table.getn(AZS_UNITS) do
-                            local u = AZS_UNITS[uIdx];
-                            if ( u and tonumber(u.id or u[2]) == tonumber(lair.id) ) then
-                                local hp = tonumber(u.hp or u[4]) or 0;
-                                local hpm = tonumber(u.hpm or u[5]) or 1;
-                                if ( hpm > 0 ) then
-                                    hpText = string.format("%d%%", math.floor(hp / hpm * 100 + 0.5));
-                                end
-                                break;
-                            end
-                        end
-                    end
-                    seg.timer:SetText(hpText);
+                    seg.timer:SetText("FIGHT");
                 elseif ( isActive ) then
-                    -- Spawned / Alive in light green with live 3D Rotational Arrow pointing to boss
-                    seg.bg:SetVertexColor(0.35, 0.85, 0.40, 0.85);
+                    -- Spawned / Alive in light green with Rotational Arrow pointing to boss
+                    seg.bg:SetVertexColor(0.70, 0.92, 0.55, 0.85);
                     seg.timer:Hide();
+                    seg.arrow:Show();
 
-                    local lx = tonumber(lair.x or lair[6] or lair[2]) or 0;
-                    local ly = tonumber(lair.y or lair[7] or lair[3]) or 0;
-                    local east = py - ly;
-                    local south = px - lx;
-                    local bearing = math.atan2(east, -south);
+                    local lx = tonumber(lair.x or lair[2]) or 0;
+                    local ly = tonumber(lair.y or lair[3]) or 0;
+                    local bearing = math.atan2(ly - py, lx - px);
                     local relAngle = bearing - pFacing;
                     PointArrow(seg.arrow, relAngle);
-                    seg.arrow:Show();
                 else
                     -- Slain / Respawning in red with countdown
                     seg.bg:SetVertexColor(0.85, 0.22, 0.20, 0.85);
                     seg.arrow:Hide();
                     seg.timer:Show();
-                    local since = AZS_LAIRS_UPDATED and (GetTime() - AZS_LAIRS_UPDATED) or 0;
-                    local rawLeft = tonumber(lair.left or lair.respawn or lair[5]) or 0;
-                    local respawnTime = math.max(0, rawLeft - since);
+                    local respawnTime = tonumber(lair.respawn or lair.left) or 0;
                     if ( respawnTime > 0 ) then
-                        seg.timer:SetText(FormatClock(math.floor(respawnTime + 0.5)));
+                        seg.timer:SetText(FormatClock(respawnTime));
                     else
-                        seg.timer:SetText("soon");
+                        seg.timer:SetText("0:39");
                     end
                 end
                 seg:Show();

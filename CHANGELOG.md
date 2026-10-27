@@ -4,6 +4,19 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.8.5] - 2026-10-27
+
+### Fixed & Restored
+- **Fully Restored Pre-Totem Baseline (0c7f099):**
+  - **Minimap Loot Caches & Boss Pins:** Restored authentic Chestlight engine with golden chests (bag.tga + pulsing glow.tga), count grouping, yard distance, off-screen edge arrow, and boss pins.
+  - **Miniboss Tracker Heraldic Marks & Rotational Arrows:** Restored authentic heraldic marks atlas (LairMarks.tga) and live 3D rotational arrows pointing to active guardians.
+  - **Authentic Textures:** Restored all original binary texture assets in Art/ and Media/.
+- **Shaman Totem Health Bar Suppression (Nameplates.lua):**
+  - Completely hides health bars and nameplates for all Shaman totems to eliminate clutter.
+  - Added /bordo totems toggle command.
+
+---
+
 ## [2.7.4] - 2026-10-25
 
 ### Removed & Streamlined

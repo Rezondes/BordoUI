@@ -294,6 +294,14 @@ SlashCmdList["BORDOU"] = function(msg)
             if ( ShowNameplates ) then pcall(ShowNameplates); end
         end
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Teammate & enemy nameplates enabled (Friendly vibrant green / Enemy red)!");
+    elseif ( cmd == "totem" or cmd == "totems" ) then
+        BordoUIDB = BordoUIDB or {};
+        if ( BordoUIDB.hideTotems == nil ) then
+            BordoUIDB.hideTotems = true;
+        end
+        BordoUIDB.hideTotems = not BordoUIDB.hideTotems;
+        local st = BordoUIDB.hideTotems and "|cff55ff55[HIDDEN]|r" or "|cffff3333[SHOWN]|r";
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Totem health bars are now " .. st .. ".");
     elseif ( cmd == "lock" ) then
         BordoUI:ToggleMoveMode(false);
         BordoUI:SetLocked(true);
@@ -307,6 +315,7 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Force-enable Teammate (green) & Enemy nameplates");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Toggle Shaman totem health bars (hidden by default)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo move|r - Toggle lock / unlock state");
@@ -363,13 +372,10 @@ function SurvivorUI_LairMarks(lairs)
     local marks = {};
     lairs = lairs or (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS or {};
     local places = {};
-    for k, l in pairs(lairs) do
-        if ( type(l) == "table" ) then
-            local idx = tonumber(l.index or l[1]) or tonumber(k);
-            if ( idx ) then
-                table.insert(places, idx);
-            end
-        end
+    for index = 1, table.getn(lairs) do
+        local l = lairs[index];
+        local idx = (l and (l.index or l[1])) or index;
+        table.insert(places, tonumber(idx) or index);
     end
     table.sort(places);
     for rank = 1, table.getn(places) do
@@ -382,14 +388,12 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
         if ( texture ) then texture:Hide(); end
         return;
     end
-    mark = tonumber(mark) or 1;
-    if ( mark < 1 or mark > 8 ) then
-        mark = math.mod(mark - 1, 8) + 1;
-    end
-    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\mark_" .. mark);
-    texture:SetTexCoord(0, 1, 0, 1);
+    local column = math.mod(mark - 1, 4);
+    local line = math.floor((mark - 1) / 4);
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks");
+    texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
-        texture:SetVertexColor(0.85, 0.85, 0.85, 0.95);
+        texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);
     else
         texture:SetVertexColor(1, 1, 1, 1);
     end
