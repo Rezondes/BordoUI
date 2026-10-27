@@ -5,6 +5,7 @@
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
+BORDO_ADDON_DIR = "BordoUI";
 BordoUI.version = "2.2.2";
 -- Unit & Mob Tooltip Relocation: Anchor world/unit/add tooltips to bottom-left next to ChatFrame1
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
