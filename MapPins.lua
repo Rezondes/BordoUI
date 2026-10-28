@@ -26,9 +26,8 @@
 BordoUI = BordoUI or {};
 AZSHelper = AZSHelper or {};
 
-local ADDON_DIR = BORDO_ADDON_DIR or "BordoUI";
-local MEDIA = "Interface\\AddOns\\" .. ADDON_DIR .. "\\Media\\";
-local ART = "Interface\\AddOns\\" .. ADDON_DIR .. "\\Art\\";
+local MEDIA = "Interface\\AddOns\\BordoUI\\Media\\";
+local ART = "Interface\\AddOns\\BordoUI\\Art\\";
 
 local BAG = MEDIA .. "bag.tga";
 local GLOW = MEDIA .. "glow.tga";
@@ -95,34 +94,6 @@ local function GetVal(entry, key, i1, i2)
     if ( i1 and entry[i1] ~= nil ) then return entry[i1]; end
     if ( i2 and entry[i2] ~= nil ) then return entry[i2]; end
     return nil;
-end
-
--- Universal coordinate extractor handling both named fields and indexed arrays (addon_docs.md compliant)
-local function ExtractCoords(item, isLair)
-    if ( not item or type(item) ~= "table" ) then return nil; end
-    local x, y, z, mx, my, id, name, state;
-    if ( isLair ) then
-        -- Lairs: 1:index, 2:state, 3:name, 4:id, 5:left, 6:x, 7:y, 8:z, 9:mx, 10:my, 11:flag
-        id = item.id or item[4];
-        name = item.name or item[3];
-        state = item.state or item[2];
-        x = tonumber(item.x or item[6]);
-        y = tonumber(item.y or item[7]);
-        z = tonumber(item.z or item[8]);
-        mx = item.mx or item[9];
-        my = item.my or item[10];
-    else
-        -- Chests / Caches: 1:id, 2:x, 3:y, 4:z, 5:mx, 6:my
-        id = item.id or item[1];
-        x = tonumber(item.x or item[2]);
-        y = tonumber(item.y or item[3]);
-        z = tonumber(item.z or item[4]);
-        mx = item.mx or item[5];
-        my = item.my or item[6];
-    end
-    mx = Share(mx);
-    my = Share(my);
-    return { x = x, y = y, z = z, mx = mx, my = my, id = id, name = name, state = state };
 end
 
 local function IsSquare()
@@ -233,20 +204,10 @@ local function Calibrate()
     local pts = {};
     local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS;
     if ( type(lairs) == "table" ) then
-        for _, l in pairs(lairs) do
-            local d = ExtractCoords(l, true);
-            if ( d and d.mx and d.my and d.x and d.y ) then
-                table.insert(pts, d);
-            end
-        end
+        for i = 1, table.getn(lairs) do table.insert(pts, lairs[i]); end
     end
     if ( type(AZS_CHESTS) == "table" ) then
-        for _, c in pairs(AZS_CHESTS) do
-            local d = ExtractCoords(c, false);
-            if ( d and d.mx and d.my and d.x and d.y ) then
-                table.insert(pts, d);
-            end
-        end
+        for i = 1, table.getn(AZS_CHESTS) do table.insert(pts, AZS_CHESTS[i]); end
     end
     
     local bestX, bestY = 0, 0;
@@ -255,17 +216,25 @@ local function Calibrate()
     for i = 1, n do
         for j = i + 1, n do
             local a, b = pts[i], pts[j];
-            if ( a.mx and b.mx and a.my and b.my and a.x and b.x and a.y and b.y ) then
-                local dmx = math.abs(a.mx - b.mx);
-                local dmy = math.abs(a.my - b.my);
+            local amx = Share(GetVal(a, "mx", 9, 3));
+            local bmx = Share(GetVal(b, "mx", 9, 3));
+            local amy = Share(GetVal(a, "my", 10, 4));
+            local bmy = Share(GetVal(b, "my", 10, 4));
+            local ax = tonumber(GetVal(a, "x", 6, 1));
+            local bx = tonumber(GetVal(b, "x", 6, 1));
+            local ay = tonumber(GetVal(a, "y", 7, 2));
+            local by = tonumber(GetVal(b, "y", 7, 2));
+            if ( amx and bmx and amy and bmy and ax and bx and ay and by ) then
+                local dmx = math.abs(amx - bmx);
+                local dmy = math.abs(amy - bmy);
                 if ( dmx > bestX and dmx > 0.003 ) then
                     bestX = dmx;
-                    M.mapW = math.abs(a.y - b.y) / dmx;
+                    M.mapW = math.abs(ay - by) / dmx;
                     bestP = a;
                 end
                 if ( dmy > bestY and dmy > 0.003 ) then
                     bestY = dmy;
-                    M.mapH = math.abs(a.x - b.x) / dmy;
+                    M.mapH = math.abs(ax - bx) / dmy;
                     bestQ = a;
                 end
             end
@@ -277,9 +246,15 @@ local function Calibrate()
     if ( not M.mapH or M.mapH <= 0 ) then M.mapH = 4254.17; end
     
     local ref = bestP or bestQ or (n > 0 and pts[1]);
-    if ( ref and ref.mx and ref.my and ref.x and ref.y ) then
-        M.originX = ref.x + ref.my * M.mapH;
-        M.originY = ref.y + ref.mx * M.mapW;
+    if ( ref ) then
+        local rmx = Share(GetVal(ref, "mx", 9, 3));
+        local rmy = Share(GetVal(ref, "my", 10, 4));
+        local rx = tonumber(GetVal(ref, "x", 6, 1));
+        local ry = tonumber(GetVal(ref, "y", 7, 2));
+        if ( rmx and rmy and rx and ry ) then
+            M.originX = rx + rmy * M.mapH;
+            M.originY = ry + rmx * M.mapW;
+        end
     end
 end
 
@@ -329,12 +304,6 @@ local function NewChestPin(i)
     
     local glow = pin:CreateTexture(nil, "ARTWORK");
     glow:SetTexture(GLOW);
-    if ( not glow:GetTexture() ) then
-        glow:SetTexture("Interface\\AddOns\\BordoWeb\\Media\\glow.tga");
-    end
-    if ( not glow:GetTexture() ) then
-        glow:SetTexture("Interface\\AddOns\\BordoUI\\Media\\glow.tga");
-    end
     glow:SetBlendMode("ADD");
     glow:SetWidth(PIN_SIZE * 1.6);
     glow:SetHeight(PIN_SIZE * 1.6);
@@ -344,15 +313,6 @@ local function NewChestPin(i)
     local tex = pin:CreateTexture(nil, "OVERLAY");
     tex:SetAllPoints(pin);
     tex:SetTexture(BAG);
-    if ( not tex:GetTexture() ) then
-        tex:SetTexture("Interface\\AddOns\\BordoWeb\\Media\\bag.tga");
-    end
-    if ( not tex:GetTexture() ) then
-        tex:SetTexture("Interface\\AddOns\\BordoUI\\Media\\bag.tga");
-    end
-    if ( not tex:GetTexture() ) then
-        tex:SetTexture("Interface\\Icons\\INV_Misc_Bag_08");
-    end
     pin.tex = tex;
     
     pin:EnableMouse(true);
@@ -448,36 +408,42 @@ end
 
 -- High-precision Target Vector Calculation relative to Hero
 -- Returns east (yards East) and north (yards North)
-local function TargetWay(target, mode, hx, hy, isLair)
+local function TargetWay(target, mode, hx, hy)
     if ( not target ) then return nil, nil; end
-    local data = ExtractCoords(target, isLair);
-    if ( not data ) then return nil, nil; end
     
     if ( mode == "map" ) then
-        if ( data.mx and data.my and hx and hy ) then
-            local east = (data.mx - hx) * M.mapW;
-            local north = (hy - data.my) * M.mapH;
+        local tmx = Share(GetVal(target, "mx", 9, 3));
+        local tmy = Share(GetVal(target, "my", 10, 4));
+        if ( tmx and tmy ) then
+            local east = (tmx - hx) * M.mapW;
+            local north = (hy - tmy) * M.mapH;
             return east, north;
         end
         
         -- Target has world coordinates in map mode
-        if ( data.x and data.y and M.originX and M.originY and hx and hy ) then
+        local tx = tonumber(GetVal(target, "x", 6, 1));
+        local ty = tonumber(GetVal(target, "y", 7, 2));
+        if ( tx and ty and M.originX and M.originY ) then
             local heroX = M.originX - hy * M.mapH;
             local heroY = M.originY - hx * M.mapW;
-            local east = heroY - data.y;
-            local north = data.x - heroX;
+            local east = heroY - ty;
+            local north = tx - heroX;
             return east, north;
         end
     elseif ( mode == "world" ) then
-        if ( data.x and data.y and hx and hy ) then
-            local east = hy - data.y;
-            local north = data.x - hx;
+        local tx = tonumber(GetVal(target, "x", 6, 1));
+        local ty = tonumber(GetVal(target, "y", 7, 2));
+        if ( tx and ty ) then
+            local east = hy - ty;
+            local north = tx - hx;
             return east, north;
         end
         
-        if ( data.mx and data.my and M.originX and M.originY and hx and hy ) then
-            local txCalc = M.originX - data.my * M.mapH;
-            local tyCalc = M.originY - data.mx * M.mapW;
+        local tmx = Share(GetVal(target, "mx", 9, 3));
+        local tmy = Share(GetVal(target, "my", 10, 4));
+        if ( tmx and tmy and M.originX and M.originY ) then
+            local txCalc = M.originX - tmy * M.mapH;
+            local tyCalc = M.originY - tmx * M.mapW;
             local east = hy - tyCalc;
             local north = txCalc - hx;
             return east, north;
@@ -514,26 +480,21 @@ local function UpdateWorldMap(list)
     if ( not WorldMapFrame or not WorldMapFrame:IsShown() or not WorldMapButton ) then return; end
     local wmbW = WorldMapButton:GetWidth();
     local wmbH = WorldMapButton:GetHeight();
-    local idx = 0;
-    if ( type(list) == "table" ) then
-        for _, c in pairs(list) do
-            if ( type(c) == "table" ) then
-                idx = idx + 1;
-                local wPin = M.worldPins[idx] or NewWorldPin(idx);
-                local d = ExtractCoords(c, false);
-                local cmx = d and d.mx;
-                local cmy = d and d.my;
-                if ( wPin and cmx and cmy and cmx >= 0 and cmy >= 0 ) then
-                    wPin:ClearAllPoints();
-                    wPin:SetPoint("CENTER", WorldMapButton, "TOPLEFT", cmx * wmbW, -cmy * wmbH);
-                    wPin:Show();
-                elseif ( wPin ) then
-                    wPin:Hide();
-                end
-            end
+    local numChests = table.getn(list or {});
+    for i = 1, numChests do
+        local c = list[i];
+        local wPin = M.worldPins[i] or NewWorldPin(i);
+        local cmx = Share(GetVal(c, "mx", 9, 3));
+        local cmy = Share(GetVal(c, "my", 10, 4));
+        if ( wPin and cmx and cmy and cmx >= 0 and cmy >= 0 ) then
+            wPin:ClearAllPoints();
+            wPin:SetPoint("CENTER", WorldMapButton, "TOPLEFT", cmx * wmbW, -cmy * wmbH);
+            wPin:Show();
+        elseif ( wPin ) then
+            wPin:Hide();
         end
     end
-    for i = idx + 1, table.getn(M.worldPins) do
+    for i = numChests + 1, table.getn(M.worldPins) do
         if ( M.worldPins[i] ) then M.worldPins[i]:Hide(); end
     end
 end
@@ -559,16 +520,13 @@ local function Update()
     local chestList = AZS_CHESTS or {};
     local presentChests = {};
     local fresh = 0;
-    for k, c in pairs(chestList) do
-        if ( type(c) == "table" ) then
-            local data = ExtractCoords(c, false);
-            local id = (data and data.id) or k;
-            if ( id ) then
-                presentChests[id] = c;
-                if ( not M.known[id] ) then
-                    M.known[id] = true;
-                    if ( M.primed ) then fresh = fresh + 1; end
-                end
+    for i = 1, table.getn(chestList) do
+        local id = chestList[i].id or i;
+        if ( id ) then
+            presentChests[id] = chestList[i];
+            if ( not M.known[id] ) then
+                M.known[id] = true;
+                if ( M.primed ) then fresh = fresh + 1; end
             end
         end
     end
@@ -582,10 +540,19 @@ local function Update()
         Print(fresh == 1 and "A new Battleground Cache has spawned." or (fresh .. " new Battleground Caches have spawned."));
     end
     
-    -- Determine whether we are in instance / world coordinates mode (Naxx, SM, AQ)
+    -- Determine whether we are in instance / world coordinates mode (Naxx, SM, AQ or missing map position)
     local isInstance = false;
     if ( AZS_ZONE and (AZS_ZONE.zone == "naxx" or AZS_ZONE.zone == "sm" or AZS_ZONE.zone == "aq") ) then
         isInstance = true;
+    end
+    if ( not isInstance ) then
+        for _, c in pairs(presentChests) do
+            local cmx = GetVal(c, "mx", 9, 3);
+            if ( cmx and tonumber(cmx) and tonumber(cmx) < 0 ) then
+                isInstance = true;
+                break;
+            end
+        end
     end
     
     -- Obtain Hero Position:
@@ -611,7 +578,10 @@ local function Update()
     
     local z = Minimap:GetZoom() or 0;
     local diameter;
-    if ( isInstance or Indoors() ) then
+    if ( isInstance or mode == "world" ) then
+        -- In instances/arenas the minimap ALWAYS renders at indoor yard scale!
+        diameter = INDOOR[z] or 180;
+    elseif ( Indoors() ) then
         diameter = INDOOR[z] or 180;
     else
         diameter = OUTDOOR[z] or 333.3333;
@@ -628,7 +598,7 @@ local function Update()
     -- Group nearby chests within MERGE_YD = 10 yards into single icons with count
     local groups = {};
     for _, c in pairs(presentChests) do
-        local east, north = TargetWay(c, mode, hx, hy, false);
+        local east, north = TargetWay(c, mode, hx, hy);
         if ( east and north ) then
             local joined = false;
             for g = 1, table.getn(groups) do
@@ -709,30 +679,29 @@ local function Update()
     
     -- Active Bosses from AZS_UNITS
     if ( AZS_UNITS and type(AZS_UNITS) == "table" ) then
-        for _, u in pairs(AZS_UNITS) do
-            if ( type(u) == "table" ) then
-                local kind = GetVal(u, "kind", 1);
-                if ( (kind == "boss" or kind == "final") and (u.x or u[6] or u.mx or u[5]) ) then
-                    local east, north = TargetWay(u, mode, hx, hy, false);
-                    if ( east and north ) then
-                        shownBoss = shownBoss + 1;
-                        local pin = M.bossPins[shownBoss] or NewBossPin(shownBoss);
-                        pin.isUnitBoss = true;
-                        local bName = GetVal(u, "name", 3) or "Boss";
-                        local dist = math.sqrt(east * east + north * north);
-                        pin.dist = dist;
-                        pin.title = "|cffff2020* BOSS: " .. bName .. " *|r";
-                        pin.note = "|cffff5533[!] Active Boss!|r";
-                        
-                        pin.art:SetTexture(PIN_LAIR);
-                        pin.art:SetTexCoord(0, 1, 0, 1);
-                        pin.art:SetVertexColor(1, 0.15, 0.15);
-                        pin.glow:SetTexture(PACE_GLOW);
-                        pin.glow:SetVertexColor(1, 0.20, 0.10);
-                        pin.glow:Show();
-                        
-                        PlaceBossPin(pin, east, north, scale, bossLimit, BOSS_PIN_SIZE, square);
-                    end
+        for i = 1, table.getn(AZS_UNITS) do
+            local u = AZS_UNITS[i];
+            local kind = GetVal(u, "kind", 1);
+            if ( kind == "boss" or kind == "final" ) then
+                local east, north = TargetWay(u, mode, hx, hy);
+                if ( east and north ) then
+                    shownBoss = shownBoss + 1;
+                    local pin = M.bossPins[shownBoss] or NewBossPin(shownBoss);
+                    pin.isUnitBoss = true;
+                    local bName = GetVal(u, "name", 3) or "Boss";
+                    local dist = math.sqrt(east * east + north * north);
+                    pin.dist = dist;
+                    pin.title = "|cffff2020★ BOSS: " .. bName .. " ★|r";
+                    pin.note = "|cffff5533⚠ Active Boss!|r";
+                    
+                    pin.art:SetTexture(PIN_LAIR);
+                    pin.art:SetTexCoord(0, 1, 0, 1);
+                    pin.art:SetVertexColor(1, 0.15, 0.15);
+                    pin.glow:SetTexture(PACE_GLOW);
+                    pin.glow:SetVertexColor(1, 0.20, 0.10);
+                    pin.glow:Show();
+                    
+                    PlaceBossPin(pin, east, north, scale, bossLimit, BOSS_PIN_SIZE, square);
                 end
             end
         end
@@ -742,34 +711,20 @@ local function Update()
     local lairs = (AZS_GetLairs and AZS_GetLairs()) or AZS_LAIRS;
     if ( type(lairs) == "table" ) then
         local marks = SurvivorUI_LairMarks and SurvivorUI_LairMarks(lairs) or {};
-        local lairList = {};
-        for _, lair in pairs(lairs) do
-            if ( type(lair) == "table" ) then
-                table.insert(lairList, lair);
-            end
-        end
-        table.sort(lairList, function(a, b)
-            local pa = tonumber(a.index or a[1]) or 0;
-            local pb = tonumber(b.index or b[1]) or 0;
-            return pa < pb;
-        end);
-        
-        for idx = 1, table.getn(lairList) do
-            local lair = lairList[idx];
-            local east, north = TargetWay(lair, mode, hx, hy, true);
+        for i = 1, table.getn(lairs) do
+            local lair = lairs[i];
+            local east, north = TargetWay(lair, mode, hx, hy);
             if ( east and north ) then
-                local state = lair.state or lair[2];
-                local isActive = (state ~= "empty" and (lair.active == nil or lair.active == true or lair.active == 1));
-                local isAwake = (state == "awake" or lair.awake == true or lair.awake == 1);
-                local isFlagged = (tonumber(lair.flag or lair[11]) == 1);
+                local isActive = (lair.active == true or lair.active == 1);
+                local isAwake = (lair.awake == true or lair.awake == 1);
+                local isFlagged = (tonumber(lair.flag) == 1);
                 
                 shownBoss = shownBoss + 1;
                 local pin = M.bossPins[shownBoss] or NewBossPin(shownBoss);
                 pin.isUnitBoss = false;
-                local place = tonumber(lair.index or lair[1]) or idx;
-                local markId = marks[place] or (math.mod(idx - 1, 8) + 1);
+                local markId = marks[tonumber(lair.index or lair[1]) or i] or i;
                 local markName = SurvivorUI_LairMarkName and SurvivorUI_LairMarkName(markId);
-                local lName = lair.name or lair[3] or "Guardian";
+                local lName = GetVal(lair, "name", 4) or "Guardian";
                 local dist = math.sqrt(east * east + north * north);
                 pin.dist = dist;
                 
@@ -780,15 +735,15 @@ local function Update()
                 end
                 
                 if ( isAwake ) then
-                    pin.note = "|cffff9900>> Guardian in Combat!|r";
+                    pin.note = "|cffff9900⚔ Guardian in Combat!|r";
                 elseif ( isActive ) then
-                    pin.note = "|cff55ff55(+) Guardian is Alive|r";
+                    pin.note = "|cff55ff55● Guardian is Alive|r";
                 else
-                    local rem = tonumber(lair.respawn or lair.left or lair[5]) or 0;
+                    local rem = tonumber(lair.respawn or lair.left) or 0;
                     if ( rem > 0 ) then
-                        pin.note = string.format("|cffff4444(x) Empty (Respawn in %d:%02d)|r", math.floor(rem / 60), math.mod(rem, 60));
+                        pin.note = string.format("|cffff4444✕ Empty (Respawn in %d:%02d)|r", math.floor(rem / 60), math.mod(rem, 60));
                     else
-                        pin.note = "|cff888888(x) Empty Lair|r";
+                        pin.note = "|cff888888✕ Empty Lair|r";
                     end
                 end
                 

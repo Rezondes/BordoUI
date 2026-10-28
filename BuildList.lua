@@ -307,6 +307,7 @@ local function Row(index)
 		return row
 	end
 	row = CreateFrame("Frame", nil, list)
+	row.bordoBuildTooltip = true
 	row:SetWidth(WIDTH)
 	row:SetHeight(ROW_HEIGHT)
 	row:SetPoint("TOPLEFT", list, "TOPLEFT", 6, -TITLE_HEIGHT - HEAD_HEIGHT - (index - 1) * ROW_HEIGHT)
@@ -384,19 +385,10 @@ local function Row(index)
 	if columns then
 		PlaceRow(row)
 	end
-	-- The spell's tooltip, as on its action button (AbilityTooltip.lua lays it
-	-- out): beside the list, on its left, level with the row. Its damage and
-	-- crits are the damage meter's and Biggest Crits' cards.
-	row:EnableMouse(true)
-	row:SetScript("OnEnter", function()
-		if not (this.ability and this.actionSlot) then
-			return
-		end
-		AnchorBuildTooltip(this)
-		GameTooltip:SetAction(this.actionSlot)
-		GameTooltip:Show()
-	end)
-	row:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	-- Build list ability tooltips disabled per user request
+	row:EnableMouse(false)
+	row:SetScript("OnEnter", nil)
+	row:SetScript("OnLeave", nil)
 	rows[index] = row
 	return row
 end
@@ -1015,6 +1007,7 @@ local GEAR_ROW = 17
 local gearLines = {}
 for index = 1, table.getn(GEAR_SLOTS) do
 	local line = CreateFrame("Frame", nil, list)
+	line.bordoBuildTooltip = true
 	line:SetWidth(WIDTH)
 	line:SetHeight(GEAR_ROW - 1)
 	line:SetPoint("TOPLEFT", list, "TOPLEFT", 6, -GEAR_TOP - 15 - (index - 1) * GEAR_ROW)
@@ -1042,15 +1035,10 @@ for index = 1, table.getn(GEAR_SLOTS) do
 	line.tags = line:CreateFontString(nil, "OVERLAY")
 	line.tags:SetFont(SurvivorUI_FONT, 9 + FONT_BUMP, "OUTLINE")
 	line.tags:SetPoint("RIGHT", line, "RIGHT", -4, 0)
-	line:EnableMouse(true)
-	line:SetScript("OnEnter", function()
-		if this.slot and GetInventoryItemLink("player", this.slot) then
-			AnchorBuildTooltip(this)
-			GameTooltip:SetInventoryItem("player", this.slot)
-			GameTooltip:Show()
-		end
-	end)
-	line:SetScript("OnLeave", function() GameTooltip:Hide() end)
+	-- Build list gear tooltips disabled per user request
+	line:EnableMouse(false)
+	line:SetScript("OnEnter", nil)
+	line:SetScript("OnLeave", nil)
 	gearLines[index] = line
 end
 local function PaintGear(line, r, g, b, fill, edge)

@@ -468,7 +468,8 @@ strip:SetScript("OnEnter", function()
 	end
 	GameTooltip:AddDoubleLine(healing and "HPS" or "DPS", "a second on average", GOLD[1], GOLD[2], GOLD[3], 0.8, 0.8, 0.8)
 	local whose = (this.view == "boss" and "last boss fight's") or (this.view == "party" and "party's") or "run's"
-	GameTooltip:AddDoubleLine("TOTAL", "the "..whose.." "..what..(this.view == "damage" and ", since Reset" or ""), 1, 1, 1, 0.8, 0.8, 0.8)
+	GameTooltip:AddLine("TOTAL", 1, 1, 1)
+	GameTooltip:AddLine("The "..whose.." total "..what..(this.view == "damage" and ", since Reset." or "."), 0.8, 0.8, 0.8, 1)
 	if NowOn() then
 		GameTooltip:AddLine("NOW is green while above the average, orange while below.", 0.6, 0.6, 0.65, 1)
 	end

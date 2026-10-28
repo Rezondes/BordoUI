@@ -1369,16 +1369,12 @@ function AZSHelper:ApplySquareMinimapStyle()
 		ev:RegisterEvent("UPDATE_BATTLEFIELD_STATUS")
 		ev:RegisterEvent("VARIABLES_LOADED")
 		ev:SetScript("OnEvent", function()
-			if SetCVar then
-				pcall(SetCVar, "hudFlag", "0")
-				pcall(SetCVar, "hudClock", "0")
-				pcall(SetCVar, "hudTally", "0")
+			if SetCVar then pcall(SetCVar, "hudFlag", "0") end
+			if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") then
+				AZS_SetHudShown("flag", false)
 			end
-			if AZS_SetHudShown and AZS_IsHudShown then
-				if AZS_IsHudShown("flag") then AZS_SetHudShown("flag", false) end
-				if AZS_IsHudShown("meter") then AZS_SetHudShown("meter", false) end
-				if AZS_IsHudShown("clock") then AZS_SetHudShown("clock", false) end
-				if AZS_IsHudShown("tally") then AZS_SetHudShown("tally", false) end
+			if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("meter") then
+				AZS_SetHudShown("meter", false)
 			end
 			KillMinimapButton("MiniMapBattlefieldFrame")
 			KillMinimapButton("MiniMapBattlefieldIcon")
@@ -1388,16 +1384,12 @@ function AZSHelper:ApplySquareMinimapStyle()
 		end)
 		AZSHelper.minimapEventHook = ev
 	end
-	if SetCVar then
-		pcall(SetCVar, "hudFlag", "0")
-		pcall(SetCVar, "hudClock", "0")
-		pcall(SetCVar, "hudTally", "0")
+	if SetCVar then pcall(SetCVar, "hudFlag", "0") end
+	if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") then
+		AZS_SetHudShown("flag", false)
 	end
-	if AZS_SetHudShown and AZS_IsHudShown then
-		if AZS_IsHudShown("flag") then AZS_SetHudShown("flag", false) end
-		if AZS_IsHudShown("meter") then AZS_SetHudShown("meter", false) end
-		if AZS_IsHudShown("clock") then AZS_SetHudShown("clock", false) end
-		if AZS_IsHudShown("tally") then AZS_SetHudShown("tally", false) end
+	if AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("meter") then
+		AZS_SetHudShown("meter", false)
 	end
 
 	-- ElvUI-Style Minimap FPS Counter (Bottom-Right)
@@ -1715,12 +1707,6 @@ mainWatcher:SetScript("OnUpdate", function()
 		end
 		if AZS_IsHudShown and AZS_IsHudShown("meter") then
 			AZS_SetHudShown("meter", false)
-		end
-		if AZS_IsHudShown and AZS_IsHudShown("clock") then
-			AZS_SetHudShown("clock", false)
-		end
-		if AZS_IsHudShown and AZS_IsHudShown("tally") then
-			AZS_SetHudShown("tally", false)
 		end
 	end
 	skillElapsed = skillElapsed + arg1

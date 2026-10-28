@@ -179,8 +179,6 @@ end
 
 SetupAnchorDrag(outgoingAnchor, "sctOutgoingPos", "SCT Outgoing (Drag)");
 SetupAnchorDrag(incomingAnchor, "sctIncomingPos", "SCT Incoming (Drag)");
-outgoingAnchor:Hide();
-incomingAnchor:Hide();
 
 function BordoUI:UpdateSCTAnchorVisibility()
     local show = (BordoUIDB and not BordoUIDB.locked);

@@ -104,6 +104,10 @@ end
 local function StyleTooltip(tip)
 	if not tip then return end
 	tip:SetScale(0.80)
+	-- A predictable width gives long descriptions room to wrap instead of
+	-- being clipped by the tooltip's automatic single-line sizing.
+	local screenWidth = UIParent and UIParent:GetWidth() or 1024
+	tip:SetWidth(math.min(440, math.max(280, screenWidth - 48)))
 	tip:SetBackdrop({
 		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
@@ -116,6 +120,179 @@ local function StyleTooltip(tip)
 	tip:SetBackdropBorderColor(0.12, 0.12, 0.16, 0.95)
 	if tip.SetClampedToScreen then
 		tip:SetClampedToScreen(true)
+	end
+end
+
+local function WrapTooltipLines(tip)
+	local innerWidth = math.max(120, (tip:GetWidth() or 320) - 24)
+	for line = 1, tip:NumLines() do
+		local left = getglobal("GameTooltipTextLeft"..line)
+		local right = getglobal("GameTooltipTextRight"..line)
+		if left and left:IsShown() and left.SetWidth then
+			local width = innerWidth
+			if right and right:IsShown() and right.GetStringWidth then
+				width = math.max(80, innerWidth - right:GetStringWidth() - 12)
+			end
+			left:SetWidth(width)
+			if left.SetWordWrap then left:SetWordWrap(true) end
+		end
+		if right and right:IsShown() and right.SetWordWrap then
+			right:SetWidth(math.min(180, innerWidth * 0.45))
+			right:SetWordWrap(true)
+		end
+	end
+end
+
+local function FitTooltipWidth(tip)
+	local widest = 0
+	local probe = SurvivorUI_TooltipWidthProbe
+	if not probe then
+		probe = UIParent:CreateFontString(nil, "ARTWORK")
+		SurvivorUI_TooltipWidthProbe = probe
+	end
+	local function NaturalWidth(region)
+		local text = region and region:GetText()
+		if not text or text == "" then return 0 end
+		local font, size, flags = region:GetFont()
+		if font then probe:SetFont(font, size, flags) end
+		probe:SetText(text)
+		local width = probe:GetStringWidth()
+		probe:SetText("")
+		return width
+	end
+	for line = 1, tip:NumLines() do
+		local left = getglobal("GameTooltipTextLeft"..line)
+		local right = getglobal("GameTooltipTextRight"..line)
+		local width = left and left:IsShown() and NaturalWidth(left) or 0
+		if right and right:IsShown() then
+			width = width + NaturalWidth(right) + 12
+		end
+		if width > widest then widest = width end
+	end
+	local screenWidth = UIParent and UIParent:GetWidth() or 1024
+	tip:SetWidth(math.min(440, math.max(180, math.min(widest + 30, screenWidth - 48))))
+end
+
+-- Some clients truncate a long GameTooltip line with an ellipsis before
+-- font-string wrapping is applied. Split the actual text into separate lines
+-- ourselves so the full description survives that client-side truncation.
+local function WrappedPieces(text, limit)
+	local result, line = {}, ""
+	local function visibleLength(value)
+		value = string.gsub(value or "", "|c%x%x%x%x%x%x%x%x", "")
+		value = string.gsub(value, "|r", "")
+		return string.len(value)
+	end
+	for word in string.gfind((text or "").." ", "([^ ]+) ") do
+		if line ~= "" and visibleLength(line) + 1 + visibleLength(word) > limit then
+			table.insert(result, line)
+			line = word
+		elseif line == "" then
+			line = word
+		else
+			line = line.." "..word
+		end
+	end
+	if line ~= "" then table.insert(result, line) end
+	return result
+end
+
+local function AddWrappedLine(text, r, g, b, limit)
+	local pieces = WrappedPieces(text, limit or 48)
+	for index = 1, table.getn(pieces) do
+		GameTooltip:AddLine(pieces[index], r, g, b, 1)
+	end
+end
+
+local function PlaceCharacterItemTooltip()
+	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
+	local slot = GameTooltip.bordoCharacterItemSlot or GameTooltip.bordoCharacterJewelrySlot
+		or (owner and owner.bordoCharacterSlot and owner)
+	if GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive or slot then
+		if CharacterFrame and CharacterFrame:IsShown() then
+			GameTooltip:ClearAllPoints()
+			local midpoint = (CharacterFrame:GetLeft() or 0) + (CharacterFrame:GetWidth() or 384) / 2
+			if slot and (slot:GetName() == "CharacterNeckSlot" or (slot:GetLeft() or 0) < midpoint) then
+				GameTooltip:SetPoint("TOPLEFT", slot, "TOPRIGHT", 6, 0)
+			elseif slot then
+				GameTooltip:SetPoint("TOPRIGHT", slot, "TOPLEFT", -6, 0)
+			else
+				GameTooltip:SetPoint("TOPLEFT", CharacterFrame, "TOPLEFT", 82, -42)
+			end
+		end
+		if GameTooltip.SetClampedToScreen then GameTooltip:SetClampedToScreen(true) end
+	end
+end
+
+function SurvivorUI_FitCharacterItemTooltip()
+	if not (GameTooltip and GameTooltip:IsShown()) then return end
+	StyleTooltip(GameTooltip)
+	FitTooltipWidth(GameTooltip)
+	WrapTooltipLines(GameTooltip)
+	GameTooltip:Show()
+	PlaceCharacterItemTooltip()
+end
+
+local function IsCenterSpellButton(frame)
+	if not frame then return false end
+	if frame == SurvivorUIRow or (AZSHelper_SkillsContainer and frame == AZSHelper_SkillsContainer) then
+		return true
+	end
+	local parent = frame.GetParent and frame:GetParent()
+	if parent and (parent == SurvivorUIRow or (AZSHelper_SkillsContainer and parent == AZSHelper_SkillsContainer) or (AZSHelper and AZSHelper.UI and parent == AZSHelper.UI.skillsContainer)) then
+		return true
+	end
+	local name = frame.GetName and frame:GetName()
+	if name and string.find(name, "^ActionButton%d+$") then
+		return true
+	end
+	return false
+end
+
+local function IsBuildListFrame(frame)
+	if not frame then return false end
+	if GameTooltip.bordoBuildTooltipActive or (frame and frame.bordoBuildTooltip) then
+		return true
+	end
+	local parent = frame.GetParent and frame:GetParent()
+	if parent and (parent == SurvivorUIBuild or (parent.GetName and parent:GetName() == "SurvivorUIBuild")) then
+		return true
+	end
+	local name = frame.GetName and frame:GetName()
+	if name and string.find(name, "SurvivorUIBuild") then
+		return true
+	end
+	return false
+end
+
+local function PlaceCenterSpellTooltip(owner)
+	if not (owner and GameTooltip) then return end
+	GameTooltip:ClearAllPoints()
+	local screenWidth = UIParent and UIParent:GetWidth() or 1024
+	local ownerLeft = owner.GetLeft and owner:GetLeft() or 0
+	local ownerWidth = owner.GetWidth and owner:GetWidth() or 36
+	local ownerCenter = ownerLeft + ownerWidth / 2
+
+	if ownerCenter < (screenWidth * 0.35) then
+		GameTooltip:SetPoint("TOPLEFT", owner, "BOTTOMLEFT", 0, -6)
+	elseif ownerCenter > (screenWidth * 0.65) then
+		GameTooltip:SetPoint("TOPRIGHT", owner, "BOTTOMRIGHT", 0, -6)
+	else
+		GameTooltip:SetPoint("TOP", owner, "BOTTOM", 0, -6)
+	end
+
+	if GameTooltip.SetClampedToScreen then
+		GameTooltip:SetClampedToScreen(true)
+	end
+end
+
+local stock_ActionButton_SetTooltip = ActionButton_SetTooltip
+if stock_ActionButton_SetTooltip then
+	ActionButton_SetTooltip = function()
+		stock_ActionButton_SetTooltip()
+		if IsCenterSpellButton(this) then
+			PlaceCenterSpellTooltip(this)
+		end
 	end
 end
 
@@ -353,8 +530,8 @@ local function Write(ability)
 	if table.getn(ability.description) > 0 then
 		Spacer(tint)
 		for index = 1, table.getn(ability.description) do
-			GameTooltip:AddLine(Highlight(ability.description[index], school, tint),
-				DESCRIPTION_COLOR[1], DESCRIPTION_COLOR[2], DESCRIPTION_COLOR[3], 1)
+			AddWrappedLine(Highlight(ability.description[index], school, tint),
+				DESCRIPTION_COLOR[1], DESCRIPTION_COLOR[2], DESCRIPTION_COLOR[3], 48)
 		end
 	end
 
@@ -370,7 +547,7 @@ local function Write(ability)
 			if value then
 				GameTooltip:AddDoubleLine("  "..Capital(label), value, MUTED[1], MUTED[2], MUTED[3], color[1], color[2], color[3])
 			else
-				GameTooltip:AddLine("  "..text, color[1], color[2], color[3])
+				AddWrappedLine("  "..text, color[1], color[2], color[3], 48)
 			end
 		end
 	end
@@ -380,7 +557,7 @@ local function Write(ability)
 		Spacer(MUTED)
 		for index = 1, table.getn(ability.other) do
 			local other = ability.other[index]
-			GameTooltip:AddLine(other.text, other.color[1], other.color[2], other.color[3], 1)
+			AddWrappedLine(other.text, other.color[1], other.color[2], other.color[3], 48)
 			racial = racial or string.find(other.text, "^Racial")
 		end
 	end
@@ -395,13 +572,19 @@ local function Write(ability)
 		Spacer(RACE_COLOR)
 		GameTooltip:AddLine((race or "Race").."'s traits", RACE_COLOR[1], RACE_COLOR[2], RACE_COLOR[3])
 		for index = 1, table.getn(traits) do
-			GameTooltip:AddLine("|cffffd100"..traits[index].name.."|r  "..traits[index].text,
-				DESCRIPTION_COLOR[1], DESCRIPTION_COLOR[2], DESCRIPTION_COLOR[3], 1)
+			AddWrappedLine("|cffffd100"..traits[index].name.."|r  "..traits[index].text,
+				DESCRIPTION_COLOR[1], DESCRIPTION_COLOR[2], DESCRIPTION_COLOR[3], 48)
 		end
 	end
 
-	-- Shown again to fit the new lines, where the game placed it.
+	-- Shown again to fit the new lines.
+	FitTooltipWidth(GameTooltip)
+	WrapTooltipLines(GameTooltip)
 	GameTooltip:Show()
+	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
+	if IsCenterSpellButton(owner) then
+		PlaceCenterSpellTooltip(owner)
+	end
 end
 
 ------------------------------------------------------------------------------
@@ -471,7 +654,7 @@ local function ItemLine(entry, first)
 		local right = entry.rightColor
 		GameTooltip:AddDoubleLine(text, entry.right, color[1], color[2], color[3], right[1], right[2], right[3])
 	else
-		GameTooltip:AddLine(text, color[1], color[2], color[3], not first and 1 or nil)
+		AddWrappedLine(text, color[1], color[2], color[3], 48)
 	end
 end
 
@@ -485,8 +668,8 @@ local function WriteItem(item)
 	if table.getn(item.effects) > 0 then
 		Spacer(EFFECT_COLOR)
 		for index = 1, table.getn(item.effects) do
-			GameTooltip:AddLine(Highlight(item.effects[index], nil, WHITE),
-				DESCRIPTION_COLOR[1], DESCRIPTION_COLOR[2], DESCRIPTION_COLOR[3], 1)
+		AddWrappedLine(Highlight(item.effects[index], nil, WHITE),
+			DESCRIPTION_COLOR[1], DESCRIPTION_COLOR[2], DESCRIPTION_COLOR[3], 48)
 		end
 	end
 	if table.getn(item.after) > 0 then
@@ -496,6 +679,9 @@ local function WriteItem(item)
 		end
 	end
 	GameTooltip:Show()
+	WrapTooltipLines(GameTooltip)
+	GameTooltip:Show()
+	PlaceCharacterItemTooltip()
 end
 
 ------------------------------------------------------------------------------
@@ -514,21 +700,34 @@ watcher:SetScript("OnUpdate", function()
 	if not (abilities or items) then
 		return
 	end
+	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
+	if IsBuildListFrame(owner) then
+		GameTooltip:Hide()
+		return
+	end
 	local signature = Signature()
 	if signature == written then
+		if IsCenterSpellButton(owner) then
+			PlaceCenterSpellTooltip(owner)
+		end
 		return
 	end
 	HideRules()
 	written = nil
 	local ok, ability = false, nil
-	if abilities then
-		ok, ability = pcall(Read)
-	end
+	ok, ability = pcall(Read)
 	if ok and ability then
-		if pcall(Write, ability) then
-			written = Signature()
+		if not (IsCenterSpellButton(owner) or GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive) then
+			GameTooltip:Hide()
+			return
 		end
-	elseif items then
+		if abilities and pcall(Write, ability) then
+			written = Signature()
+			if IsCenterSpellButton(owner) then
+				PlaceCenterSpellTooltip(owner)
+			end
+		end
+	elseif items and not GameTooltip.bordoCharacterItemActive and not GameTooltip.bordoCharacterJewelryActive then
 		local fine, item = pcall(ReadItem)
 		if fine and item and pcall(WriteItem, item) then
 			written = Signature()
@@ -541,6 +740,9 @@ end)
 -- never show. The game's answers (hasItem, hasCooldown...) are passed on.
 local function ItemNow()
 	if SurvivorUI_Feature and not SurvivorUI_Feature("itemTooltip") then
+		return
+	end
+	if GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive then
 		return
 	end
 	local fine, item = pcall(ReadItem)
@@ -602,7 +804,27 @@ GameTooltip:SetScript("OnShow", function()
 	if stockGameTooltipShow then
 		stockGameTooltipShow()
 	end
+	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
+	if IsBuildListFrame(owner) then
+		GameTooltip:Hide()
+		return
+	end
+	local ok, ability = pcall(Read)
+	if ok and ability and not (IsCenterSpellButton(owner) or GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive) then
+		GameTooltip:Hide()
+		return
+	end
 	StyleTooltip(GameTooltip)
+	if GameTooltip.bordoCharacterItemActive or IsCenterSpellButton(owner) then
+		FitTooltipWidth(GameTooltip)
+	end
+	WrapTooltipLines(GameTooltip)
+	GameTooltip:Show()
+	if IsCenterSpellButton(owner) then
+		PlaceCenterSpellTooltip(owner)
+	else
+		PlaceCharacterItemTooltip()
+	end
 end)
 
 if ItemRefTooltip then

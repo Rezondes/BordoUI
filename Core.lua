@@ -5,7 +5,6 @@
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BORDO_ADDON_DIR = "BordoUI";
 BordoUI.version = "2.2.2";
 -- Unit & Mob Tooltip Relocation: Anchor world/unit/add tooltips to bottom-left next to ChatFrame1
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
@@ -46,7 +45,7 @@ local defaults = {
     dmgScale   = 0.75,
     tableScale = 0.80,
     collapsed  = false,
-    locked     = true, -- Global UI window lock (default to locked for clean screen)
+    locked     = false, -- Global UI window lock
     statsPos   = nil, -- Defaults to docked cleanly to the right of Multipliers panel
     multPanelPos = { point = "TOPLEFT", relativePoint = "TOPLEFT", x = 12, y = -120 },
     centerHudPos = { point = "BOTTOM", relativePoint = "BOTTOM", x = 0, y = 200 },
@@ -211,12 +210,8 @@ eventFrame:SetScript("OnEvent", function()
         end
         if ( event == "PLAYER_ENTERING_WORLD" ) then
             pcall(SetCVar, "hudFlag", "0");
-            pcall(SetCVar, "hudClock", "0");
-            pcall(SetCVar, "hudTally", "0");
-            if ( AZS_SetHudShown and AZS_IsHudShown ) then
-                if ( AZS_IsHudShown("flag") ) then AZS_SetHudShown("flag", false); end
-                if ( AZS_IsHudShown("clock") ) then AZS_SetHudShown("clock", false); end
-                if ( AZS_IsHudShown("tally") ) then AZS_SetHudShown("tally", false); end
+            if ( AZS_SetHudShown and AZS_IsHudShown and AZS_IsHudShown("flag") ) then
+                AZS_SetHudShown("flag", false);
             end
             DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r loaded (Modern UI Suite, Miniboss Timer, Chest Radar & Boss Highlight). Type |cffffd100/bordo|r or |cffffd100/azs|r.");
             BordoUI:ApplyMaxCameraDistance();
@@ -491,14 +486,7 @@ function SurvivorUI_SetLairMark(texture, mark, dim)
     end
     local column = math.mod(mark - 1, 4);
     local line = math.floor((mark - 1) / 4);
-    local dir = BORDO_ADDON_DIR or "BordoUI";
-    texture:SetTexture("Interface\\AddOns\\" .. dir .. "\\Art\\LairMarks.tga");
-    if not texture:GetTexture() then
-        texture:SetTexture("Interface\\AddOns\\BordoWeb\\Art\\LairMarks.tga");
-    end
-    if not texture:GetTexture() then
-        texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks.tga");
-    end
+    texture:SetTexture("Interface\\AddOns\\BordoUI\\Art\\LairMarks.tga");
     texture:SetTexCoord(column / 4, (column + 1) / 4, line / 2, (line + 1) / 2);
     if ( dim ) then
         texture:SetVertexColor(0.5, 0.5, 0.5, 0.8);

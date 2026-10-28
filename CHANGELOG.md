@@ -4,6 +4,31 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
+## [2.2.12] - 2026-10-28
+
+### Changed
+- **Build list tooltips:** disabled on the right Build list panel (both ability rows and worn gear rows no longer show mouse hover tooltips).
+- **Center spell tooltips:** restored on center HUD action bar abilities (`ActionButton1`..`6`, `12` in `SurvivorUIRow`).
+- **Downward tooltip positioning:** center spell tooltips now open downwards underneath each spell button (`TOP` anchored to button `BOTTOM`) with screen clamping to prevent center screen and combat area overlap.
+- **Readability & styling:** preserved full 0.80 scale, dark translucent backdrop, school color accents, light blue cooldowns, mint ranges, gold crit stats, and word-wrapped multi-line descriptions.
+
+## [2.2.11] - 2026-10-28
+
+### Fixed
+- **Character item hover:** the stats panel and divider stay visible while hovering equipment; the character panel no longer collapses for the tooltip.
+
+## [2.2.10] - 2026-10-28
+
+### Fixed
+- **Tooltip readability:** long ability and item text now has a wider, screen-clamped tooltip layout with wrapping.
+- **Build tooltip only:** ability tooltips are suppressed outside the Build list; the Build list explicitly keeps its own spell and gear tooltips active.
+- **Character item hover space:** while any equipment slot tooltip is open, the unused stats column and its black background are temporarily removed so the tooltip has clear space. Tooltips appear on the free side of the hovered slot; stats return when the cursor leaves.
+- **Character item tooltip width:** short item tooltips now fit their content instead of leaving an oversized empty right side; long text keeps its wrapping.
+- **Damage meter help:** the TOTAL explanation wraps on its own line so it is not cut off.
+- **Build descriptions:** long spell and item-effect lines are split into full text rows before the client can truncate them with an ellipsis.
+
+---
+
 ## [2.1.2] - 2026-10-27
 
 ### Fixed

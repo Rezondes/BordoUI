@@ -105,6 +105,36 @@ for _, slotName in pairs(SLOTS) do
 	local name = "Character"..slotName.."Slot"
 	local slot = getglobal(name)
 	if slot then
+		slot.bordoCharacterSlot = true
+		if slotName == "Neck" or slotName == "Finger0" or slotName == "Finger1"
+			or slotName == "Trinket0" or slotName == "Trinket1" then
+			slot.bordoJewelrySlot = true
+		end
+		local stockEnter = slot:GetScript("OnEnter")
+		local stockLeave = slot:GetScript("OnLeave")
+		slot:SetScript("OnEnter", function()
+			GameTooltip.bordoCharacterItemActive = true
+			GameTooltip.bordoCharacterItemSlot = slot
+			if stockEnter then stockEnter() end
+			if CharacterFrame and CharacterFrame:IsShown() and GameTooltip and GameTooltip:IsShown() then
+
+				GameTooltip:ClearAllPoints()
+				local midpoint = (CharacterFrame:GetLeft() or 0) + (CharacterFrame:GetWidth() or 384) / 2
+				if slotName == "Neck" or (slot:GetLeft() or 0) < midpoint then
+					GameTooltip:SetPoint("TOPLEFT", slot, "TOPRIGHT", 6, 0)
+				else
+					GameTooltip:SetPoint("TOPRIGHT", slot, "TOPLEFT", -6, 0)
+				end
+				if GameTooltip.SetClampedToScreen then GameTooltip:SetClampedToScreen(true) end
+				if SurvivorUI_FitCharacterItemTooltip then SurvivorUI_FitCharacterItemTooltip() end
+			end
+		end)
+		slot:SetScript("OnLeave", function()
+			GameTooltip.bordoCharacterItemActive = nil
+			GameTooltip.bordoCharacterItemSlot = nil
+			if stockLeave then stockLeave() end
+
+		end)
 		local normal = getglobal(name.."NormalTexture")
 		if normal then
 			normal:SetAlpha(0)
@@ -525,6 +555,7 @@ local UpdateAll                 -- every view shown drawn again; set below
 local function MakeView(alone)
 	local view = { alone = alone }
 	local stats = CreateFrame("Frame", alone and "SurvivorUIStatsPanel" or "SurvivorUICharacterStats", alone and UIParent or panel)
+	if not alone then SurvivorUICharacterStats = stats end
 	view.frame = stats
 	stats:SetWidth(alone and PANEL_WIDTH or STATS_WIDTH)
 	stats:SetHeight(ART_HEIGHT)
