@@ -715,9 +715,10 @@ end
 
 
 -- Modern Dedicated Jewelry Tooltip with authentic card icon
-local jTooltip = CreateFrame("Frame", "BordoUI_JewelryCardTooltip", UIParent);
+local jTooltip = CreateFrame("Frame", "BordoUI_JewelryCardTooltip", UIParent); AUI.jTooltip = jTooltip;
 jTooltip:SetWidth(240);
 jTooltip:SetFrameStrata("TOOLTIP");
+jTooltip:SetFrameLevel(100);
 jTooltip:SetClampedToScreen(true);
 jTooltip:SetBackdrop({
     bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
@@ -885,6 +886,7 @@ end
 
 local function ShowJewelryTooltip(owner, itmData, isEq, slotLabel, anchorDir)
     if not (owner and itmData) then return; end
+    if GameTooltip then GameTooltip:Hide(); end
     local qColor = ITEM_QUALITY_COLORS[itmData.quality or 4] or { r = 0.64, g = 0.21, b = 0.93 };
     jtIcon:SetTexture(NormalizeIconPath(itmData.icon));
     jtIconBorder:SetVertexColor(qColor.r, qColor.g, qColor.b, 0.8);
@@ -894,11 +896,33 @@ local function ShowJewelryTooltip(owner, itmData, isEq, slotLabel, anchorDir)
     local sLabel = slotLabel or itmData.slotType or itmData.slot or "Jewelry";
     jtSub:SetText("|cffffd200" .. sLabel .. "|r  |cff888888(Rank I Card)|r");
 
-    local descText = itmData.desc or itmData.benefit or "";
-    if itmData.benefit and itmData.desc and itmData.benefit ~= itmData.desc then
-        descText = "|cff00ff66" .. itmData.benefit .. "|r\n" .. itmData.desc;
-    elseif itmData.benefit then
-        descText = "|cff00ff66" .. itmData.benefit .. "|r";
+    local bStr = itmData.benefit;
+    local dStr = itmData.desc;
+    local eqStr = itmData.equip;
+    local descText = "";
+
+    if eqStr and eqStr ~= "" and (not bStr or not string.find(string.lower(eqStr), string.lower(string.gsub(bStr, "[%s%p_]", "")))) then
+        if bStr and bStr ~= "" then
+            descText = "|cff00ff66" .. bStr .. "|r\n|cffffffff" .. eqStr .. "|r";
+        else
+            descText = "|cffffffff" .. eqStr .. "|r";
+        end
+    elseif dStr and dStr ~= "" then
+        if string.find(dStr, "\n") or string.find(dStr, "Legendary") or string.find(dStr, "Equip:") then
+            if bStr and bStr ~= "" and not string.find(dStr, bStr, 1, true) then
+                descText = "|cff00ff66" .. bStr .. "|r\n" .. dStr;
+            else
+                descText = dStr;
+            end
+        else
+            if bStr and bStr ~= "" then
+                descText = "|cff00ff66" .. bStr .. "|r";
+            else
+                descText = "|cff00ff66" .. dStr .. "|r";
+            end
+        end
+    elseif bStr and bStr ~= "" then
+        descText = "|cff00ff66" .. bStr .. "|r";
     end
     jtDesc:SetText(descText);
 
@@ -1072,6 +1096,7 @@ for gIdx = 1, (gearSlots and table.getn(gearSlots) or 0) do
         local curBuild = GetCurrentAdvisorBuild();
         local itm = curBuild and curBuild.jewelry and curBuild.jewelry[this.gInfo.key];
         if not itm then
+            HideJewelryTooltip();
             GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
             GameTooltip:ClearLines();
             GameTooltip:AddLine("|cffffd200Empty " .. (this.gInfo.label or "Jewelry") .. " Slot|r", 1, 1, 1);
@@ -1260,6 +1285,7 @@ for r = 1, 12 do
         if this.itemData then
             local d = this.itemData;
             if currentDrawerMode == "SPELL" then
+                HideJewelryTooltip();
                 GameTooltip:SetOwner(this, "ANCHOR_LEFT");
                 GameTooltip:ClearLines();
                 local sColor = SCHOOL_COLORS[d.school] or { 1, 1, 1 };
@@ -1906,6 +1932,9 @@ local function SetChoiceHUDScale(scale)
 end
 
 choiceHUD:EnableMouseWheel(true);
+choiceHUD:SetScript("OnEnter", function()
+    if GameTooltip then GameTooltip:Hide(); end
+end);
 choiceHUD:SetScript("OnMouseWheel", function()
     BordoUIDB = BordoUIDB or {};
     local cur = BordoUIDB.choiceHudScale or 1.0;
@@ -1935,6 +1964,10 @@ local hudHeaderBar = CreateFrame("Frame", nil, choiceHUD);
 hudHeaderBar:SetHeight(18);
 hudHeaderBar:SetPoint("TOPLEFT", choiceHUD, "TOPLEFT", 8, -3);
 hudHeaderBar:SetPoint("TOPRIGHT", choiceHUD, "TOPRIGHT", -8, -3);
+hudHeaderBar:EnableMouse(true);
+hudHeaderBar:SetScript("OnEnter", function()
+    if GameTooltip then GameTooltip:Hide(); end
+end);
 
 local hudTag = hudHeaderBar:CreateFontString(nil, "OVERLAY"); AUI.hudTag = hudTag;
 hudTag:SetFont("Fonts\\FRIZQT__.TTF", 11, "OUTLINE");
@@ -2173,6 +2206,7 @@ for i = 1, 6 do
     end);
 
     slot:SetScript("OnEnter", function()
+        HideJewelryTooltip();
         if this.spellData then
             GameTooltip:SetOwner(this, "ANCHOR_BOTTOM");
             GameTooltip:ClearLines();
@@ -2261,6 +2295,7 @@ for j = 1, 5 do
     jSlot.jDef = jDef;
 
     jSlot:SetScript("OnEnter", function()
+        if GameTooltip then GameTooltip:Hide(); end
         if this.jewelryData then
             ShowJewelryTooltip(this, this.jewelryData, this.isEquipped, this.jDef.slotName, "BOTTOM");
         end
