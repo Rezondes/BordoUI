@@ -233,69 +233,6 @@ function SurvivorUI_FitCharacterItemTooltip()
 	PlaceCharacterItemTooltip()
 end
 
-local function IsCenterSpellButton(frame)
-	if not frame then return false end
-	if frame == SurvivorUIRow or (AZSHelper_SkillsContainer and frame == AZSHelper_SkillsContainer) then
-		return true
-	end
-	local parent = frame.GetParent and frame:GetParent()
-	if parent and (parent == SurvivorUIRow or (AZSHelper_SkillsContainer and parent == AZSHelper_SkillsContainer) or (AZSHelper and AZSHelper.UI and parent == AZSHelper.UI.skillsContainer)) then
-		return true
-	end
-	local name = frame.GetName and frame:GetName()
-	if name and string.find(name, "^ActionButton%d+$") then
-		return true
-	end
-	return false
-end
-
-local function IsBuildListFrame(frame)
-	if not frame then return false end
-	if GameTooltip.bordoBuildTooltipActive or (frame and frame.bordoBuildTooltip) then
-		return true
-	end
-	local parent = frame.GetParent and frame:GetParent()
-	if parent and (parent == SurvivorUIBuild or (parent.GetName and parent:GetName() == "SurvivorUIBuild")) then
-		return true
-	end
-	local name = frame.GetName and frame:GetName()
-	if name and string.find(name, "SurvivorUIBuild") then
-		return true
-	end
-	return false
-end
-
-local function PlaceCenterSpellTooltip(owner)
-	if not (owner and GameTooltip) then return end
-	GameTooltip:ClearAllPoints()
-	local screenWidth = UIParent and UIParent:GetWidth() or 1024
-	local ownerLeft = owner.GetLeft and owner:GetLeft() or 0
-	local ownerWidth = owner.GetWidth and owner:GetWidth() or 36
-	local ownerCenter = ownerLeft + ownerWidth / 2
-
-	if ownerCenter < (screenWidth * 0.35) then
-		GameTooltip:SetPoint("TOPLEFT", owner, "BOTTOMLEFT", 0, -6)
-	elseif ownerCenter > (screenWidth * 0.65) then
-		GameTooltip:SetPoint("TOPRIGHT", owner, "BOTTOMRIGHT", 0, -6)
-	else
-		GameTooltip:SetPoint("TOP", owner, "BOTTOM", 0, -6)
-	end
-
-	if GameTooltip.SetClampedToScreen then
-		GameTooltip:SetClampedToScreen(true)
-	end
-end
-
-local stock_ActionButton_SetTooltip = ActionButton_SetTooltip
-if stock_ActionButton_SetTooltip then
-	ActionButton_SetTooltip = function()
-		stock_ActionButton_SetTooltip()
-		if IsCenterSpellButton(this) then
-			PlaceCenterSpellTooltip(this)
-		end
-	end
-end
-
 local function Rule(line, color)
 	rulesUsed = rulesUsed + 1
 	local rule = rules[rulesUsed]
@@ -577,14 +514,10 @@ local function Write(ability)
 		end
 	end
 
-	-- Shown again to fit the new lines.
-	FitTooltipWidth(GameTooltip)
+	-- Shown again to fit the new lines, where the game placed it.
+	GameTooltip:Show()
 	WrapTooltipLines(GameTooltip)
 	GameTooltip:Show()
-	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
-	if IsCenterSpellButton(owner) then
-		PlaceCenterSpellTooltip(owner)
-	end
 end
 
 ------------------------------------------------------------------------------
@@ -689,6 +622,20 @@ end
 
 local written                   -- the signature of the last layout written
 
+local function IsActionButtonOwner(owner)
+	if not (owner and owner.GetName) then return false end
+	local name = owner:GetName() or ""
+	return string.find(name, "^ActionButton%d+$") ~= nil
+		or string.find(name, "^BonusActionButton%d+$") ~= nil
+end
+
+function SurvivorUI_HideDuplicateSpellTooltips()
+	for _, name in pairs({ "ShoppingTooltip1", "ShoppingTooltip2" }) do
+		local tip = getglobal(name)
+		if tip and tip:IsShown() then tip:Hide() end
+	end
+end
+
 local watcher = CreateFrame("Frame")
 watcher:SetScript("OnUpdate", function()
 	if not GameTooltip:IsVisible() then
@@ -700,31 +647,33 @@ watcher:SetScript("OnUpdate", function()
 	if not (abilities or items) then
 		return
 	end
-	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
-	if IsBuildListFrame(owner) then
-		GameTooltip:Hide()
-		return
-	end
 	local signature = Signature()
 	if signature == written then
-		if IsCenterSpellButton(owner) then
-			PlaceCenterSpellTooltip(owner)
-		end
 		return
 	end
 	HideRules()
 	written = nil
 	local ok, ability = false, nil
+	-- Build-row and action-bar spell tooltips share one centered GameTooltip;
+	-- ordinary unrelated ability tooltips stay suppressed.
+	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
 	ok, ability = pcall(Read)
+	if IsActionButtonOwner(owner) then
+		-- Keep the native tooltip visible while its spell data is still loading;
+		-- the watcher styles and repositions it once those lines are available.
+		GameTooltip.bordoBuildTooltipActive = true
+	end
 	if ok and ability then
-		if not (IsCenterSpellButton(owner) or GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive) then
+		if not (GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive
+			or GameTooltip.bordoBuildTooltipActive or (owner and owner.bordoBuildTooltip)) then
 			GameTooltip:Hide()
 			return
 		end
 		if abilities and pcall(Write, ability) then
 			written = Signature()
-			if IsCenterSpellButton(owner) then
-				PlaceCenterSpellTooltip(owner)
+			if IsActionButtonOwner(owner) and SurvivorUI_AnchorCenteredSpellTooltip then
+				SurvivorUI_HideDuplicateSpellTooltips()
+				SurvivorUI_AnchorCenteredSpellTooltip(owner)
 			end
 		end
 	elseif items and not GameTooltip.bordoCharacterItemActive and not GameTooltip.bordoCharacterJewelryActive then
@@ -794,6 +743,7 @@ local stockHide = GameTooltip:GetScript("OnHide")
 GameTooltip:SetScript("OnHide", function()
 	HideRules()
 	written = nil
+	GameTooltip.bordoBuildTooltipActive = nil
 	if stockHide then
 		stockHide()
 	end
@@ -805,25 +755,28 @@ GameTooltip:SetScript("OnShow", function()
 		stockGameTooltipShow()
 	end
 	local owner = GameTooltip.GetOwner and GameTooltip:GetOwner()
-	if IsBuildListFrame(owner) then
+	local ok, ability = pcall(Read)
+	if IsActionButtonOwner(owner) then
+		GameTooltip.bordoBuildTooltipActive = true
+	end
+	if ok and ability and not (GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive
+		or GameTooltip.bordoBuildTooltipActive or (owner and owner.bordoBuildTooltip)) then
 		GameTooltip:Hide()
 		return
 	end
-	local ok, ability = pcall(Read)
-	if ok and ability and not (IsCenterSpellButton(owner) or GameTooltip.bordoCharacterItemActive or GameTooltip.bordoCharacterJewelryActive) then
-		GameTooltip:Hide()
-		return
+	if GameTooltip.bordoBuildTooltipActive then
+		SurvivorUI_HideDuplicateSpellTooltips()
 	end
 	StyleTooltip(GameTooltip)
-	if GameTooltip.bordoCharacterItemActive or IsCenterSpellButton(owner) then
+	if GameTooltip.bordoCharacterItemActive then
 		FitTooltipWidth(GameTooltip)
 	end
 	WrapTooltipLines(GameTooltip)
 	GameTooltip:Show()
-	if IsCenterSpellButton(owner) then
-		PlaceCenterSpellTooltip(owner)
-	else
-		PlaceCharacterItemTooltip()
+	PlaceCharacterItemTooltip()
+	if IsActionButtonOwner(owner) and GameTooltip.bordoBuildTooltipActive
+		and SurvivorUI_AnchorCenteredSpellTooltip then
+		SurvivorUI_AnchorCenteredSpellTooltip(owner)
 	end
 end)
 

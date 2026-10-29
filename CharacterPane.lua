@@ -117,7 +117,6 @@ for _, slotName in pairs(SLOTS) do
 			GameTooltip.bordoCharacterItemSlot = slot
 			if stockEnter then stockEnter() end
 			if CharacterFrame and CharacterFrame:IsShown() and GameTooltip and GameTooltip:IsShown() then
-
 				GameTooltip:ClearAllPoints()
 				local midpoint = (CharacterFrame:GetLeft() or 0) + (CharacterFrame:GetWidth() or 384) / 2
 				if slotName == "Neck" or (slot:GetLeft() or 0) < midpoint then
@@ -133,7 +132,6 @@ for _, slotName in pairs(SLOTS) do
 			GameTooltip.bordoCharacterItemActive = nil
 			GameTooltip.bordoCharacterItemSlot = nil
 			if stockLeave then stockLeave() end
-
 		end)
 		local normal = getglobal(name.."NormalTexture")
 		if normal then

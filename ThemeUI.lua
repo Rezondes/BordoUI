@@ -357,76 +357,88 @@ local function UpdateSkills()
 			local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
 			local icon = getglobal("ActionButton"..id.."Icon")
 			local total = (AZS_SPELLS and table.getn(AZS_SPELLS)) or 0
-			local entry = AZS_SPELLS and ((id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id])
 
-			-- Update Icon Texture
-			if icon then
-				local texture = GetActionTexture(pagedID)
-				if (not texture or texture == "") and entry then
-					texture = entry.icon or entry[2]
+			-- In Azeroth Survivors:
+			-- The last entry in AZS_SPELLS (entry total) is the racial ability on button 12.
+			-- Regular abilities fill buttons 1 to (total - 1), up to a max of 6.
+			local entry = nil
+			if AZS_SPELLS and total > 0 then
+				if id == 12 then
+					entry = AZS_SPELLS[total]
+				elseif id < total and id <= 6 then
+					entry = AZS_SPELLS[id]
 				end
-				if texture and texture ~= "" then
+			end
+
+			local texture = GetActionTexture(pagedID)
+			if (not texture or texture == "") and entry then
+				texture = entry.icon or entry[2]
+			end
+
+			local cooldown = button.cooldown or getglobal("ActionButton"..id.."Cooldown")
+
+			if texture and texture ~= "" then
+				if icon then
 					icon:SetTexture(texture)
 					icon:SetDrawLayer("ARTWORK")
 					icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 					icon:SetAlpha(1)
 					icon:Show()
 				end
-			end
 
-			-- Check native Blizzard action cooldown
-			local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
-			local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
-			local cooldown = button.cooldown or getglobal("ActionButton"..id.."Cooldown")
+				-- Check native Blizzard action cooldown
+				local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
+				local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
 
-			if hasBlizzCd then
-				button.lastCdStart = nil
-				button.lastCdMax = nil
-				if cooldown and CooldownFrame_SetTimer then
-					CooldownFrame_SetTimer(cooldown, bStart, bDuration, bEnable)
-				end
-			elseif entry and IsRunActive() then
-				-- Fallback to AZS_SPELLS engine cooldown data only while in an active run and spell was actually cast
-				local cd = tonumber(entry.cd or entry[4]) or 0
-				local cdmax = tonumber(entry.cdmax or entry[5]) or 0
-				if cd > 0.5 and cdmax > 0.5 and cd <= cdmax + 0.1 then
-					local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
-					if not button.lastCdStart or math.abs(startTime - button.lastCdStart) > 0.6 or button.lastCdMax ~= cdmax then
-						button.lastCdStart = startTime
-						button.lastCdMax = cdmax
-						if cooldown and CooldownFrame_SetTimer then
-							CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
-						end
+				if hasBlizzCd then
+					button.lastCdStart = nil
+					button.lastCdMax = nil
+					if cooldown and CooldownFrame_SetTimer then
+						CooldownFrame_SetTimer(cooldown, bStart, bDuration, bEnable)
 					end
-				else
-					if button.lastCdStart then
+				elseif entry and IsRunActive() then
+					local cd = tonumber(entry.cd or entry[4]) or 0
+					local cdmax = tonumber(entry.cdmax or entry[5]) or 0
+					if cd > 0.5 and cdmax > 0.5 and cd <= cdmax + 0.1 then
+						local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
+						if not button.lastCdStart or math.abs(startTime - button.lastCdStart) > 0.6 or button.lastCdMax ~= cdmax then
+							button.lastCdStart = startTime
+							button.lastCdMax = cdmax
+							if cooldown and CooldownFrame_SetTimer then
+								CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
+							end
+						end
+					else
 						button.lastCdStart = nil
 						button.lastCdMax = nil
 						if cooldown and CooldownFrame_SetTimer then
 							CooldownFrame_SetTimer(cooldown, 0, 0, 0)
 						end
+						if button.survivorCounter then button.survivorCounter:Hide() end
+						if cooldown then cooldown:Hide() end
 					end
-					if button.survivorCounter then
-						button.survivorCounter:Hide()
-					end
-					if cooldown then
-						cooldown:Hide()
-					end
-				end
-			else
-				if button.lastCdStart then
+				else
 					button.lastCdStart = nil
 					button.lastCdMax = nil
 					if cooldown and CooldownFrame_SetTimer then
 						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
 					end
+					if button.survivorCounter then button.survivorCounter:Hide() end
+					if cooldown then cooldown:Hide() end
 				end
-				if button.survivorCounter then
-					button.survivorCounter:Hide()
+			else
+				-- EMPTY SLOT: No spell/texture assigned!
+				if icon then
+					icon:SetTexture("")
+					icon:Hide()
 				end
-				if cooldown then
-					cooldown:Hide()
+				button.lastCdStart = nil
+				button.lastCdMax = nil
+				if cooldown and CooldownFrame_SetTimer then
+					CooldownFrame_SetTimer(cooldown, 0, 0, 0)
 				end
+				if button.survivorCounter then button.survivorCounter:Hide() end
+				if cooldown then cooldown:Hide() end
 			end
 		end
 	end
@@ -436,55 +448,70 @@ end
 local stockActionButtonUpdateCooldown = ActionButton_UpdateCooldown
 if stockActionButtonUpdateCooldown then
 	ActionButton_UpdateCooldown = function(button)
+		if not button or not button.survivorKept then
+			stockActionButtonUpdateCooldown(button)
+			return
+		end
+		local id = button:GetID()
+		local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
+		local total = (AZS_SPELLS and table.getn(AZS_SPELLS)) or 0
+		local entry = nil
+		if AZS_SPELLS and total > 0 then
+			if id == 12 then
+				entry = AZS_SPELLS[total]
+			elseif id < total and id <= 6 then
+				entry = AZS_SPELLS[id]
+			end
+		end
+		local texture = GetActionTexture(pagedID)
+		if (not texture or texture == "") and entry then
+			texture = entry.icon or entry[2]
+		end
+		local cooldown = button.cooldown or getglobal(button:GetName().."Cooldown")
+		if not texture or texture == "" then
+			-- Empty button: hide all cooldowns completely!
+			button.lastCdStart = nil
+			button.lastCdMax = nil
+			if cooldown and CooldownFrame_SetTimer then
+				CooldownFrame_SetTimer(cooldown, 0, 0, 0)
+			end
+			if button.survivorCounter then button.survivorCounter:Hide() end
+			if cooldown then cooldown:Hide() end
+			return
+		end
+
 		stockActionButtonUpdateCooldown(button)
-		if button and button.survivorKept then
-			local id = button:GetID()
-			local pagedID = ActionButton_GetPagedID and ActionButton_GetPagedID(button) or id
-			local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
-			local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
-			local cooldown = button.cooldown or getglobal(button:GetName().."Cooldown")
-			if not hasBlizzCd and AZS_SPELLS and IsRunActive() then
-				local total = table.getn(AZS_SPELLS)
-				local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
-				if entry then
-					local cd = tonumber(entry.cd or entry[4]) or 0
-					local cdmax = tonumber(entry.cdmax or entry[5]) or 0
-					if cd > 0.5 and cdmax > 0.5 and cd <= cdmax + 0.1 then
-						local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
-						if cooldown and CooldownFrame_SetTimer then
-							button.lastCdStart = startTime
-							button.lastCdMax = cdmax
-							CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
-						end
-					elseif button.lastCdStart then
-						button.lastCdStart = nil
-						button.lastCdMax = nil
-						if cooldown and CooldownFrame_SetTimer then
-							CooldownFrame_SetTimer(cooldown, 0, 0, 0)
-						end
-						if button.survivorCounter then
-							button.survivorCounter:Hide()
-						end
-						if cooldown then
-							cooldown:Hide()
-						end
-					end
+		local bStart, bDuration, bEnable = GetActionCooldown(pagedID)
+		local hasBlizzCd = (bStart and bStart > 0 and bDuration and bDuration > 0.5 and bEnable and bEnable > 0)
+		if not hasBlizzCd and entry and IsRunActive() then
+			local cd = tonumber(entry.cd or entry[4]) or 0
+			local cdmax = tonumber(entry.cdmax or entry[5]) or 0
+			if cd > 0.5 and cdmax > 0.5 and cd <= cdmax + 0.1 then
+				local startTime = GetTime() - (cdmax - math.min(cd, cdmax))
+				if cooldown and CooldownFrame_SetTimer then
+					button.lastCdStart = startTime
+					button.lastCdMax = cdmax
+					CooldownFrame_SetTimer(cooldown, startTime, cdmax, 1)
 				end
-			elseif not hasBlizzCd and not IsRunActive() then
-				if button.lastCdStart then
-					button.lastCdStart = nil
-					button.lastCdMax = nil
-					if cooldown and CooldownFrame_SetTimer then
-						CooldownFrame_SetTimer(cooldown, 0, 0, 0)
-					end
+			elseif button.lastCdStart then
+				button.lastCdStart = nil
+				button.lastCdMax = nil
+				if cooldown and CooldownFrame_SetTimer then
+					CooldownFrame_SetTimer(cooldown, 0, 0, 0)
 				end
-				if button.survivorCounter then
-					button.survivorCounter:Hide()
-				end
-				if cooldown then
-					cooldown:Hide()
+				if button.survivorCounter then button.survivorCounter:Hide() end
+				if cooldown then cooldown:Hide() end
+			end
+		elseif not hasBlizzCd and not IsRunActive() then
+			if button.lastCdStart then
+				button.lastCdStart = nil
+				button.lastCdMax = nil
+				if cooldown and CooldownFrame_SetTimer then
+					CooldownFrame_SetTimer(cooldown, 0, 0, 0)
 				end
 			end
+			if button.survivorCounter then button.survivorCounter:Hide() end
+			if cooldown then cooldown:Hide() end
 		end
 	end
 end
@@ -503,7 +530,12 @@ if stockActionButtonUpdate then
 				if (not texture or texture == "") and AZS_SPELLS then
 					local id = this:GetID()
 					local total = table.getn(AZS_SPELLS)
-					local entry = (id == 12 and total > 0 and AZS_SPELLS[total]) or AZS_SPELLS[id]
+					local entry = nil
+					if id == 12 then
+						entry = AZS_SPELLS[total]
+					elseif id < total and id <= 6 then
+						entry = AZS_SPELLS[id]
+					end
 					if entry and (entry.icon or entry[2]) then
 						texture = entry.icon or entry[2]
 					end
@@ -609,6 +641,7 @@ local function LayoutBar()
 			frame.Show = function() end
 		end
 	end
+	-- RestoreEncounterBarsPosition called in PLAYER_ENTERING_WORLD
 	if PositionMicroButtons then PositionMicroButtons() end
 	UpdateSkills()
 end
@@ -698,12 +731,17 @@ local function UnitFrame(unit, name, side, dropdown)
 	frame.texts = CreateFrame("Frame", nil, frame.health)
 	frame.texts:SetAllPoints(frame.health)
 	frame.texts:SetFrameLevel(frame.health:GetFrameLevel() + 2)
-	frame.name = Text(frame.texts, 10, "LEFT", 5, 0)
+	frame.name = Text(frame.texts, 10, "LEFT", 5, 5)
 	frame.nameRoom = (unit == "player") and (FRAME_WIDTH - 82) or (FRAME_WIDTH - 44)
 	frame.name:SetWidth(frame.nameRoom)
 	frame.name:SetHeight(12)
 	frame.name:SetJustifyH("LEFT")
 	frame.name:SetTextColor(1, 1, 1)
+	frame.level = Text(frame.texts, 8, "LEFT", 5, -6)
+	frame.level:SetWidth(frame.nameRoom)
+	frame.level:SetHeight(10)
+	frame.level:SetJustifyH("LEFT")
+	frame.level:SetTextColor(1, 0.25, 0.35)
 	frame.value = Text(frame.texts, 10, "RIGHT", -5, 0)
 	frame.value:SetTextColor(1, 1, 1)
 	frame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
@@ -774,6 +812,40 @@ local function UpdateUnitFrame(frame)
 			frame.name:SetText(first or name)
 		end
 		frame.name:SetWidth(frame.nameRoom)
+	end
+	if frame.level then
+		local lvl = UnitLevel(unit)
+		if (not lvl or lvl <= 0) and unit == "player" then
+			lvl = 1
+		end
+		if lvl and lvl > 0 then
+			if frame.shownLvl ~= lvl then
+				frame.shownLvl = lvl
+				frame.level:SetText("Lv " .. lvl)
+			end
+			if unit == "player" then
+				frame.level:SetTextColor(1, 0.25, 0.35)
+			else
+				local diff = GetDifficultyColor and GetDifficultyColor(lvl)
+				if diff then
+					frame.level:SetTextColor(diff.r, diff.g, diff.b)
+				else
+					frame.level:SetTextColor(1, 0.25, 0.35)
+				end
+			end
+			frame.level:Show()
+		elseif lvl and lvl < 0 then
+			if frame.shownLvl ~= -1 then
+				frame.shownLvl = -1
+				frame.level:SetText("Lv ??")
+				frame.level:SetTextColor(1, 0.15, 0.15)
+			end
+			frame.level:Show()
+		else
+			frame.shownLvl = nil
+			frame.level:SetText("")
+			frame.level:Hide()
+		end
 	end
 	if UnitIsDead(unit) or UnitIsGhost(unit) then
 		frame.value:SetText((unit == "player" and SurvivorUI_IsDown and SurvivorUI_IsDown()) and "Down" or "Dead")
@@ -1032,11 +1104,11 @@ PositionMicroButtons = function()
 end
 PositionMicroButtons()
 
--- C) MODERN MINIMAP ACTION DOCK (Character, Talents, Damage Meter)
+-- C) MODERN MINIMAP ACTION DOCK (Character, Builds, Windows, Meter, Damage, Nameplates)
 local minimapDock = CreateFrame("Frame", "BordoUI_MinimapDock", UIParent)
-minimapDock:SetWidth(28)
-minimapDock:SetHeight(145)
-minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -6, 0)
+minimapDock:SetWidth(24)
+minimapDock:SetHeight(144)
+minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -3, 0)
 minimapDock:SetFrameStrata("LOW")
 minimapDock:SetFrameLevel(10)
 minimapDock:SetMovable(true)
@@ -1057,17 +1129,17 @@ end)
 UI.minimapDock = minimapDock
 local function CreateSquareDockButton(parent, index, iconPath, tooltipTitle, tooltipDesc, onClick)
 	local btn = CreateFrame("Button", nil, parent)
-	btn:SetWidth(26)
-	btn:SetHeight(26)
-	btn:SetPoint("TOP", parent, "TOP", 0, -((index - 1) * 29))
+	btn:SetWidth(22)
+	btn:SetHeight(22)
+	btn:SetPoint("TOP", parent, "TOP", 0, -((index - 1) * 24))
 	
 	btn:SetBackdrop({
 		bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
 		edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
 		tile     = true,
-		tileSize = 12,
-		edgeSize = 8,
-		insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+		tileSize = 10,
+		edgeSize = 6,
+		insets   = { left = 1, right = 1, top = 1, bottom = 1 }
 	})
 	btn:SetBackdropColor(0.04, 0.04, 0.06, 0.88)
 	btn:SetBackdropBorderColor(0.15, 0.15, 0.20, 0.95)
@@ -1111,30 +1183,58 @@ local function CreateSquareDockButton(parent, index, iconPath, tooltipTitle, too
 	return btn
 end
 -- 1. Character & Stats Button
-CreateSquareDockButton(
+	local firstDockBtn = CreateSquareDockButton(
 	minimapDock, 1, "Interface\\Icons\\INV_Helmet_06",
-	"Character & Stats", "Left-Click: Toggle Stats Window\nShift-Click: Open Blizzard Character Info",
-	function()
-		if IsShiftKeyDown() and ToggleCharacter then
+	"Character & Stats", "Left-Click: Stat Display Filter (Show/Hide stats)\nRight-Click: Toggle Stats Window\nShift-Click: Open Blizzard Character Info",
+	function(mouseButton)
+		if mouseButton == "RightButton" then
+			if BordoUI_ToggleStatsWindow then
+				BordoUI_ToggleStatsWindow()
+			end
+		elseif IsShiftKeyDown() and ToggleCharacter then
 			ToggleCharacter("PaperDollFrame")
-		elseif BordoUI_ToggleStatsWindow then
-			BordoUI_ToggleStatsWindow()
-		elseif ToggleCharacter then
-			ToggleCharacter("PaperDollFrame")
+		else
+			if BordoUI_ToggleStatsConfig then
+				BordoUI_ToggleStatsConfig()
+			elseif BordoUI and BordoUI.ToggleStatsConfig then
+				BordoUI:ToggleStatsConfig()
+			elseif BordoUI_ToggleStatsWindow then
+				BordoUI_ToggleStatsWindow()
+			end
 		end
 	end
 )
--- 2. Windows Button (replaces the old Talents & Build shortcut)
+UI.firstDockBtn = firstDockBtn
+minimapDock.firstBtn = firstDockBtn
+-- 2. Builds Button (Book Icon)
 CreateSquareDockButton(
-	minimapDock, 2, "Interface\\Icons\\INV_Misc_Gear_01",
+	minimapDock, 2, "Interface\\Icons\\INV_Misc_Book_09",
+	"Builds", "Left-Click: Toggle Builds & Advisor Window\nRight-Click: Toggle Choice HUD Preview",
+	function(mouseButton)
+		if mouseButton == "RightButton" then
+			if BordoUI_ToggleChoiceHUD then
+				BordoUI_ToggleChoiceHUD()
+			elseif BordoUI_ToggleBuildAdvisor then
+				BordoUI_ToggleBuildAdvisor()
+			end
+		else
+			if BordoUI_ToggleBuildAdvisor then
+				BordoUI_ToggleBuildAdvisor()
+			end
+		end
+	end
+)
+-- 3. Windows Button
+CreateSquareDockButton(
+	minimapDock, 3, "Interface\\Icons\\INV_Misc_Gear_01",
 	"Windows", "Left-Click: Open Bordo UI window controls",
 	function()
 		if BordoUI and BordoUI.ToggleWindowsPanel then BordoUI:ToggleWindowsPanel() end
 	end
 )
--- 3. Damage Meter Button
+-- 4. Damage Meter Button
 CreateSquareDockButton(
-	minimapDock, 3, "Interface\\Icons\\INV_Sword_04",
+	minimapDock, 4, "Interface\\Icons\\INV_Sword_04",
 	"Damage Meter", "Left-Click: Toggle Damage Meter\nShift-Click: Reset Meter",
 	function()
 		if IsShiftKeyDown() and BordoUI_ResetMeter then
@@ -1146,9 +1246,9 @@ CreateSquareDockButton(
 		end
 	end
 )
--- 4. Damage Numbers & Styles Button
+-- 5. Damage Numbers & Styles Button
 CreateSquareDockButton(
-	minimapDock, 4, "Interface\\Icons\\Ability_CriticalStrike",
+	minimapDock, 5, "Interface\\Icons\\Ability_CriticalStrike",
 	"Damage Numbers & Styles", "Left-Click: Configure Combat Text Settings\nRight-Click: Quick Cycle Damage Filter\nShift-Click: Toggle Mode (Standard / Scrolling SCT)",
 	function(button)
 		if IsShiftKeyDown() and BordoUI and BordoUI.ToggleDamageMotion then
@@ -1160,9 +1260,9 @@ CreateSquareDockButton(
 		end
 	end
 )
--- 5. Nameplates & Threat Filter Button
+-- 6. Nameplates & Threat Filter Button
 CreateSquareDockButton(
-	minimapDock, 5, "Interface\\Icons\\INV_BannerPVP_02",
+	minimapDock, 6, "Interface\\Icons\\INV_BannerPVP_02",
 	"Nameplates & Threat Filter", "Left-Click: Open Nameplates Settings\nRight-Click: Quick Cycle Filter (All / Bosses & Elites / Off)\nShift-Click: Toggle Friendly Plates",
 	function(button)
 		if IsShiftKeyDown() and BordoUI and BordoUI.ToggleFriendlyNameplates then
@@ -1201,15 +1301,35 @@ end
 -- =========================================================================
 -- 6. TOP ENCOUNTER BARS (Multi-Boss & Miniboss Bar Container)
 -- =========================================================================
+-- =========================================================================
+-- 6. TOP ENCOUNTER BARS (Multi-Boss & Miniboss Bar Container)
+-- Anchored directly beneath Custom Build Advisor HUD by default
+-- =========================================================================
+local function RestoreEncounterBarsPosition()
+	if not UI.encounterContainer then return end
+	if BordoUIDB and BordoUIDB.encounterBarsPos and BordoUIDB.encounterBarsPos.point then
+		AZSHelper:RestorePosition(UI.encounterContainer, BordoUIDB.encounterBarsPos)
+	else
+		UI.encounterContainer:ClearAllPoints()
+		if BordoUI_ChoiceAdvisorHUD then
+			UI.encounterContainer:SetPoint("TOP", BordoUI_ChoiceAdvisorHUD, "BOTTOM", 0, -4)
+		else
+			UI.encounterContainer:SetPoint("TOP", UIParent, "TOP", 0, -132)
+		end
+	end
+end
+UI.RestoreEncounterBarsPosition = RestoreEncounterBarsPosition
+
 UI.encounterContainer = CreateFrame("Frame", "AZSHelper_BossEncounterContainer", UIParent)
 UI.encounterContainer:SetWidth(320)
 UI.encounterContainer:SetHeight(160)
-UI.encounterContainer:SetPoint("TOP", UIParent, "TOP", 0, -55)
+RestoreEncounterBarsPosition()
 UI.encounterContainer:SetFrameStrata("MEDIUM")
 UI.encounterContainer:SetFrameLevel(25)
 UI.encounterContainer:SetClampedToScreen(true)
 AZSHelper:MakeMovable(UI.encounterContainer, "encounterBarsPos")
 UI.encounterContainer:Hide()
+
 UI.encounterBars = {}
 for i = 1, 6 do
 	local bar = CreateFrame("Frame", nil, UI.encounterContainer)
@@ -1226,6 +1346,21 @@ for i = 1, 6 do
 	})
 	bar:SetBackdropColor(0.04, 0.04, 0.06, 0.95)
 	bar:SetBackdropBorderColor(0.70, 0.55, 0.20, 0.85)
+
+	-- Movable via Alt+Drag or Left-Drag when unlocked
+	bar:EnableMouse(true)
+	bar:RegisterForDrag("LeftButton")
+	bar:SetScript("OnDragStart", function()
+		if BordoUIDB and BordoUIDB.locked and not IsAltKeyDown() then return end
+		UI.encounterContainer:StartMoving()
+	end)
+	bar:SetScript("OnDragStop", function()
+		UI.encounterContainer:StopMovingOrSizing()
+		local pt, _, relPt, x, y = UI.encounterContainer:GetPoint()
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.encounterBarsPos = { point = pt, relativePoint = relPt, x = x, y = y }
+	end)
+
 	local sb = CreateFrame("StatusBar", nil, bar)
 	sb:SetPoint("TOPLEFT", bar, "TOPLEFT", 2, -2)
 	sb:SetPoint("BOTTOMRIGHT", bar, "BOTTOMRIGHT", -2, 2)
@@ -1245,6 +1380,7 @@ for i = 1, 6 do
 	bar:Hide()
 	UI.encounterBars[i] = bar
 end
+
 local function UpdateEncounterBars()
 	local activeEnemies = {}
 	local bosses = (AZS_GetBosses and AZS_GetBosses()) or {}
@@ -1307,13 +1443,42 @@ local function UpdateEncounterBars()
 				bar:Hide()
 			end
 		end
+	elseif UI.encounterContainer.previewMode then
+		-- Preview active for testing / positioning
 	else
 		UI.encounterContainer:Hide()
 	end
 end
--- =========================================================================
--- 7. SQUARE MINIMAP & CHAT SKINNING
--- =========================================================================
+
+SLASH_BORDOBOSSHP1 = "/bossbar"
+SLASH_BORDOBOSSHP2 = "/encounterbar"
+SlashCmdList["BORDOBOSSHP"] = function(msg)
+	local cmd = msg and string.lower(string.gsub(msg, "^%s*(.-)%s*$", "%1")) or ""
+	if cmd == "reset" then
+		BordoUIDB = BordoUIDB or {}
+		BordoUIDB.encounterBarsPos = nil
+		RestoreEncounterBarsPosition()
+		DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Boss HP Bar position reset to default (anchored directly below Custom Build HUD).")
+		return
+	end
+	UI.encounterContainer.previewMode = not UI.encounterContainer.previewMode
+	if UI.encounterContainer.previewMode then
+		RestoreEncounterBarsPosition()
+		local bar = UI.encounterBars[1]
+		bar.statusBar:SetMinMaxValues(0, 100)
+		bar.statusBar:SetValue(69)
+		bar.statusBar:SetStatusBarColor(0.20, 0.75, 0.95, 1.0)
+		bar.nameText:SetText("[GUARDIAN] Bellygrub")
+		bar.hpText:SetText("69% (5,794)")
+		bar:Show()
+		for i = 2, 6 do UI.encounterBars[i]:Hide() end
+		UI.encounterContainer:Show()
+		DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Boss HP Bar preview active (Alt+Drag to move). Type |cff00ccff/bossbar|r to hide, or |cff00ccff/bossbar reset|r.")
+	else
+		UI.encounterContainer:Hide()
+		DEFAULT_CHAT_FRAME:AddMessage("|cffffd100BordoUI:|r Boss HP Bar preview closed.")
+	end
+end
 local function KillMinimapButton(name)
 	local f = type(name) == "string" and getglobal(name) or name
 	if f then
@@ -1392,6 +1557,80 @@ function AZSHelper:ApplySquareMinimapStyle()
 		AZS_SetHudShown("meter", false)
 	end
 
+	local function GetMinimapTooltipAnchor(fallback)
+		if UI and UI.firstDockBtn then
+			return UI.firstDockBtn
+		elseif UI and UI.minimapDock then
+			return UI.minimapDock
+		end
+		return fallback
+	end
+
+	-- Dedicated Compact Minimap Info Tooltip (126px width, never stretched by ElvUI)
+	local miniTip = getglobal("BordoUI_MinimapTooltip") or CreateFrame("Frame", "BordoUI_MinimapTooltip", UIParent)
+	miniTip:SetWidth(126)
+	miniTip:SetHeight(62)
+	miniTip:SetFrameStrata("TOOLTIP")
+	miniTip:SetFrameLevel(100)
+	miniTip:SetClampedToScreen(true)
+	miniTip:SetBackdrop({
+		bgFile = FLAT,
+		edgeFile = FLAT,
+		edgeSize = 1,
+		insets = { left = 1, right = 1, top = 1, bottom = 1 },
+	})
+	miniTip:SetBackdropColor(0.04, 0.04, 0.06, 0.92)
+	miniTip:SetBackdropBorderColor(0.24, 0.24, 0.28, 0.95)
+	miniTip:Hide()
+
+	local tipTitle = miniTip.title or miniTip:CreateFontString(nil, "OVERLAY")
+	tipTitle:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+	tipTitle:SetPoint("TOPLEFT", miniTip, "TOPLEFT", 6, -5)
+	tipTitle:SetTextColor(1.0, 0.82, 0.0)
+	miniTip.title = tipTitle
+
+	local tipL1 = miniTip.l1 or miniTip:CreateFontString(nil, "OVERLAY")
+	tipL1:SetFont("Fonts\\ARIALN.TTF", 9)
+	tipL1:SetPoint("TOPLEFT", miniTip, "TOPLEFT", 6, -17)
+	tipL1:SetTextColor(0.85, 0.85, 0.85)
+	miniTip.l1 = tipL1
+
+	local tipR1 = miniTip.r1 or miniTip:CreateFontString(nil, "OVERLAY")
+	tipR1:SetFont("Fonts\\ARIALN.TTF", 9)
+	tipR1:SetPoint("TOPRIGHT", miniTip, "TOPRIGHT", -6, -17)
+	tipR1:SetJustifyH("RIGHT")
+	miniTip.r1 = tipR1
+
+	local tipL2 = miniTip.l2 or miniTip:CreateFontString(nil, "OVERLAY")
+	tipL2:SetFont("Fonts\\ARIALN.TTF", 9)
+	tipL2:SetPoint("TOPLEFT", miniTip, "TOPLEFT", 6, -28)
+	tipL2:SetTextColor(0.85, 0.85, 0.85)
+	miniTip.l2 = tipL2
+
+	local tipR2 = miniTip.r2 or miniTip:CreateFontString(nil, "OVERLAY")
+	tipR2:SetFont("Fonts\\ARIALN.TTF", 9)
+	tipR2:SetPoint("TOPRIGHT", miniTip, "TOPRIGHT", -6, -28)
+	tipR2:SetJustifyH("RIGHT")
+	miniTip.r2 = tipR2
+
+	local tipL3 = miniTip.l3 or miniTip:CreateFontString(nil, "OVERLAY")
+	tipL3:SetFont("Fonts\\ARIALN.TTF", 9)
+	tipL3:SetPoint("TOPLEFT", miniTip, "TOPLEFT", 6, -39)
+	tipL3:SetTextColor(0.85, 0.85, 0.85)
+	miniTip.l3 = tipL3
+
+	local tipR3 = miniTip.r3 or miniTip:CreateFontString(nil, "OVERLAY")
+	tipR3:SetFont("Fonts\\ARIALN.TTF", 9)
+	tipR3:SetPoint("TOPRIGHT", miniTip, "TOPRIGHT", -6, -39)
+	tipR3:SetJustifyH("RIGHT")
+	miniTip.r3 = tipR3
+
+	local tipFoot = miniTip.foot or miniTip:CreateFontString(nil, "OVERLAY")
+	tipFoot:SetFont("Fonts\\ARIALN.TTF", 8)
+	tipFoot:SetPoint("BOTTOMLEFT", miniTip, "BOTTOMLEFT", 6, 4)
+	tipFoot:SetTextColor(0.60, 0.60, 0.60)
+	miniTip.foot = tipFoot
+
 	-- ElvUI-Style Minimap FPS Counter (Bottom-Right)
 	local fpsFrame = getglobal("AZSHelper_MinimapFPS") or CreateFrame("Button", "AZSHelper_MinimapFPS", mm)
 	fpsFrame:SetWidth(48)
@@ -1428,30 +1667,32 @@ function AZSHelper:ApplySquareMinimapStyle()
 		end
 	end)
 
-	fpsFrame:SetScript("OnEnter", function()
-		GameTooltip:SetOwner(fpsFrame, "ANCHOR_BOTTOMLEFT")
-		GameTooltip:ClearLines()
-		GameTooltip:AddLine("System Performance", 1, 0.82, 0)
+	local function ShowFPSTooltip()
+		local anchor = GetMinimapTooltipAnchor(fpsFrame)
+		miniTip:ClearAllPoints()
+		miniTip:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -4, 0)
+		tipTitle:SetText("System")
 		local fps = math.floor(GetFramerate() + 0.5)
-		GameTooltip:AddDoubleLine("Framerate:", string.format("%d FPS", fps), 1, 1, 1, 0.2, 1, 0.2)
+		local fpsColor = (fps >= 30 and "33ff33") or (fps >= 20 and "ffcc00") or "ff3333"
+		tipL1:SetText("Framerate:")
+		tipR1:SetText(string.format("|cff%s%d fps|r", fpsColor, fps))
+		local lat = 0
 		if GetNetStats then
 			local _, _, latencyHome = GetNetStats()
-			if latencyHome and latencyHome > 0 then
-				GameTooltip:AddDoubleLine("Latency:", string.format("%d ms", latencyHome), 1, 1, 1, 0.2, 1, 0.2)
-			end
+			lat = latencyHome or 0
 		end
-		if gcinfo then
-			local mem = gcinfo()
-			if mem and mem > 0 then
-				GameTooltip:AddDoubleLine("Lua Memory:", string.format("%.1f MB", mem / 1024), 1, 1, 1, 0.8, 0.8, 0.8)
-			end
-		end
-		GameTooltip:AddLine("Click to clean Lua memory.", 0.6, 0.6, 0.6)
-		GameTooltip:Show()
-	end)
+		tipL2:SetText("Latency:")
+		tipR2:SetText(string.format("|cff33ff33%d ms|r", lat))
+		local mem = (gcinfo and gcinfo()) or 0
+		tipL3:SetText("Lua RAM:")
+		tipR3:SetText(string.format("|cffcccccc%.1f MB|r", mem / 1024))
+		tipFoot:SetText("Click to clean memory")
+		miniTip:Show()
+	end
 
+	fpsFrame:SetScript("OnEnter", ShowFPSTooltip)
 	fpsFrame:SetScript("OnLeave", function()
-		GameTooltip:Hide()
+		miniTip:Hide()
 	end)
 
 	fpsFrame:SetScript("OnClick", function()
@@ -1459,7 +1700,129 @@ function AZSHelper:ApplySquareMinimapStyle()
 			collectgarbage()
 			DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Lua memory cleaned.")
 		end
+		if miniTip:IsShown() then
+			ShowFPSTooltip()
+		end
 	end)
+
+	-- ElvUI-Style Minimap European Clock (Bottom-Left, slightly elevated)
+	local clockFrame = getglobal("AZSHelper_MinimapClock") or CreateFrame("Button", "AZSHelper_MinimapClock", mm)
+	clockFrame:SetWidth(40)
+	clockFrame:SetHeight(14)
+	clockFrame:ClearAllPoints()
+	clockFrame:SetPoint("BOTTOMLEFT", mm, "BOTTOMLEFT", 5, 6)
+	clockFrame:SetFrameLevel(mm:GetFrameLevel() + 10)
+	clockFrame:EnableMouse(true)
+	clockFrame:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+	local clockText = clockFrame.text or clockFrame:CreateFontString(nil, "OVERLAY")
+	clockText:SetFont("Fonts\\ARIALN.TTF", 10, "OUTLINE")
+	clockText:ClearAllPoints()
+	clockText:SetPoint("BOTTOMLEFT", clockFrame, "BOTTOMLEFT", 0, 0)
+	clockText:SetJustifyH("LEFT")
+	clockText:SetShadowColor(0, 0, 0, 1)
+	clockText:SetShadowOffset(1, -1)
+	clockFrame.text = clockText
+
+	local clockTimer = 0
+	local function GetEuropeanTime()
+		local rawH, rawM, sec = 0, 0, 0
+		if date then
+			local d = date("*t")
+			if d and d.hour then
+				rawH = d.hour
+				rawM = d.min or 0
+				sec = d.sec or 0
+			else
+				local str = date("%H:%M")
+				if str and string.len(str) >= 5 then
+					rawH = tonumber(string.sub(str, 1, 2)) or 0
+					rawM = tonumber(string.sub(str, 4, 5)) or 0
+				end
+			end
+		end
+		BordoUIDB = BordoUIDB or {}
+		if BordoUIDB.timeOffset == nil or BordoUIDB.timeOffset == 0 then
+			BordoUIDB.timeOffset = 1 -- Standard European Winter Time (CET = UTC+1)
+		end
+		local offset = tonumber(BordoUIDB.timeOffset) or 1
+		local curH = rawH + offset
+		while curH >= 24 do curH = curH - 24 end
+		while curH < 0 do curH = curH + 24 end
+		return curH, rawM, sec, rawH, offset
+	end
+
+	local function UpdateClockDisplay()
+		BordoUIDB = BordoUIDB or {}
+		local isServer = (BordoUIDB.clockMode == "SERVER")
+		if isServer then
+			local sH, sM = GetGameTime()
+			clockText:SetText(string.format("|cffffcc00%02d:%02d|r |cff888888s|r", sH or 0, sM or 0))
+		else
+			local curH, curM = GetEuropeanTime()
+			clockText:SetText(string.format("|cffffffff%02d:%02d|r", curH, curM))
+		end
+	end
+
+	clockFrame:SetScript("OnUpdate", function()
+		clockTimer = clockTimer + arg1
+		if clockTimer >= 1.0 then
+			clockTimer = 0
+			UpdateClockDisplay()
+		end
+	end)
+
+	local function ShowClockTooltip()
+		local anchor = GetMinimapTooltipAnchor(clockFrame)
+		miniTip:ClearAllPoints()
+		miniTip:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -4, 0)
+		tipTitle:SetText("Time")
+		local curH, curM, sec, rawH, offset = GetEuropeanTime()
+		local tzShort = (offset == 2) and "Summer" or "Winter"
+		tipL1:SetText("Local (" .. tzShort .. "):")
+		tipR1:SetText(string.format("|cff33ff33%02d:%02d:%02d|r", curH, curM, sec))
+		local sH, sM = GetGameTime()
+		tipL2:SetText("Server:")
+		tipR2:SetText(string.format("|cffffffff%02d:%02d|r", sH or 0, sM or 0))
+		tipL3:SetText("Date:")
+		tipR3:SetText(date and string.format("|cffffd200%s|r", date("%d.%m.%Y")) or "")
+		tipFoot:SetText("L-Click: Mode | R-Click: DST")
+		miniTip:Show()
+	end
+
+	clockFrame:SetScript("OnEnter", ShowClockTooltip)
+	clockFrame:SetScript("OnLeave", function()
+		miniTip:Hide()
+	end)
+
+	clockFrame:SetScript("OnClick", function()
+		BordoUIDB = BordoUIDB or {}
+		if arg1 == "RightButton" then
+			local curOff = tonumber(BordoUIDB.timeOffset) or 1
+			if curOff == 1 then
+				BordoUIDB.timeOffset = 2
+				DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Timezone set to |cffffcc00Daylight Saving Time (CEST, UTC+2)|r.")
+			else
+				BordoUIDB.timeOffset = 1
+				DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Timezone set to |cff00ff00Standard Time (CET, UTC+1)|r.")
+			end
+		else
+			if BordoUIDB.clockMode == "SERVER" then
+				BordoUIDB.clockMode = "LOCAL"
+				DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Clock display set to |cff00ff00Local Time (24h)|r.")
+			else
+				BordoUIDB.clockMode = "SERVER"
+				DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Clock display set to |cffffcc00Server Time|r.")
+			end
+		end
+		PlaySound("igMainMenuOptionCheckBoxOn")
+		UpdateClockDisplay()
+		if miniTip:IsShown() then
+			ShowClockTooltip()
+		end
+	end)
+
+	UpdateClockDisplay()
 
 	mm:EnableMouseWheel(true)
 	mm:SetScript("OnMouseWheel", function()
@@ -1730,6 +2093,9 @@ eventHandler:RegisterEvent("ACTIONBAR_UPDATE_COOLDOWN")
 eventHandler:SetScript("OnEvent", function()
 	if event == "PLAYER_ENTERING_WORLD" or event == "VARIABLES_LOADED" then
 		LayoutBar()
+		if SurvivorUI_InstallCenteredActionButtonTooltips then
+			SurvivorUI_InstallCenteredActionButtonTooltips()
+		end
 		HideDefaultBlizzardFrames()
 		AZSHelper:ApplySquareMinimapStyle()
 		AZSHelper:SkinChatWindow()
@@ -1762,7 +2128,7 @@ eventHandler:SetScript("OnEvent", function()
 				AZSHelper:RestorePosition(UI.minimapDock, AZSHelperDB.minimapDockPos)
 			else
 				UI.minimapDock:ClearAllPoints()
-				UI.minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -6, 0)
+				UI.minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -3, 0)
 			end
 		end
 		if PositionMicroButtons then PositionMicroButtons() end
@@ -1802,7 +2168,7 @@ function BordoUI_ResetThemeUI()
 	UI.tallyFrame:SetPoint("TOP", UI.xpBar, "BOTTOM", 0, -4)
 	if UI.minimapDock then
 		UI.minimapDock:ClearAllPoints()
-		UI.minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -6, 0)
+		UI.minimapDock:SetPoint("TOPRIGHT", Minimap, "TOPLEFT", -3, 0)
 	end
 	if BordoUI_ChatBox then
 		BordoUI_ChatBox:ClearAllPoints()
@@ -1819,6 +2185,8 @@ function BordoUI_ResetThemeUI()
 		BordoUIDB.tallyPos = nil
 		BordoUIDB.microDockPos = nil
 		BordoUIDB.highestCritPos = nil
+		BordoUIDB.encounterBarsPos = nil
+		RestoreEncounterBarsPosition()
 	end
 	if AZSHelperDB then
 		AZSHelperDB.rowPos = nil

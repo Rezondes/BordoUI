@@ -202,8 +202,8 @@ local function CreateSCTLine(id)
     local line = CreateFrame("Frame", "BordoUI_SCT_Line_" .. id, UIParent);
     line:SetWidth(200);
     line:SetHeight(SCT.lineHeight);
-    line:SetFrameStrata("HIGH");
-    line:SetFrameLevel(15);
+    line:SetFrameStrata("MEDIUM");
+    line:SetFrameLevel(10);
     line:Hide();
     
     -- Spell Icon Frame (Variant 1 & 2)
@@ -462,6 +462,10 @@ end
 
 -- Spawn or Stack Combat Text Line
 function BordoUI:AddCombatNumber(spellName, amount, isCrit, isIncoming, isHeal)
+    -- Suppress SCT when build advisor window is open so numbers never obstruct building
+    if ( BordoUI_BuildAdvisorFrame and BordoUI_BuildAdvisorFrame:IsShown() ) then
+        return;
+    end
     local s = self:GetDamageSettings();
     if ( s.mode == "standard" ) then
         if ( s.standard.filter ~= "crits" or not isCrit ) then

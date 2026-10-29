@@ -991,11 +991,12 @@ end
 
 local scanFrame = CreateFrame("Frame", "AZSHelper_NameplateScanner");
 local scanElapsed = 0;
+local SCAN_INTERVAL = 0.10; -- 10 scans/sec; frequent full restyling can add jitter in dense pulls.
 
 scanFrame:SetScript("OnUpdate", function()
     local elapsed = arg1 or 0.05;
     scanElapsed = scanElapsed + elapsed;
-    if ( scanElapsed < 0.02 ) then return; end
+    if ( scanElapsed < SCAN_INTERVAL ) then return; end
     scanElapsed = 0;
     
     local frames = { WorldFrame:GetChildren() };

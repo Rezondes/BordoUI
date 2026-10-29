@@ -4,25 +4,150 @@ All notable changes to **Bordo UI** for *Azeroth Survivors* (World of Warcraft 1
 
 ---
 
-## [2.2.12] - 2026-10-28
+## [2.3.4] - 2026-10-29
+
+### Added
+- **Level Up Card Choice Pick Advisor Overlay (`BuildAdvisor.lua`):**
+  - Registered `BordoUI_ChoiceAdvisorHUD` directly with the game engine's `AZS_SetOnTopOfScreens` and `AZS_ON_TOP_FRAMES`, guaranteeing it is rendered ON TOP of the fullscreen Level Up cards during level-up choices.
+  - Sits prominently right above the 3 cards and displays the active build's top 6 recommended spells with pulsing gold animated action borders, rank progress badges (`Rank 1`, `MAX`, `[PICK!]`), spell icons, and full ability names.
+  - Immediate card matching: players can instantly compare Card 1, Card 2, Card 3 against their active build priority list to pick the optimal skill in seconds.
+  - Automatically activates whenever level up choices occur (`phase == "choosing"` or stored levels available) and smoothly fades when choices are completed.
+  - Fully draggable with Alt + Left Mouse Button, and screen coordinates are persisted in `BordoUIDB.choiceAdvisorPos`.
+  - Added `/guide test` command to test, preview, and position the Pick Advisor HUD at any time.
+- **Warrior: Shield Slam Juggernaut Meta Build (`BuildData.lua`):**
+  - Added dedicated 3rd Warrior build focusing on Shield Slam burst, Cleave sweeps, Revenge procs, Thunder Clap slows, and Shield Block defense.
+  - Full 51-point talent tree with `5 / 5 / 41` Protection distribution and the `30 pts: Shield Slam` milestone.
+  - Authentic Best-in-Slot jewelry including *Styleen's Impending Scarab*, *Band of Accuria*, *Heavy Dark Iron Ring*, *Force of Will*, and *Medallion of the Dawn*.
+- **Talent ID Synchronization Across All Classes (`BuildData.lua`):**
+  - Fully synchronized all 20 meta build talent keys across all 9 classes, ensuring 100% of builds display their complete 51-point talent trees and milestones.
+
+---
+
+## [2.3.3] - 2026-10-28
+
+### Added
+- **Interactive 51-Point Talent Build Guide (`BuildAdvisor.lua`, `BuildData.lua`):**
+  - Added dedicated `[ ✦ Talent Build (51 Pts) ]` sub-tab mode toggle in the Build Advisor window.
+  - Full 3-tree side-by-side layout for all 19 meta builds across all 9 classes, matching the in-game Azeroth Survivors Armory Talents UI:
+    - Tree header displaying tree icon, tree name, and exact points spent (e.g. `22 pts`, `12 pts`, `17 pts`).
+    - Individual talent rows with talent icon, talent name, allocated rank badges (`5/5`, `4/5`, `3/3`, `1/1`), and rich hover tooltips describing each talent's effect.
+    - Integrated 10, 20, and 30-point milestone cards at the bottom of each tree column with unlocked `[✓]` (green) or locked `[ ]` (gray) indicators and interactive tooltips detailing how milestones transform spell gameplay.
+    - Shaman's "Totem Overlord" configured to the exact `22 / 12 / 17` distribution and talent ranks matching the in-game screenshot.
+    - Seamless switching between `[ ⚔ Spells & BiS Gear ]` and `[ ✦ Talent Build (51 Pts) ]` with persistent class and build selection.
+
+---
+
+## [2.3.2] - 2026-10-28
+
+### Added
+- **Authentic Azeroth Survivors Jewelry Tooltips (`BuildAdvisor.lua`, `BuildData.lua`):**
+  - All 5 jewelry slots (Neck, Ring 1, Ring 2, Trinket 1, Trinket 2) now feature full interactive mouse tooltips styled after authentic in-game Azeroth Survivors item tooltips.
+  - Exact stat lines formatting matching in-game stats: `+138% Dur, +69% Dmg, +1% HP`, `93% CDR`, `+246% Dmg`, `+44% Crit`, `+236% Crit Dmg`, `+45% Area, +50% Dmg`, etc.
+  - Hovering the "BEST IN SLOT (BiS) JEWELRY & TRINKETS" title displays the full 5-piece worn gear stat overview identical to the game HUD.
+  - Slot cards display concise primary stat lines for immediate readability.
+- **Spell Row Hover Tooltips (`BuildAdvisor.lua`):**
+  - Hovering any spell in the advisor shows a rich tooltip with spell school, pick priority rank, and comprehensive tactical advisory notes.
+- **Shaman Totem Overlord Build (`BuildData.lua`):**
+  - Added full 3rd Shaman build featuring Magma Totem, Searing Totem, Fire Nova, Call of Flame, Lightning Shield, and Flame Shock.
+  - Integrated dynamic 3-tab build browser switching.
+
+---
+
+## [2.3.0] - 2026-10-28
+
+### Added
+- **Meta Build Guide & Advisor Window (`BuildData.lua`, `BuildAdvisor.lua`):**
+  - Interactive meta build browser covering all 9 classes (Hunter, Paladin, Warrior, Mage, Warlock, Rogue, Shaman, Priest, Druid).
+  - Minimum 2 complete meta builds per class (18 builds total) reflecting official playstyles and internet meta research.
+  - Detailed stat priorities, core recommended spells with pick priority rankings (#1 to #6) and school classifications.
+  - Best-in-Slot (BiS) Neck, Rings, and Trinkets with 100% authentic WoW 1.12 item icons and tailored rationale.
+  - Tactical tips and strategy guidance for power spikes and boss fights.
+- **Book Icon Button:**
+  - Integrated into the `Build & Jewelry` header next to the title (`SurvivorUIBuild`).
+  - Added to the Minimap Dock window panel as `Build Guide`.
+  - Added slash commands: `/builds`, `/buildguide`, `/metabuild`, `/guide`, and `/bordo guide`.
+- **Card Choice Glowing & Recommendation HUD (`BordoUI_ChoiceAdvisorHUD`):**
+  - Activating any build tracks it across runs (`[★ ACTIVATE THIS BUILD]`).
+  - Whenever the level-up choice screen appears (`AZS_GetPhase() == "choosing"`), the Choice Advisor HUD automatically slides into view.
+  - Target build spells pulse with an animated golden radiant glow (`UI-ActionButton-Border` with smooth sine wave oscillation) indicating priority picks.
+  - Displays current learned rank vs. target rank, with `[PICK!]` indicator for unlearned core spells.
+  - Includes a test mode (`/guide test` or in-window button) to preview the glowing HUD anytime outside combat.
+- **In-Run Build List Indicator:**
+  - Equipped abilities in `BuildList.lua` matching the active build are tagged with their priority badge (e.g. `[#1]`, `[#2]`).
+
+---
+
+## [2.2.23] - 2026-10-28
+
+### Fixed
+- **Spell tooltip overlap:** the centered tooltip now anchors below the action-bar row instead of estimating its location from tooltip height.
+
+## [2.2.22] - 2026-10-28
+
+### Fixed
+- **Centered spell tooltip:** set the tooltip owner before filling spell content; reposition afterward without resetting the populated tooltip.
+
+## [2.2.21] - 2026-10-28
+
+### Fixed
+- **Action-bar spell tooltip:** bypass the stock hover handler and build the single centered tooltip directly from the hovered action slot.
+
+## [2.2.20] - 2026-10-28
+
+### Fixed
+- **Action-bar spell hover:** reinstall the centered tooltip handler after the action bar is laid out and explicitly enable mouse input on the spell buttons.
+
+## [2.2.19] - 2026-10-28
+
+### Fixed
+- **Action-bar hover tooltip:** added direct hover routing for the centered spells so the tooltip stays visible while the game fills in spell details. It opens downward above the HUD bar and avoids a second tooltip.
+
+## [2.2.18] - 2026-10-28
+
+### Fixed
+- **Action-bar spell tooltip timing:** keep the centered tooltip visible while spell details are being read, then re-anchor it after the full text is available.
+
+## [2.2.17] - 2026-10-28
+
+### Fixed
+- **Centered action-bar spell tooltip:** hovering an action-bar spell now routes its tooltip to the centered, downward-opening position; the duplicate right-side tooltip remains suppressed.
+
+## [2.2.16] - 2026-10-28
+
+### Fixed
+- **Centered action-bar spell tooltip:** hovering a spell in the middle HUD now shows the centered, downward-opening tooltip; the duplicate right-side tooltip remains suppressed.
+
+## [2.2.15] - 2026-10-28
+
+### Removed
+- **Centered Procs & Buffs tracker:** removed the extra mid-screen buff icons. The existing player buff row above the health bar remains enabled.
+
+## [2.2.14] - 2026-10-28
+
+### Fixed
+- **Duplicate spell tooltips:** standard action-bar spell tooltips are suppressed; the centered Build tooltip remains available on Build rows.
+
+## [2.2.13] - 2026-10-28
 
 ### Changed
-- **Build list tooltips:** disabled on the right Build list panel (both ability rows and worn gear rows no longer show mouse hover tooltips).
-- **Center spell tooltips:** restored on center HUD action bar abilities (`ActionButton1`..`6`, `12` in `SurvivorUIRow`).
-- **Downward tooltip positioning:** center spell tooltips now open downwards underneath each spell button (`TOP` anchored to button `BOTTOM`) with screen clamping to prevent center screen and combat area overlap.
-- **Readability & styling:** preserved full 0.80 scale, dark translucent backdrop, school color accents, light blue cooldowns, mint ranges, gold crit stats, and word-wrapped multi-line descriptions.
+- **Build spell tooltips:** spell tooltips are centered and open downward, with their lower edge kept clear of the centered action bar. Build jewelry tooltips keep their existing placement.
+
+## [2.2.12] - 2026-10-28
+
+### Improved
+- **Nameplate stability:** reduced repeated nameplate restyling from about 50 times per second to 10 times per second to lower update churn during dense pulls.
 
 ## [2.2.11] - 2026-10-28
 
 ### Fixed
-- **Character item hover:** the stats panel and divider stay visible while hovering equipment; the character panel no longer collapses for the tooltip.
+- **Character item hover:** the character stats panel and divider stay visible while hovering equipment; the panel no longer collapses to make room for a tooltip.
 
 ## [2.2.10] - 2026-10-28
 
 ### Fixed
 - **Tooltip readability:** long ability and item text now has a wider, screen-clamped tooltip layout with wrapping.
 - **Build tooltip only:** ability tooltips are suppressed outside the Build list; the Build list explicitly keeps its own spell and gear tooltips active.
-- **Character item hover space:** while any equipment slot tooltip is open, the unused stats column and its black background are temporarily removed so the tooltip has clear space. Tooltips appear on the free side of the hovered slot; stats return when the cursor leaves.
+- **Character item hover space:** equipment tooltips are positioned on the free side of the hovered slot.
 - **Character item tooltip width:** short item tooltips now fit their content instead of leaving an oversized empty right side; long text keeps its wrapping.
 - **Damage meter help:** the TOTAL explanation wraps on its own line so it is not cut off.
 - **Build descriptions:** long spell and item-effect lines are split into full text rows before the client can truncate them with an ellipsis.

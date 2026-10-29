@@ -1,11 +1,11 @@
---[[
+﻿--[[
     Bordo UI - Core (Core.lua)
     World of Warcraft 1.12.1 / Azeroth Survivors
     Modern UI Suite by Bordo
 ]]--
 BordoUI = {};
 AZSHelper = BordoUI; -- Backwards compatibility alias
-BordoUI.version = "2.2.2";
+BordoUI.version = "2.2.24";
 -- Unit & Mob Tooltip Relocation: Anchor world/unit/add tooltips to bottom-left next to ChatFrame1
 local tipAnchor = CreateFrame("Frame", "BordoUI_TooltipAnchor", UIParent);
 tipAnchor:SetWidth(200);
@@ -228,9 +228,6 @@ eventFrame:SetScript("OnEvent", function()
             if ( targetChat and BordoUIDB and BordoUIDB.chatPos ) then
                 BordoUI:RestorePosition(targetChat, BordoUIDB.chatPos);
             end
-            if ( BordoUI_ProcTrackerFrame and BordoUIDB and BordoUIDB.procTrackerPos ) then
-                BordoUI:RestorePosition(BordoUI_ProcTrackerFrame, BordoUIDB.procTrackerPos);
-            end
         end
     end
 end);
@@ -243,6 +240,13 @@ SLASH_BORDOU5 = "/survivor";
 SlashCmdList["BORDOU"] = function(msg)
     msg = string.lower(msg or "");
     local _, _, cmd, val = string.find(msg, "^(%a+)%s*(.*)$");
+
+    -- The bare /bordo command is the layout editor entry point.
+    if ( not cmd or cmd == "" ) then
+        BordoUI:SetLocked(false);
+        BordoUI:ToggleMoveMode(true);
+        return;
+    end
     
     if ( cmd == "scale" or cmd == "dmg" or cmd == "damage" or cmd == "numbers" or cmd == "combattext" ) then
         local num = tonumber(val);
@@ -256,10 +260,8 @@ SlashCmdList["BORDOU"] = function(msg)
                 end
             end
             DEFAULT_CHAT_FRAME:AddMessage(string.format("|cff00ccffBordo UI|r: Floating combat text scale set to %.0f%%.", num * 100));
-        elseif ( BordoUI.ToggleDamageNumbersWindow ) then
-            BordoUI:ToggleDamageNumbersWindow();
         else
-            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo dmg [0.4 - 1.5] or type /bordo dmg to open settings window.");
+            DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Usage: /bordo dmg [0.4 - 1.5] to set floating damage text scale.");
         end
     elseif ( cmd == "size" or cmd == "table" ) then
         local num = tonumber(val);
@@ -287,6 +289,12 @@ SlashCmdList["BORDOU"] = function(msg)
         end
     elseif ( cmd == "window" or cmd == "windows" ) then
         if BordoUI.HandleWindowCommand then BordoUI:HandleWindowCommand(val); end
+    elseif ( cmd == "filter" or cmd == "statsfilter" or cmd == "statfilter" ) then
+        if BordoUI_ToggleStatsConfig then
+            BordoUI_ToggleStatsConfig();
+        elseif BordoUI and BordoUI.ToggleStatsConfig then
+            BordoUI:ToggleStatsConfig();
+        end
     elseif ( cmd == "stats" or cmd == "statswindow" ) then
         if BordoUI.SetWindowEnabled then
             local current = BordoUI:IsWindowEnabled("stats");
@@ -318,14 +326,6 @@ SlashCmdList["BORDOU"] = function(msg)
     elseif ( cmd == "testlowhp" ) then
         if ( BordoUI.TestLowHealthWarning ) then
             BordoUI:TestLowHealthWarning();
-        end
-    elseif ( cmd == "procs" or cmd == "proc" or cmd == "buffs" ) then
-        if ( BordoUI.ToggleProcTracker ) then
-            BordoUI:ToggleProcTracker();
-        end
-    elseif ( cmd == "testprocs" or cmd == "testproc" ) then
-        if ( BordoUI.TestProcTracker ) then
-            BordoUI:TestProcTracker();
         end
     elseif ( cmd == "runrecap" or cmd == "recap" or cmd == "testrecap" ) then
         if ( BordoUI.ToggleRunRecap ) then
@@ -380,13 +380,14 @@ SlashCmdList["BORDOU"] = function(msg)
         BordoUI:ToggleMoveMode();
     elseif ( cmd == "help" ) then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI Commands:|r");
-        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Toggle Attack Stats Table");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo|r - Open UI Move Mode");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo party|r - Toggle Modern Party Frames (/bordo party test)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo plates|r - Open Nameplates Settings (/bordo plates all|bosses|off)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo totems|r - Totem health bars stay permanently hidden");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo lock|r - Lock all UI windows (disables dragging)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo unlock|r - Unlock all UI windows (freely drag & reposition)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo meter|r - Toggle BordoUI Damage Meter");
+        DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo filter|r - Configure visible stats (show/hide)");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo stats [on|off]|r - Toggle 4-Section Stats Window");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo crit [on|off]|r - Toggle Highest Crit Window");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo window|r - Open Window Control Panel (toggle any window ON/OFF)");
@@ -396,6 +397,14 @@ SlashCmdList["BORDOU"] = function(msg)
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo dmg <0.4-1.5>|r - Set floating damage font scale");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo size <0.4-1.5>|r - Set stats table scale");
         DEFAULT_CHAT_FRAME:AddMessage("  |cffffd100/bordo zoom [yards]|r - Unlock & set max camera distance");
+    elseif ( cmd == "guide" or cmd == "buildguide" or cmd == "metabuild" or cmd == "builds" ) then
+        if BordoUI_ToggleBuildAdvisor then
+            BordoUI_ToggleBuildAdvisor();
+        end
+    elseif ( cmd == "testglow" or cmd == "choice" ) then
+        if SlashCmdList["BORDOBUILDGUIDE"] then
+            SlashCmdList["BORDOBUILDGUIDE"]("test");
+        end
     elseif ( cmd == "meter" or cmd == "dps" ) then
         if ( BordoUI_ToggleMeter ) then
             BordoUI_ToggleMeter();
@@ -409,19 +418,7 @@ SlashCmdList["BORDOU"] = function(msg)
             SlashCmdList["AZSCHESTLIGHT"](val);
         end
     else
-        -- Toggle Stats Table
-        if ( AZSHelper_StatsTableFrame ) then
-            if ( AZSHelper_StatsTableFrame:IsShown() ) then
-                AZSHelper_StatsTableFrame:Hide();
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table hidden.");
-            else
-                if ( AZSHelper.AnchorStatsTableToMultipliers ) then
-                    AZSHelper:AnchorStatsTableToMultipliers();
-                end
-                AZSHelper_StatsTableFrame:Show();
-                DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Stats table shown.");
-            end
-        end
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Unknown command. Type |cffffd100/bordo help|r for commands.");
     end
 end;
 -- Standalone Slash Commands for Locking / Unlocking
@@ -609,15 +606,33 @@ function BordoUI:ToggleMoveMode(enable)
 		{ frame = BordoUI_TooltipAnchor, name = "Mob Tooltip (Drag Me)", key = "tooltipPos" },
 		{ frame = BordoUI_LootAlertFrame, name = "Boss Loot Alert (Drag Me)", key = "lootAlertPos" },
 		{ frame = BordoUI_ProcTrackerFrame, name = "Procs & Buffs HUD (Drag Me)", key = "procTrackerPos" },
+        { frame = AZSHelper_BossEncounterContainer, name = "Boss HP Bars (Drag Me)", key = "encounterBarsPos" },
+        { frame = BordoUI_ChoiceAdvisorHUD, name = "Custom Build HUD (Drag Me)", key = "choiceAdvisorPos" },
     };
     for i = 1, table.getn(targets) do
         local t = targets[i];
         if ( t.frame ) then
             if ( not BordoUI.MoveOverlays[i] ) then
+                -- Capture this iteration's key and frame name. Without locals, Lua 5.0
+                -- closures can all retain the loop variable's final value, so dragging
+                -- the HUD writes another window's position and the HUD recenters next run.
+                local saveKey = t.key;
                 BordoUI.MoveOverlays[i] = CreateMoveOverlay(t.frame, t.name, function(f)
                     local pt, _, relPt, x, y = f:GetPoint();
                     BordoUIDB = BordoUIDB or {};
-                    BordoUIDB[t.key] = { point = pt, relativePoint = relPt, x = x, y = y };
+                    if ( saveKey == "hudPos" ) then
+                        local centerX, centerY = f:GetCenter();
+                        local pos = {
+                            point = "CENTER",
+                            x = math.floor(centerX - UIParent:GetWidth() / 2 + 0.5),
+                            y = math.floor(centerY - UIParent:GetHeight() / 2 + 0.5),
+                        };
+                        BordoUIDB.hudPos = pos;
+                        AZSHelperDB = AZSHelperDB or {};
+                        AZSHelperDB.rowPos = pos;
+                    else
+                        BordoUIDB[saveKey] = { point = pt, relativePoint = relPt, x = x, y = y };
+                    end
                 end);
             end
             if ( enable ) then
@@ -657,6 +672,8 @@ function BordoUI:ResetToDefaultLayout()
     BordoUIDB.centerHudPos = nil;
     BordoUIDB.multPanelPos = nil;
     BordoUIDB.nameplatesFramePos = nil;
+    BordoUIDB.encounterBarsPos = nil;
+    BordoUIDB.choiceAdvisorPos = nil;
     if ( AZSHelperDB ) then
         AZSHelperDB.rowPos = nil;
         AZSHelperDB.bottomBarPos = nil;
@@ -685,6 +702,18 @@ function BordoUI:ResetToDefaultLayout()
         ChatFrame1:ClearAllPoints();
         ChatFrame1:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", 14, 20);
     end
+    if ( AZSHelper_BossEncounterContainer ) then
+        AZSHelper_BossEncounterContainer:ClearAllPoints();
+        if ( BordoUI_ChoiceAdvisorHUD ) then
+            AZSHelper_BossEncounterContainer:SetPoint("TOP", BordoUI_ChoiceAdvisorHUD, "BOTTOM", 0, -4);
+        else
+            AZSHelper_BossEncounterContainer:SetPoint("TOP", UIParent, "TOP", 0, -132);
+        end
+    end
+    if ( BordoUI_ChoiceAdvisorHUD ) then
+        BordoUI_ChoiceAdvisorHUD:ClearAllPoints();
+        BordoUI_ChoiceAdvisorHUD:SetPoint("TOP", UIParent, "TOP", 0, -4);
+    end
 	if ( BordoUI_LootAlertFrame ) then
 		BordoUI_LootAlertFrame:ClearAllPoints();
 		BordoUI_LootAlertFrame:SetPoint("TOP", UIParent, "TOP", 0, -175);
@@ -699,3 +728,12 @@ function BordoUI:ResetToDefaultLayout()
     end
     DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: All UI windows reset to standard layout matching reference screenshot!");
 end
+
+SLASH_BORDOUISTATSFILTER1 = "/statsfilter";
+SlashCmdList["BORDOUISTATSFILTER"] = function()
+    if BordoUI_ToggleStatsConfig then
+        BordoUI_ToggleStatsConfig();
+    elseif BordoUI and BordoUI.ToggleStatsConfig then
+        BordoUI:ToggleStatsConfig();
+    end
+end;

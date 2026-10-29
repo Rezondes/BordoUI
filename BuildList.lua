@@ -152,6 +152,7 @@ list.title:SetFont(SurvivorUI_FONT, 11 + FONT_BUMP, "OUTLINE")
 list.title:SetPoint("TOPLEFT", list, "TOPLEFT", 7, -6)
 list.title:SetTextColor(1, 0.82, 0)
 list.title:SetText("Build")
+
 list.count = list:CreateFontString(nil, "OVERLAY")
 list.count:SetFont(SurvivorUI_FONT, 10 + FONT_BUMP, "OUTLINE")
 list.count:SetPoint("TOPRIGHT", list, "TOPRIGHT", -7, -7)
@@ -272,9 +273,18 @@ local function PlaceRow(row)
 	PlaceText(row.rank, columns.rank)
 	row.name:SetWidth(nameRoom)
 end
-local function AnchorBuildTooltip(ownerRow)
-	GameTooltip:SetOwner(ownerRow, "ANCHOR_NONE")
+local function PositionBuildTooltip(ownerRow, centeredDown)
 	GameTooltip:ClearAllPoints()
+	if centeredDown then
+		local hud = getglobal("SurvivorUIRow")
+		local anchorBottom = ownerRow and ownerRow:GetBottom() or 0
+		if hud and hud:IsShown() then anchorBottom = hud:GetBottom() or anchorBottom end
+		-- Anchor below the whole spell row: content height can change after the
+		-- first frame, so it must not decide whether the tooltip covers the bar.
+		GameTooltip:SetPoint("TOP", UIParent, "BOTTOM", 0, anchorBottom - 8)
+		if GameTooltip.SetClampedToScreen then GameTooltip:SetClampedToScreen(true) end
+		return
+	end
 
 	local listLeft = list:GetLeft() or 0
 	local screenHeight = UIParent:GetHeight() or 768
@@ -299,6 +309,59 @@ local function AnchorBuildTooltip(ownerRow)
 		GameTooltip:SetPoint(anchorV.."LEFT", ownerRow, anchorV.."RIGHT", 8, 0)
 	end
 end
+
+local function AnchorBuildTooltip(ownerRow, centeredDown)
+	GameTooltip:SetOwner(ownerRow, "ANCHOR_NONE")
+	PositionBuildTooltip(ownerRow, centeredDown)
+end
+
+function SurvivorUI_AnchorCenteredSpellTooltip(owner)
+	if owner then PositionBuildTooltip(owner, true) end
+end
+
+-- Action-button tooltips can remain visible while moving between slots, so
+-- OnShow alone is not a reliable place to reposition them. Route each filled
+-- action button's existing tooltip to the same centered, downward layout.
+function SurvivorUI_InstallCenteredActionButtonTooltips()
+	for index = 1, 12 do
+		local button = getglobal("ActionButton"..index)
+		if button then
+			button:EnableMouse(true)
+			if button:GetScript("OnEnter") ~= button.bordoCenteredOnEnter then
+				local actionButton = button
+				local buttonIndex = index
+				local stockLeave = button:GetScript("OnLeave")
+				local onEnter = function()
+					local icon = getglobal("ActionButton"..buttonIndex.."Icon")
+					local texture = icon and icon:GetTexture()
+					if not texture or texture == "" then return end
+					local action = ActionButton_GetPagedID and ActionButton_GetPagedID(actionButton) or actionButton:GetID()
+					if not (action and GameTooltip.SetAction) then return end
+					GameTooltip.bordoBuildTooltipActive = true
+					GameTooltip:SetOwner(actionButton, "ANCHOR_NONE")
+					local ok = pcall(GameTooltip.SetAction, GameTooltip, action)
+					if not ok then return end
+					GameTooltip.bordoBuildTooltipActive = true
+					GameTooltip:Show()
+					if SurvivorUI_HideDuplicateSpellTooltips then SurvivorUI_HideDuplicateSpellTooltips() end
+					PositionBuildTooltip(actionButton, true)
+				end
+				local onLeave = function()
+					if stockLeave then stockLeave() end
+					if GameTooltip.GetOwner and GameTooltip:GetOwner() == actionButton then
+						GameTooltip.bordoBuildTooltipActive = nil
+						GameTooltip:Hide()
+					end
+				end
+				actionButton.bordoCenteredOnEnter = onEnter
+				actionButton:SetScript("OnEnter", onEnter)
+				actionButton.bordoCenteredOnLeave = onLeave
+				actionButton:SetScript("OnLeave", onLeave)
+			end
+		end
+	end
+end
+SurvivorUI_InstallCenteredActionButtonTooltips()
 
 local rows = {}
 local function Row(index)
@@ -385,10 +448,25 @@ local function Row(index)
 	if columns then
 		PlaceRow(row)
 	end
-	-- Build list ability tooltips disabled per user request
-	row:EnableMouse(false)
-	row:SetScript("OnEnter", nil)
-	row:SetScript("OnLeave", nil)
+	-- The spell's tooltip is centered above the action bar and opens downward;
+	-- gear tooltips keep their side-of-list placement.
+	row:EnableMouse(true)
+	row:SetScript("OnEnter", function()
+		if not (this.ability and this.actionSlot) then
+			return
+		end
+		-- SetAction may replace the tooltip's owner with its action button.
+		-- Keep an explicit marker so AbilityTooltip knows this is the Build card.
+		GameTooltip.bordoBuildTooltipActive = true
+		AnchorBuildTooltip(this, true)
+		GameTooltip:SetAction(this.actionSlot)
+		GameTooltip:Show()
+		PositionBuildTooltip(this, true)
+	end)
+	row:SetScript("OnLeave", function()
+		GameTooltip.bordoBuildTooltipActive = nil
+		GameTooltip:Hide()
+	end)
 	rows[index] = row
 	return row
 end
@@ -689,7 +767,13 @@ local function Fill(row, entry, actionSlot, isRacial)
 	row.actionSlot = actionSlot
 	row.icon:SetTexture(GetActionTexture and GetActionTexture(actionSlot) or nil)
 	row.icon:SetAlpha(1)
-	row.name:SetText(isRacial and name.."  |cff8a8a8a(racial)|r" or name)
+	local displayName = isRacial and name.."  |cff8a8a8a(racial)|r" or name
+	if not isRacial and BordoUI_IsActiveBuildSpell and (BordoUI_IsActiveBuildSpell(key) or BordoUI_IsActiveBuildSpell(name)) then
+		local _, prio = BordoUI_IsActiveBuildSpell(key)
+		if not prio then _, prio = BordoUI_IsActiveBuildSpell(name) end
+		displayName = displayName .. " |cffffd200[#" .. (prio or 1) .. "]|r"
+	end
+	row.name:SetText(displayName)
 	row.rank:SetText(tonumber(Field(entry, "rank", 3)) or "")
 	local showRange, showCooldown = Shows()
 	local lasting = LASTING[key] and not isRacial
@@ -1035,10 +1119,19 @@ for index = 1, table.getn(GEAR_SLOTS) do
 	line.tags = line:CreateFontString(nil, "OVERLAY")
 	line.tags:SetFont(SurvivorUI_FONT, 9 + FONT_BUMP, "OUTLINE")
 	line.tags:SetPoint("RIGHT", line, "RIGHT", -4, 0)
-	-- Build list gear tooltips disabled per user request
-	line:EnableMouse(false)
-	line:SetScript("OnEnter", nil)
-	line:SetScript("OnLeave", nil)
+	line:EnableMouse(true)
+	line:SetScript("OnEnter", function()
+		if this.slot and GetInventoryItemLink("player", this.slot) then
+			GameTooltip.bordoBuildTooltipActive = true
+			AnchorBuildTooltip(this)
+			GameTooltip:SetInventoryItem("player", this.slot)
+			GameTooltip:Show()
+		end
+	end)
+	line:SetScript("OnLeave", function()
+		GameTooltip.bordoBuildTooltipActive = nil
+		GameTooltip:Hide()
+	end)
 	gearLines[index] = line
 end
 local function PaintGear(line, r, g, b, fill, edge)

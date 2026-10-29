@@ -14,11 +14,11 @@ local windows = {
     { key = "meter", label = "Damage Meter", frame = "BordoUIMeter" },
     { key = "dock", label = "Minimap Buttons", frame = "BordoUI_MinimapDock" },
     { key = "chat", label = "Chat Box", frame = "BordoUI_ChatBox" },
-    { key = "procs", label = "Procs & Buffs", frame = "BordoUI_ProcTrackerFrame" },
     { key = "plates", label = "Nameplate Settings", frame = "BordoUI_NameplatesWindow" },
     { key = "damage", label = "Damage Text Settings", frame = "BordoUI_DamageNumbersFrame" },
     { key = "lowhp", label = "Low-Health Warning", frame = "BordoUI_LowHealthFrame" },
     { key = "character", label = "Character Panel", frame = "SurvivorUICharacter" },
+    { key = "guide", label = "Builds", frame = "BordoUI_BuildAdvisorFrame", transient = true },
     { key = "death", label = "Death Recap", frame = "AZSHelper_DeathRecapFrame", transient = true },
     { key = "runrecap", label = "Run Summary", frame = "BordoUI_RunRecapFrame", transient = true },
     { key = "loot", label = "Loot Alert", frame = "BordoUI_LootAlertFrame", transient = true }
@@ -30,6 +30,7 @@ local panelWindows = {
     { key = "crit", label = "Highest Crit", frame = "BordoUI_HighestCritFrame" },
     { key = "build", label = "Build & Jewelry", frame = "SurvivorUIBuild" },
     { key = "chat", label = "Chat Box", frame = "BordoUI_ChatBox" },
+    { key = "guide", label = "Builds", frame = "BordoUI_BuildAdvisorFrame", transient = true },
     { key = "death", label = "Death Recap", frame = "AZSHelper_DeathRecapFrame", transient = true },
     { key = "runrecap", label = "Run Summary", frame = "BordoUI_RunRecapFrame", transient = true },
     { key = "loot", label = "Loot Alert", frame = "BordoUI_LootAlertFrame", transient = true }
@@ -196,7 +197,6 @@ function BordoUI:HandleWindowCommand(value)
     if name == "bosshealth" then name = "bossbar"; end
     if name == "combat" then name = "hud"; end
     if name == "gold" or name == "tally" then name = "kills"; end
-    if name == "buffs" or name == "proc" then name = "procs"; end
     local def = byKey[name];
     if not def then
         DEFAULT_CHAT_FRAME:AddMessage("|cff00ccffBordo UI|r: Unknown window. Type |cffffd100/bordo window list|r.");

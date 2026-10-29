@@ -154,18 +154,17 @@ end);
 if ( BordoUI and BordoUI.AttachLockButton ) then
     BordoUI:AttachLockButton(frame, "TOPRIGHT", headerBar, "TOPRIGHT", -6, -4);
 end
+
 -- Build Section Categories and Rows
 local rowFrames = {};
-local currentY = -24;
 local ROW_HEIGHT = 14;
 local HEADER_HEIGHT = 16;
 for secIndex = 1, table.getn(SECTIONS) do
     local sec = SECTIONS[secIndex];
+    sec.rowFrames = {};
     
     -- Category Header with Colored Center Text and Left/Right Horizontal Lines
     local secHeader = CreateFrame("Frame", nil, frame);
-    secHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, currentY);
-    secHeader:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, currentY);
     secHeader:SetHeight(HEADER_HEIGHT);
     
     local secText = secHeader:CreateFontString(nil, "OVERLAY");
@@ -184,15 +183,13 @@ for secIndex = 1, table.getn(SECTIONS) do
     rightLine:SetPoint("RIGHT", secHeader, "RIGHT", -2, 0);
     rightLine:SetPoint("LEFT", secText, "RIGHT", 6, 0);
     
-    currentY = currentY - HEADER_HEIGHT - 1;
+    sec.headerFrame = secHeader;
     
     -- Data Rows
     for rIndex = 1, table.getn(sec.rows) do
         local rData = sec.rows[rIndex];
         
         local row = CreateFrame("Button", nil, frame);
-        row:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, currentY);
-        row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, currentY);
         row:SetHeight(ROW_HEIGHT);
         row:EnableMouse(true);
         
@@ -226,13 +223,69 @@ for secIndex = 1, table.getn(SECTIONS) do
             GameTooltip:Hide();
         end);
         
+        sec.rowFrames[rIndex] = row;
         table.insert(rowFrames, row);
-        currentY = currentY - ROW_HEIGHT;
     end
-    currentY = currentY - 3;
 end
--- Adjust frame height to content
-frame:SetHeight(math.abs(currentY) + 6);
+
+-- Layout Reflow & Dynamic Auto-Shrinking Function
+function StatsUI:Reflow()
+    BordoUIDB = BordoUIDB or {};
+    BordoUIDB.statsFilter = BordoUIDB.statsFilter or {};
+    local filter = BordoUIDB.statsFilter;
+    
+    local currentY = -24;
+    local anyVisible = false;
+    
+    for secIndex = 1, table.getn(SECTIONS) do
+        local sec = SECTIONS[secIndex];
+        local secHeader = sec.headerFrame;
+        local visibleCount = 0;
+        
+        for rIndex = 1, table.getn(sec.rows) do
+            local row = sec.rowFrames[rIndex];
+            local rData = sec.rows[rIndex];
+            local isVisible = (filter[rData.key] ~= false);
+            
+            if isVisible then
+                visibleCount = visibleCount + 1;
+                anyVisible = true;
+                row:ClearAllPoints();
+                local rowY = currentY - HEADER_HEIGHT - 1 - ((visibleCount - 1) * ROW_HEIGHT);
+                row:SetPoint("TOPLEFT", frame, "TOPLEFT", 8, rowY);
+                row:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -8, rowY);
+                row:Show();
+            else
+                row:Hide();
+            end
+        end
+        
+        if visibleCount > 0 then
+            secHeader:ClearAllPoints();
+            secHeader:SetPoint("TOPLEFT", frame, "TOPLEFT", 6, currentY);
+            secHeader:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, currentY);
+            secHeader:Show();
+            currentY = currentY - HEADER_HEIGHT - 1 - (visibleCount * ROW_HEIGHT) - 3;
+        else
+            secHeader:Hide();
+        end
+    end
+    
+    if not anyVisible then
+        frame:SetHeight(32);
+    else
+        frame:SetHeight(math.abs(currentY) + 6);
+    end
+
+    local cFrame = critFrame or (BordoUI and BordoUI.HighestCritFrame);
+    if cFrame and cFrame:IsShown() and (not (BordoUIDB and BordoUIDB.highestCritPos and BordoUIDB.highestCritPos.point)) then
+        cFrame:ClearAllPoints();
+        cFrame:SetPoint("TOPLEFT", frame, "BOTTOMLEFT", 0, -8);
+    end
+end
+
+-- Initial reflow
+StatsUI:Reflow();
 -- Live Stat Updating Function
 function StatsUI:Update()
     if ( not frame:IsShown() ) then return; end
@@ -705,6 +758,321 @@ function StatsUI:ResetPosition()
         BordoUIDB.highestCritPos = nil;
     end
 end
+-- =========================================================================
+-- STATS FILTER CONFIGURATION WINDOW
+-- =========================================================================
+local configFrame = nil;
+local configCheckboxes = {};
+
+local function UpdateStatRowVisual(btn, isChecked)
+    if not btn or not btn.cb then return; end
+    if isChecked then
+        btn.cb:SetBackdropBorderColor(0.20, 0.85, 0.35, 0.95);
+        btn.cb:SetBackdropColor(0.04, 0.22, 0.08, 0.95);
+        btn.check:Show();
+        btn.lbl:SetTextColor(0.92, 0.92, 0.95);
+    else
+        btn.cb:SetBackdropBorderColor(0.35, 0.35, 0.40, 0.80);
+        btn.cb:SetBackdropColor(0.08, 0.08, 0.10, 0.90);
+        btn.check:Hide();
+        btn.lbl:SetTextColor(0.45, 0.45, 0.50);
+    end
+end
+
+local function RefreshAllConfigVisuals()
+    BordoUIDB = BordoUIDB or {};
+    BordoUIDB.statsFilter = BordoUIDB.statsFilter or {};
+    local filter = BordoUIDB.statsFilter;
+    for key, btn in pairs(configCheckboxes) do
+        local isChecked = (filter[key] ~= false);
+        UpdateStatRowVisual(btn, isChecked);
+    end
+end
+
+local function CreateConfigSectionHeader(parent, x, y, width, title, color)
+    local hdr = CreateFrame("Frame", nil, parent);
+    hdr:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y);
+    hdr:SetWidth(width);
+    hdr:SetHeight(16);
+
+    local txt = hdr:CreateFontString(nil, "OVERLAY");
+    txt:SetFont(FONT_PATH, 10, "OUTLINE");
+    txt:SetPoint("LEFT", hdr, "LEFT", 2, 0);
+    txt:SetTextColor(color[1], color[2], color[3]);
+    txt:SetText(title);
+
+    local line = CreateLine(hdr, color[1], color[2], color[3], 0.4);
+    line:SetHeight(1);
+    line:SetPoint("LEFT", txt, "RIGHT", 6, 0);
+    line:SetPoint("RIGHT", hdr, "RIGHT", -2, 0);
+
+    return hdr;
+end
+
+local function CreateStatCheckbox(parent, x, y, rData)
+    local btn = CreateFrame("Button", nil, parent);
+    btn:SetWidth(142);
+    btn:SetHeight(16);
+    btn:SetPoint("TOPLEFT", parent, "TOPLEFT", x, y);
+    btn:EnableMouse(true);
+
+    -- Checkbox square (12x12)
+    local cb = CreateFrame("Frame", nil, btn);
+    cb:SetWidth(12);
+    cb:SetHeight(12);
+    cb:SetPoint("LEFT", btn, "LEFT", 2, 0);
+    cb:SetBackdrop({
+        bgFile = FLAT,
+        edgeFile = FLAT,
+        tile = false, tileSize = 0, edgeSize = 1,
+        insets = { left = 1, right = 1, top = 1, bottom = 1 }
+    });
+
+    -- Inner green indicator
+    local check = cb:CreateTexture(nil, "OVERLAY");
+    check:SetPoint("TOPLEFT", cb, "TOPLEFT", 2, -2);
+    check:SetPoint("BOTTOMRIGHT", cb, "BOTTOMRIGHT", -2, 2);
+    check:SetTexture(FLAT);
+    check:SetVertexColor(0.20, 1.00, 0.35, 1.0);
+
+    local lbl = btn:CreateFontString(nil, "OVERLAY");
+    lbl:SetFont(FONT_PATH, 10, "OUTLINE");
+    lbl:SetPoint("LEFT", cb, "RIGHT", 6, 0);
+    lbl:SetText(rData.label);
+
+    local hl = btn:CreateTexture(nil, "HIGHLIGHT");
+    hl:SetAllPoints(btn);
+    hl:SetTexture(FLAT);
+    hl:SetVertexColor(1, 1, 1, 0.08);
+
+    btn.cb = cb;
+    btn.check = check;
+    btn.lbl = lbl;
+    btn.rData = rData;
+
+    btn:SetScript("OnEnter", function()
+        local data = this.rData;
+        if not data then return; end
+        GameTooltip:SetOwner(this, "ANCHOR_RIGHT");
+        GameTooltip:SetText(data.label, 1, 0.82, 0);
+        GameTooltip:AddLine(data.desc, 0.85, 0.85, 0.85, 1);
+        local isVis = (BordoUIDB and BordoUIDB.statsFilter and BordoUIDB.statsFilter[data.key] ~= false);
+        if isVis then
+            GameTooltip:AddLine("|cff55ff55Visible in Stats window|r (Click to hide)", 0.7, 0.7, 0.7);
+        else
+            GameTooltip:AddLine("|cffff5555Hidden from Stats window|r (Click to show)", 0.7, 0.7, 0.7);
+        end
+        GameTooltip:Show();
+    end);
+    btn:SetScript("OnLeave", function() GameTooltip:Hide(); end);
+
+    btn:SetScript("OnClick", function()
+        local data = this.rData;
+        if not data then return; end
+        BordoUIDB = BordoUIDB or {};
+        BordoUIDB.statsFilter = BordoUIDB.statsFilter or {};
+        local current = (BordoUIDB.statsFilter[data.key] ~= false);
+        local newState = not current;
+        BordoUIDB.statsFilter[data.key] = newState;
+        UpdateStatRowVisual(this, newState);
+        StatsUI:Reflow();
+        StatsUI:Update();
+        PlaySound(newState and "igMainMenuOptionCheckBoxOn" or "igMainMenuOptionCheckBoxOff");
+    end);
+
+    return btn;
+end
+
+local function CreateStatsConfigFrame()
+    if configFrame then return configFrame; end
+
+    configFrame = CreateFrame("Frame", "BordoUI_StatsConfigFrame", UIParent);
+    configFrame:SetWidth(320);
+    configFrame:SetHeight(338);
+    configFrame:SetPoint("CENTER", UIParent, "CENTER", 0, 0);
+    configFrame:SetFrameStrata("DIALOG");
+    configFrame:SetFrameLevel(12);
+    configFrame:SetClampedToScreen(true);
+    configFrame:SetMovable(true);
+    configFrame:EnableMouse(true);
+    configFrame:RegisterForDrag("LeftButton");
+    configFrame:SetScript("OnDragStart", function() this:StartMoving(); end);
+    configFrame:SetScript("OnDragStop", function() this:StopMovingOrSizing(); end);
+
+    configFrame:SetBackdrop({
+        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        tile     = true,
+        tileSize = 12,
+        edgeSize = 8,
+        insets   = { left = 2, right = 2, top = 2, bottom = 2 }
+    });
+    configFrame:SetBackdropColor(0.04, 0.04, 0.07, 0.96);
+    configFrame:SetBackdropBorderColor(0.18, 0.18, 0.24, 0.98);
+
+    -- Title Bar
+    local cHeader = CreateFrame("Frame", nil, configFrame);
+    cHeader:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 0, 0);
+    cHeader:SetPoint("TOPRIGHT", configFrame, "TOPRIGHT", 0, 0);
+    cHeader:SetHeight(26);
+    cHeader:EnableMouse(true);
+    cHeader:RegisterForDrag("LeftButton");
+    cHeader:SetScript("OnDragStart", function() configFrame:StartMoving(); end);
+    cHeader:SetScript("OnDragStop", function() configFrame:StopMovingOrSizing(); end);
+
+    local title = cHeader:CreateFontString(nil, "OVERLAY");
+    title:SetFont(FONT_PATH, 12, "OUTLINE");
+    title:SetPoint("LEFT", cHeader, "LEFT", 10, 0);
+    title:SetTextColor(1, 0.82, 0);
+    title:SetText("Stat Display Filter");
+
+    local closeBtn = CreateFrame("Button", nil, cHeader, "UIPanelCloseButton");
+    closeBtn:SetPoint("TOPRIGHT", cHeader, "TOPRIGHT", -2, -2);
+    closeBtn:SetWidth(20);
+    closeBtn:SetHeight(20);
+    closeBtn:SetScript("OnClick", function() configFrame:Hide(); end);
+
+    local sepTop = CreateLine(cHeader, 1, 0.82, 0, 0.35);
+    sepTop:SetHeight(1);
+    sepTop:SetPoint("BOTTOMLEFT", cHeader, "BOTTOMLEFT", 6, 0);
+    sepTop:SetPoint("BOTTOMRIGHT", cHeader, "BOTTOMRIGHT", -6, 0);
+
+    local subTitle = configFrame:CreateFontString(nil, "OVERLAY");
+    subTitle:SetFont(FONT_PATH, 9, "OUTLINE");
+    subTitle:SetPoint("TOPLEFT", configFrame, "TOPLEFT", 10, -29);
+    subTitle:SetTextColor(0.60, 0.60, 0.65);
+    subTitle:SetText("Toggle stats to display in the Stats window:");
+
+    -- Column 1: Offense (5 rows) + Reach (3 rows)
+    -- Column 2: Defense (7 rows) + Utility (5 rows)
+    local col1X = 14;
+    local col2X = 164;
+    local colWidth = 142;
+
+    -- Offense (Section 1)
+    local s1 = SECTIONS[1];
+    CreateConfigSectionHeader(configFrame, col1X, -46, colWidth, s1.title, s1.color);
+    for r = 1, table.getn(s1.rows) do
+        local rData = s1.rows[r];
+        local btn = CreateStatCheckbox(configFrame, col1X, -46 - 18 - (r - 1) * 17, rData);
+        configCheckboxes[rData.key] = btn;
+    end
+
+    -- Reach (Section 3)
+    local s3 = SECTIONS[3];
+    CreateConfigSectionHeader(configFrame, col1X, -153, colWidth, s3.title, s3.color);
+    for r = 1, table.getn(s3.rows) do
+        local rData = s3.rows[r];
+        local btn = CreateStatCheckbox(configFrame, col1X, -153 - 18 - (r - 1) * 17, rData);
+        configCheckboxes[rData.key] = btn;
+    end
+
+    -- Defense (Section 2)
+    local s2 = SECTIONS[2];
+    CreateConfigSectionHeader(configFrame, col2X, -46, colWidth, s2.title, s2.color);
+    for r = 1, table.getn(s2.rows) do
+        local rData = s2.rows[r];
+        local btn = CreateStatCheckbox(configFrame, col2X, -46 - 18 - (r - 1) * 17, rData);
+        configCheckboxes[rData.key] = btn;
+    end
+
+    -- Utility (Section 4)
+    local s4 = SECTIONS[4];
+    CreateConfigSectionHeader(configFrame, col2X, -187, colWidth, s4.title, s4.color);
+    for r = 1, table.getn(s4.rows) do
+        local rData = s4.rows[r];
+        local btn = CreateStatCheckbox(configFrame, col2X, -187 - 18 - (r - 1) * 17, rData);
+        configCheckboxes[rData.key] = btn;
+    end
+
+    -- Bottom Separator Line
+    local sepBottom = CreateLine(configFrame, 0.3, 0.3, 0.35, 0.5);
+    sepBottom:SetHeight(1);
+    sepBottom:SetPoint("BOTTOMLEFT", configFrame, "BOTTOMLEFT", 10, 32);
+    sepBottom:SetPoint("BOTTOMRIGHT", configFrame, "BOTTOMRIGHT", -10, 32);
+
+    -- Bottom Buttons
+    local btnAll = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate");
+    btnAll:SetWidth(80);
+    btnAll:SetHeight(20);
+    btnAll:SetPoint("BOTTOMLEFT", configFrame, "BOTTOMLEFT", 14, 8);
+    btnAll:SetText("Select All");
+    btnAll:SetScript("OnClick", function()
+        BordoUIDB = BordoUIDB or {};
+        BordoUIDB.statsFilter = BordoUIDB.statsFilter or {};
+        for secIdx = 1, table.getn(SECTIONS) do
+            local sec = SECTIONS[secIdx];
+            for rIdx = 1, table.getn(sec.rows) do
+                BordoUIDB.statsFilter[sec.rows[rIdx].key] = true;
+            end
+        end
+        RefreshAllConfigVisuals();
+        StatsUI:Reflow();
+        StatsUI:Update();
+        PlaySound("igMainMenuOptionCheckBoxOn");
+    end);
+
+    local btnNone = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate");
+    btnNone:SetWidth(86);
+    btnNone:SetHeight(20);
+    btnNone:SetPoint("LEFT", btnAll, "RIGHT", 6, 0);
+    btnNone:SetText("Unselect All");
+    btnNone:SetScript("OnClick", function()
+        BordoUIDB = BordoUIDB or {};
+        BordoUIDB.statsFilter = BordoUIDB.statsFilter or {};
+        for secIdx = 1, table.getn(SECTIONS) do
+            local sec = SECTIONS[secIdx];
+            for rIdx = 1, table.getn(sec.rows) do
+                BordoUIDB.statsFilter[sec.rows[rIdx].key] = false;
+            end
+        end
+        RefreshAllConfigVisuals();
+        StatsUI:Reflow();
+        StatsUI:Update();
+        PlaySound("igMainMenuOptionCheckBoxOff");
+    end);
+
+    local btnClose = CreateFrame("Button", nil, configFrame, "UIPanelButtonTemplate");
+    btnClose:SetWidth(60);
+    btnClose:SetHeight(20);
+    btnClose:SetPoint("BOTTOMRIGHT", configFrame, "BOTTOMRIGHT", -14, 8);
+    btnClose:SetText("Close");
+    btnClose:SetScript("OnClick", function()
+        configFrame:Hide();
+    end);
+
+    if not UISpecialFrames then UISpecialFrames = {}; end
+    table.insert(UISpecialFrames, "BordoUI_StatsConfigFrame");
+
+    configFrame:Hide();
+    StatsUI.configFrame = configFrame;
+    return configFrame;
+end
+
+function StatsUI:ToggleConfig()
+    if not configFrame then
+        CreateStatsConfigFrame();
+    end
+    if configFrame:IsShown() then
+        configFrame:Hide();
+    else
+        RefreshAllConfigVisuals();
+        configFrame:Show();
+        if frame and (not frame:IsShown()) then
+            if BordoUI and BordoUI.SetWindowEnabled then
+                BordoUI:SetWindowEnabled("stats", true);
+            else
+                frame:Show();
+            end
+        end
+    end
+end
+
+function BordoUI_ToggleStatsConfig()
+    StatsUI:ToggleConfig();
+end
+BordoUI.ToggleStatsConfig = BordoUI_ToggleStatsConfig;
+
 -- Initialize Position & Scale
 local function InitStatsWindow()
     if ( BordoUIDB and BordoUIDB.statsPos and BordoUIDB.statsPos.point ) then
@@ -721,6 +1089,7 @@ local function InitStatsWindow()
     else
         frame:Show();
     end
+    StatsUI:Reflow();
     StatsUI:Update();
 
     -- Initialize Highest Crit Window
