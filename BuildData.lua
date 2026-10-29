@@ -2774,23 +2774,53 @@ function BordoUI_SetActiveBuild(classKey, buildIdx)
     return nil;
 end
 
+local SPELL_CANONICAL_KEYS = {
+    ["powerwordshield"]     = "pw_shield",
+    ["power_word_shield"]   = "pw_shield",
+    ["pwshield"]            = "pw_shield",
+    ["pw_shield"]           = "pw_shield",
+
+    ["shadowwordpain"]      = "sw_pain",
+    ["shadow_word_pain"]    = "sw_pain",
+    ["swpain"]              = "sw_pain",
+    ["sw_pain"]             = "sw_pain",
+
+    ["demoralizingshout"]   = "demo_shout",
+    ["demoralizing_shout"]  = "demo_shout",
+    ["demoshout"]           = "demo_shout",
+    ["demo_shout"]          = "demo_shout",
+
+    ["huntersmark"]         = "hunters_mark",
+    ["hunter_mark"]         = "hunters_mark",
+    ["hunters_mark"]        = "hunters_mark",
+    ["huntermark"]          = "hunters_mark",
+
+    ["soulfire"]            = "soul_fire",
+    ["soul_fire"]           = "soul_fire",
+
+    ["judgment"]            = "judgement",
+    ["judgement"]           = "judgement",
+};
+
+local function CanonicalSpellKey(str)
+    if not str then return ""; end
+    local clean = string.lower(string.gsub(tostring(str), "[^%a]", ""));
+    return SPELL_CANONICAL_KEYS[clean] or clean;
+end
+
 -- Checks if a spell (by key or name) belongs to the currently active build
 -- Returns: isMatch (bool), priority (number 1-6), spellData (table)
 function BordoUI_IsActiveBuildSpell(spellNameOrKey)
     if not spellNameOrKey then return false, nil, nil; end
     local activeBuild = BordoUI_GetActiveBuild();
     if not (activeBuild and activeBuild.spells) then return false, nil, nil; end
-    local norm = NormalizeText(spellNameOrKey);
+    local targetCanon = CanonicalSpellKey(spellNameOrKey);
     for i = 1, 6 do
         local sp = activeBuild.spells[i];
         if sp and sp.name then
-            local match = false;
-            if sp.key and NormalizeText(sp.key) == norm then
-                match = true;
-            elseif NormalizeText(sp.name) == norm then
-                match = true;
-            end
-            if match then
+            local spCanonKey = CanonicalSpellKey(sp.key);
+            local spCanonName = CanonicalSpellKey(sp.name);
+            if targetCanon ~= "" and (targetCanon == spCanonKey or targetCanon == spCanonName) then
                 return true, sp.prio or i, sp;
             end
         end

@@ -54,6 +54,53 @@ local function NormalizeIconPath(icon)
     return s;
 end
 
+local SPELL_CANONICAL_KEYS = {
+    ["powerwordshield"]     = "pw_shield",
+    ["power_word_shield"]   = "pw_shield",
+    ["pwshield"]            = "pw_shield",
+    ["pw_shield"]           = "pw_shield",
+
+    ["shadowwordpain"]      = "sw_pain",
+    ["shadow_word_pain"]    = "sw_pain",
+    ["swpain"]              = "sw_pain",
+    ["sw_pain"]             = "sw_pain",
+
+    ["demoralizingshout"]   = "demo_shout",
+    ["demoralizing_shout"]  = "demo_shout",
+    ["demoshout"]           = "demo_shout",
+    ["demo_shout"]          = "demo_shout",
+
+    ["huntersmark"]         = "hunters_mark",
+    ["hunter_mark"]         = "hunters_mark",
+    ["hunters_mark"]        = "hunters_mark",
+    ["huntermark"]          = "hunters_mark",
+
+    ["soulfire"]            = "soul_fire",
+    ["soul_fire"]           = "soul_fire",
+
+    ["judgment"]            = "judgement",
+    ["judgement"]           = "judgement",
+};
+
+local function CanonicalSpellKey(str)
+    if not str then return ""; end
+    local clean = string.lower(string.gsub(tostring(str), "[^%a]", ""));
+    return SPELL_CANONICAL_KEYS[clean] or clean;
+end
+
+local function IconsMatch(iconA, iconB)
+    if not (iconA and iconB) then return false; end
+    local sA = string.lower(NormalizeIconPath(iconA));
+    local sB = string.lower(NormalizeIconPath(iconB));
+    if sA == sB then return true; end
+    local fileA = string.match(sA, "([^\\]+)$") or sA;
+    local fileB = string.match(sB, "([^\\]+)$") or sB;
+    if fileA ~= "" and fileA ~= "inv_misc_questionmark" and fileA == fileB then
+        return true;
+    end
+    return false;
+end
+
 local function GetCustomBuild(classKey, buildIdx)
     local cUpper = string.upper(classKey or currentClass);
     local idx = tonumber(buildIdx) or currentBuildIdx or 1;
@@ -1316,7 +1363,7 @@ for r = 1, 12 do
         if not cb then return; end
 
         if currentDrawerMode == "SPELL" then
-            local cleanKey = d.key or string.lower(string.gsub(d.name, "[%s%p]+", "_"));
+            local cleanKey = d.key or CanonicalSpellKey(d.name);
             cb.spells[currentTargetSlot] = {
                 key = cleanKey,
                 name = d.name,
@@ -1935,6 +1982,11 @@ choiceHUD:EnableMouseWheel(true);
 choiceHUD:SetScript("OnEnter", function()
     if GameTooltip then GameTooltip:Hide(); end
 end);
+choiceHUD:SetScript("OnShow", function()
+    if RefreshChoiceHUD then
+        RefreshChoiceHUD();
+    end
+end);
 choiceHUD:SetScript("OnMouseWheel", function()
     BordoUIDB = BordoUIDB or {};
     local cur = BordoUIDB.choiceHudScale or 1.0;
@@ -2314,17 +2366,17 @@ end
 
 -- (IsJewelryEquipped is defined above line 783 for universal access across Tooltips and HUD)
 
--- Robust Function to check current rank of a spell across AZS_SPELLS, keys, names and ActionBars
+-- Robust Function to check current rank of a spell across AZS_SPELLS, keys, names, ActionBars and Spellbook
 local function GetLearnedRank(sp)
     if not sp then return 0; end
     local spKey = sp.key or "";
     local spName = sp.name or "";
+    local spIcon = sp.icon or "";
 
-    local cleanKey = string.lower(string.gsub(spKey, "[^%a]", ""));
-    local cleanName = string.lower(string.gsub(spName, "[^%a]", ""));
-    if cleanKey == "" and cleanName == "" then return 0; end
+    local canonKey = CanonicalSpellKey(spKey);
+    local canonName = CanonicalSpellKey(spName);
 
-    -- Authoritative check: AZS_SPELLS table managed by Azeroth Survivors engine
+    -- Tier 1: Authoritative check: AZS_SPELLS table managed by Azeroth Survivors engine
     if AZS_SPELLS and table.getn(AZS_SPELLS) > 0 then
         for idx = 1, table.getn(AZS_SPELLS) do
             local e = AZS_SPELLS[idx];
@@ -2334,8 +2386,8 @@ local function GetLearnedRank(sp)
                 -- Check e.key or e[1]
                 local rawKey = e.key or e[1];
                 if rawKey and rawKey ~= "" then
-                    local eCleanKey = string.lower(string.gsub(tostring(rawKey), "[^%a]", ""));
-                    if eCleanKey ~= "" and (eCleanKey == cleanKey or eCleanKey == cleanName) then
+                    local eCanon = CanonicalSpellKey(rawKey);
+                    if eCanon ~= "" and (eCanon == canonKey or eCanon == canonName) then
                         return eRank;
                     end
                 end
@@ -2343,9 +2395,57 @@ local function GetLearnedRank(sp)
                 -- Check e.spell or e[2] (string spell name)
                 local rawSpell = e.spell or e[2];
                 if rawSpell and type(rawSpell) == "string" and rawSpell ~= "" then
-                    local eCleanSpell = string.lower(string.gsub(rawSpell, "[^%a]", ""));
-                    if eCleanSpell ~= "" and (eCleanSpell == cleanKey or eCleanSpell == cleanName) then
+                    local eCanonSpell = CanonicalSpellKey(rawSpell);
+                    if eCanonSpell ~= "" and (eCanonSpell == canonKey or eCanonSpell == canonName) then
                         return eRank;
+                    end
+                end
+
+                -- Check icon texture match (e.icon or e[2])
+                local eIcon = e.icon or e[2];
+                if eIcon and spIcon ~= "" and IconsMatch(eIcon, spIcon) then
+                    return eRank;
+                end
+            end
+        end
+    end
+
+    -- Tier 2: Check Action Bar Buttons 1 to 6 (regular draft abilities)
+    if GetActionTexture then
+        for actId = 1, 6 do
+            local tex = GetActionTexture(actId);
+            if tex and spIcon ~= "" and IconsMatch(tex, spIcon) then
+                return 1;
+            end
+            if scanTooltip and BordoUI_ItemScannerTooltipTextLeft1 then
+                scanTooltip:ClearLines();
+                scanTooltip:SetAction(actId);
+                local actName = BordoUI_ItemScannerTooltipTextLeft1:GetText();
+                if actName and actName ~= "" then
+                    local actCanon = CanonicalSpellKey(actName);
+                    if actCanon ~= "" and (actCanon == canonKey or actCanon == canonName) then
+                        return 1;
+                    end
+                end
+            end
+        end
+    end
+
+    -- Tier 3: Check Spellbook
+    if GetNumSpellTabs and GetSpellTabInfo and GetSpellName then
+        for tab = 1, GetNumSpellTabs() do
+            local _, _, offset, count = GetSpellTabInfo(tab);
+            for index = (offset or 0) + 1, (offset or 0) + (count or 0) do
+                local spellName, rankStr = GetSpellName(index, "spell");
+                if spellName and spellName ~= "" then
+                    local sbCanon = CanonicalSpellKey(spellName);
+                    if sbCanon ~= "" and (sbCanon == canonKey or sbCanon == canonName) then
+                        local r = 1;
+                        if rankStr then
+                            local _, _, num = string.find(rankStr, "(%d+)");
+                            if num then r = tonumber(num) or 1; end
+                        end
+                        return r;
                     end
                 end
             end
